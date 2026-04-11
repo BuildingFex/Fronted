@@ -1,149 +1,231 @@
 <script setup>
-import { computed, ref } from 'vue'
-import { RouterLink, useRoute } from 'vue-router'
+import { computed, ref, watch } from 'vue'
+import { RouterLink, useRoute, useRouter } from 'vue-router'
 import { useI18n } from 'vue-i18n'
 import Button from 'primevue/button'
 import SkipLink from '../components/SkipLink.vue'
-import SiteHeader from '../components/SiteHeader.vue'
-import SiteFooter from '../components/SiteFooter.vue'
 import { MarketingRouteNames } from '@/marketing/domain/marketingRoutes.js'
 
 const route = useRoute()
+const router = useRouter()
 const { t } = useI18n()
 
 const isRegister = computed(() => route.name === MarketingRouteNames.REGISTER)
 
+/** Demo: correos que simulan “no registrados”. Cualquier otro email con formato válido = registrado. */
+const HARDCODE_UNREGISTERED_EMAILS = ['noregist@example.com', 'no@buildingfex.test']
+
+const loginStep = ref(1)
 const loginEmail = ref('')
 const loginPassword = ref('')
+const loginEmailError = ref('')
+
 const regName = ref('')
 const regEmail = ref('')
 const regPassword = ref('')
 
+function isEmailRegisteredHardcoded(email) {
+  const e = email.trim().toLowerCase()
+  return !HARDCODE_UNREGISTERED_EMAILS.includes(e)
+}
+
+function onLoginContinue() {
+  loginEmailError.value = ''
+  const raw = loginEmail.value.trim()
+  if (!/^[^\s@]+@[^\s@]+\.[^\s@]+$/.test(raw)) {
+    loginEmailError.value = t('auth.emailInvalid')
+    return
+  }
+  if (!isEmailRegisteredHardcoded(raw)) {
+    loginEmailError.value = t('auth.emailNotRegistered')
+    return
+  }
+  loginStep.value = 2
+}
+
+function handleLoginSubmit() {
+  if (loginStep.value === 1) {
+    onLoginContinue()
+    return
+  }
+  onLoginSubmit()
+}
+
 function onLoginSubmit() {
-  // Hook: replace with API / redirect to external app when wired
+  // Demo: sin backend; cualquier contraseña tras paso 2 entra a la vista en blanco
+  router.push({ name: MarketingRouteNames.APP_DASHBOARD })
 }
 
 function onRegisterSubmit() {
-  // Hook: replace with API when wired
+  // Demo: sin backend; crear cuenta lleva al panel (dashboard)
+  router.push({ name: MarketingRouteNames.APP_DASHBOARD })
 }
+
+watch(
+  () => route.name,
+  (name) => {
+    if (name === MarketingRouteNames.LOGIN) {
+      loginStep.value = 1
+      loginPassword.value = ''
+      loginEmailError.value = ''
+    }
+  },
+)
+
+watch(loginEmail, () => {
+  if (loginStep.value === 2) {
+    loginStep.value = 1
+    loginPassword.value = ''
+    loginEmailError.value = ''
+  }
+})
 </script>
 
 <template>
   <div class="auth-page">
     <SkipLink />
-    <SiteHeader />
     <main id="main-content" class="auth-main" role="main" tabindex="-1">
       <div class="auth-shell">
-        <nav class="auth-tabs" :aria-label="t('auth.tabsAria')">
-          <RouterLink
-            class="auth-tab"
-            :class="{ 'auth-tab--active': !isRegister }"
-            :to="{ name: MarketingRouteNames.LOGIN }"
-          >
-            {{ t('auth.loginTab') }}
-          </RouterLink>
-          <RouterLink
-            class="auth-tab"
-            :class="{ 'auth-tab--active': isRegister }"
-            :to="{ name: MarketingRouteNames.REGISTER }"
-          >
-            {{ t('auth.registerTab') }}
-          </RouterLink>
+        <nav class="auth-tabs" :aria-label="t('auth.tabsAria')" role="tablist">
+          <div class="auth-tabs__track">
+            <span
+              class="auth-tabs__pill"
+              :class="{ 'auth-tabs__pill--register': isRegister }"
+              aria-hidden="true"
+            />
+            <RouterLink
+              class="auth-tab"
+              role="tab"
+              :class="{ 'auth-tab--active': !isRegister }"
+              :aria-selected="!isRegister"
+              :to="{ name: MarketingRouteNames.LOGIN }"
+            >
+              {{ t('auth.loginTab') }}
+            </RouterLink>
+            <RouterLink
+              class="auth-tab"
+              role="tab"
+              :class="{ 'auth-tab--active': isRegister }"
+              :aria-selected="isRegister"
+              :to="{ name: MarketingRouteNames.REGISTER }"
+            >
+              {{ t('auth.registerTab') }}
+            </RouterLink>
+          </div>
         </nav>
 
-        <div class="auth-card">
-          <template v-if="!isRegister">
-            <h1 class="auth-title">{{ t('auth.loginTitle') }}</h1>
-            <form class="auth-form" :aria-label="t('auth.ariaLogin')" @submit.prevent="onLoginSubmit">
-              <label class="auth-field">
-                <span class="auth-label">{{ t('auth.email') }}</span>
-                <input
-                  v-model="loginEmail"
-                  class="auth-input"
-                  type="email"
-                  name="email"
-                  autocomplete="email"
-                  required
-                />
-              </label>
-              <label class="auth-field">
-                <span class="auth-label">{{ t('auth.password') }}</span>
-                <input
-                  v-model="loginPassword"
-                  class="auth-input"
-                  type="password"
-                  name="password"
-                  autocomplete="current-password"
-                  required
-                />
-              </label>
-              <Button type="submit" class="auth-submit" rounded :label="t('auth.signIn')" severity="info" />
-            </form>
-            <p class="auth-switch">
-              {{ t('auth.noAccount') }}
-              <RouterLink class="auth-link" :to="{ name: MarketingRouteNames.REGISTER }">
-                {{ t('auth.goRegister') }}
-              </RouterLink>
-            </p>
-          </template>
+        <div v-if="!isRegister" class="auth-card auth-card--centered">
+          <div class="auth-brand">
+            <img
+              src="/logo-buildingfex.png"
+              :alt="t('brand')"
+              class="auth-logo"
+              width="200"
+              height="48"
+              decoding="async"
+            />
+          </div>
+          <h1 class="auth-title auth-title--center">{{ t('auth.loginTitle') }}</h1>
+          <p class="auth-subtitle">{{ t('auth.loginSubtitle') }}</p>
 
-          <template v-else>
-            <h1 class="auth-title">{{ t('auth.registerTitle') }}</h1>
-            <form class="auth-form" :aria-label="t('auth.ariaRegister')" @submit.prevent="onRegisterSubmit">
-              <label class="auth-field">
-                <span class="auth-label">{{ t('auth.fullName') }}</span>
-                <input
-                  v-model="regName"
-                  class="auth-input"
-                  type="text"
-                  name="name"
-                  autocomplete="name"
-                  required
-                />
-              </label>
-              <label class="auth-field">
-                <span class="auth-label">{{ t('auth.email') }}</span>
-                <input
-                  v-model="regEmail"
-                  class="auth-input"
-                  type="email"
-                  name="email"
-                  autocomplete="email"
-                  required
-                />
-              </label>
-              <label class="auth-field">
-                <span class="auth-label">{{ t('auth.password') }}</span>
-                <input
-                  v-model="regPassword"
-                  class="auth-input"
-                  type="password"
-                  name="password"
-                  autocomplete="new-password"
-                  required
-                />
-              </label>
-              <Button
-                type="submit"
-                class="auth-submit"
-                rounded
-                :label="t('auth.createAccount')"
-                severity="info"
+          <form class="auth-form auth-form--narrow" :aria-label="t('auth.ariaLogin')" @submit.prevent="handleLoginSubmit">
+            <div class="auth-field">
+              <input
+                v-model="loginEmail"
+                class="auth-input"
+                type="email"
+                name="email"
+                autocomplete="email"
+                required
+                :aria-label="t('auth.emailPlaceholder')"
+                :placeholder="t('auth.emailPlaceholder')"
               />
-            </form>
-            <p class="auth-switch">
-              {{ t('auth.haveAccount') }}
-              <RouterLink class="auth-link" :to="{ name: MarketingRouteNames.LOGIN }">
-                {{ t('auth.goLogin') }}
-              </RouterLink>
-            </p>
-          </template>
+            </div>
+            <div v-if="loginStep === 2" class="auth-field auth-field--step2">
+              <input
+                v-model="loginPassword"
+                class="auth-input"
+                type="password"
+                name="password"
+                autocomplete="current-password"
+                required
+                :aria-label="t('auth.passwordPlaceholder')"
+                :placeholder="t('auth.passwordPlaceholder')"
+              />
+            </div>
+            <p v-if="loginEmailError" class="auth-error" role="alert">{{ loginEmailError }}</p>
+            <Button
+              type="submit"
+              class="auth-submit"
+              rounded
+              :label="loginStep === 1 ? t('auth.continue') : t('auth.signIn')"
+              severity="info"
+            />
+          </form>
+        </div>
 
-          <p class="auth-note">{{ t('auth.note') }}</p>
+        <div v-else class="auth-card auth-card--centered">
+          <div class="auth-brand">
+            <img
+              src="/logo-buildingfex.png"
+              :alt="t('brand')"
+              class="auth-logo"
+              width="200"
+              height="48"
+              decoding="async"
+            />
+          </div>
+          <h1 class="auth-title auth-title--center">{{ t('auth.registerTitle') }}</h1>
+          <p class="auth-subtitle">{{ t('auth.registerSubtitle') }}</p>
+
+          <form class="auth-form auth-form--narrow" :aria-label="t('auth.ariaRegister')" @submit.prevent="onRegisterSubmit">
+            <div class="auth-field">
+              <input
+                v-model="regName"
+                class="auth-input"
+                type="text"
+                name="name"
+                autocomplete="name"
+                required
+                :aria-label="t('auth.fullNamePlaceholder')"
+                :placeholder="t('auth.fullNamePlaceholder')"
+              />
+            </div>
+            <div class="auth-field">
+              <input
+                v-model="regEmail"
+                class="auth-input"
+                type="email"
+                name="email"
+                autocomplete="email"
+                required
+                :aria-label="t('auth.emailPlaceholder')"
+                :placeholder="t('auth.emailPlaceholder')"
+              />
+            </div>
+            <div class="auth-field">
+              <input
+                v-model="regPassword"
+                class="auth-input"
+                type="password"
+                name="password"
+                autocomplete="new-password"
+                required
+                :aria-label="t('auth.passwordPlaceholder')"
+                :placeholder="t('auth.passwordPlaceholder')"
+              />
+            </div>
+            <Button
+              type="submit"
+              class="auth-submit"
+              rounded
+              :label="t('auth.createAccount')"
+              severity="info"
+            />
+          </form>
         </div>
       </div>
     </main>
-    <SiteFooter />
   </div>
 </template>
 
@@ -161,9 +243,9 @@ function onRegisterSubmit() {
 .auth-main {
   flex: 1;
   display: flex;
-  align-items: flex-start;
+  align-items: center;
   justify-content: center;
-  padding: calc(env(safe-area-inset-top, 0px) + var(--landing-header-height) + 1.75rem) 1.25rem 3rem;
+  padding: calc(env(safe-area-inset-top, 0px) + 2rem) 1.25rem 2.5rem;
 }
 
 .auth-shell {
@@ -172,38 +254,73 @@ function onRegisterSubmit() {
 }
 
 .auth-tabs {
-  display: flex;
-  gap: 0.35rem;
   margin-bottom: 1rem;
-  padding: 0.25rem;
-  border-radius: 14px;
-  background: rgba(0, 0, 0, 0.04);
+}
+
+.auth-tabs__track {
+  /* ~40% menos altura que antes (padding y gap escalados a 0.6) */
+  --tab-p: 0.21rem;
+  --tab-gap: 0.21rem;
+
+  position: relative;
+  display: grid;
+  grid-template-columns: 1fr 1fr;
+  gap: var(--tab-gap);
+  padding: var(--tab-p);
+  border-radius: 999px;
+  background: rgba(0, 0, 0, 0.06);
+}
+
+.auth-tabs__pill {
+  position: absolute;
+  top: var(--tab-p);
+  bottom: var(--tab-p);
+  left: var(--tab-p);
+  z-index: 0;
+  width: calc((100% - 2 * var(--tab-p) - var(--tab-gap)) / 2);
+  border-radius: 999px;
+  background: #ffffff;
+  box-shadow: 0 1px 5px rgba(0, 0, 0, 0.07);
+  pointer-events: none;
+  transition: transform 0.42s cubic-bezier(0.34, 1.2, 0.64, 1);
+  will-change: transform;
+}
+
+.auth-tabs__pill--register {
+  transform: translateX(calc(100% + var(--tab-gap)));
 }
 
 .auth-tab {
-  flex: 1;
+  position: relative;
+  z-index: 1;
+  margin: 0;
   text-align: center;
-  padding: 0.55rem 0.75rem;
-  font-size: 0.875rem;
-  font-weight: 600;
+  padding: 0.33rem 0.65rem;
+  font-size: 0.8125rem;
+  line-height: 1.25;
+  font-weight: 500;
   letter-spacing: -0.02em;
   color: var(--apple-text-secondary);
   text-decoration: none;
-  border-radius: 10px;
+  border-radius: 999px;
   transition:
-    background 0.2s ease,
-    color 0.2s ease;
+    color 0.28s ease,
+    font-weight 0.28s ease;
 }
 
 .auth-tab:hover {
   color: var(--apple-text);
-  background: rgba(255, 255, 255, 0.6);
 }
 
 .auth-tab--active {
   color: var(--apple-text);
-  background: #ffffff;
-  box-shadow: 0 1px 4px rgba(0, 0, 0, 0.06);
+  font-weight: 700;
+}
+
+@media (prefers-reduced-motion: reduce) {
+  .auth-tabs__pill {
+    transition-duration: 0.01ms;
+  }
 }
 
 .auth-card {
@@ -216,13 +333,44 @@ function onRegisterSubmit() {
     0 12px 28px rgba(0, 0, 0, 0.06);
 }
 
+.auth-card--centered {
+  text-align: center;
+}
+
+.auth-brand {
+  display: flex;
+  justify-content: center;
+  margin-bottom: 1.35rem;
+}
+
+.auth-logo {
+  height: 44px;
+  width: auto;
+  max-width: min(220px, 72vw);
+  object-fit: contain;
+  object-position: center;
+}
+
 .auth-title {
-  margin: 0 0 1.35rem;
+  margin: 0 0 0.5rem;
   font-size: clamp(1.35rem, 3vw, 1.6rem);
-  font-weight: 600;
+  font-weight: 700;
   letter-spacing: -0.03em;
   line-height: 1.15;
-  color: var(--apple-text);
+  color: #000000;
+}
+
+.auth-title--center {
+  text-align: center;
+}
+
+.auth-subtitle {
+  margin: 0 0 1.5rem;
+  font-size: 0.9375rem;
+  line-height: 1.45;
+  letter-spacing: -0.015em;
+  color: #6e6e73;
+  text-align: center;
 }
 
 .auth-form {
@@ -231,43 +379,70 @@ function onRegisterSubmit() {
   gap: 1rem;
 }
 
+.auth-form--narrow {
+  max-width: 100%;
+  margin: 0 auto;
+  width: 100%;
+}
+
 .auth-field {
   display: flex;
   flex-direction: column;
   gap: 0.35rem;
+  text-align: left;
 }
 
-.auth-label {
-  font-size: 0.8125rem;
-  font-weight: 600;
-  letter-spacing: -0.01em;
-  color: var(--apple-text-secondary);
+.auth-field--step2 {
+  animation: auth-field-in 0.35s cubic-bezier(0.25, 0.1, 0.25, 1) both;
+}
+
+@keyframes auth-field-in {
+  from {
+    opacity: 0;
+    transform: translateY(-6px);
+  }
+  to {
+    opacity: 1;
+    transform: translateY(0);
+  }
 }
 
 .auth-input {
   width: 100%;
   box-sizing: border-box;
-  padding: 0.65rem 0.85rem;
+  padding: 0.7rem 0.9rem;
   font-size: 1rem;
   font-family: inherit;
   letter-spacing: -0.02em;
   color: var(--apple-text);
-  background: var(--apple-bg, #ffffff);
-  border: 1px solid var(--apple-border-hairline);
+  background: #ffffff;
+  border: 1px solid #d2d2d7;
   border-radius: 10px;
   transition:
     border-color 0.2s ease,
     box-shadow 0.2s ease;
 }
 
+.auth-input::placeholder {
+  color: #86868b;
+}
+
 .auth-input:focus {
   outline: none;
-  border-color: rgba(var(--apple-blue-rgb), 0.45);
-  box-shadow: 0 0 0 3px rgba(var(--apple-blue-rgb), 0.12);
+  border-color: rgba(var(--apple-blue-rgb), 0.55);
+  box-shadow: 0 0 0 3px rgba(var(--apple-blue-rgb), 0.15);
+}
+
+.auth-error {
+  margin: -0.25rem 0 0;
+  font-size: 0.8125rem;
+  line-height: 1.4;
+  color: #b42318;
+  text-align: center;
 }
 
 .auth-submit {
-  margin-top: 0.25rem;
+  margin-top: 0.35rem;
   width: 100%;
   justify-content: center;
 }
@@ -276,35 +451,13 @@ function onRegisterSubmit() {
   width: 100%;
   justify-content: center;
   font-weight: 600 !important;
+  padding-top: 0.7rem !important;
+  padding-bottom: 0.7rem !important;
 }
 
-.auth-switch {
-  margin: 1.25rem 0 0;
-  font-size: 0.875rem;
-  line-height: 1.45;
-  color: var(--apple-text-secondary);
-  text-align: center;
-}
-
-.auth-link {
-  color: var(--apple-blue);
-  font-weight: 600;
-  text-decoration: none;
-  margin-left: 0.25rem;
-}
-
-.auth-link:hover {
-  text-decoration: underline;
-}
-
-.auth-note {
-  margin: 1.25rem 0 0;
-  padding-top: 1rem;
-  border-top: 1px solid var(--apple-border-hairline);
-  font-size: 0.75rem;
-  line-height: 1.4;
-  letter-spacing: -0.01em;
-  color: var(--apple-text-secondary);
-  text-align: center;
+@media (prefers-reduced-motion: reduce) {
+  .auth-field--step2 {
+    animation: none;
+  }
 }
 </style>
