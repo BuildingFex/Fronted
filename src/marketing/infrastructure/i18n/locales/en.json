@@ -3,27 +3,13 @@
   "a11y": {
     "skipToContent": "Skip to main content"
   },
-  "nav": {
-    "home": "Home",
-    "subscriptions": "Subscriptions",
-    "productVideo": "Product video",
-    "teamVideo": "Team video",
-    "benefits": "Benefits",
-    "contact": "Contact"
-  },
-  "header": {
-    "start": "Open web app",
-    "navAria": "Primary"
-  },
   "app": {
     "sidebarNav": "App navigation",
-    "segmentAria": "Planning or active period",
-    "planningChip": "Planning",
-    "periodChip": "Active period",
     "languageSwitch": "Switch between English and Spanish",
     "logout": "Log out",
     "dashboard": "Dashboard",
     "advancedManagement": "Advanced Management",
+    "addResidents": "Agregar residentes",
     "import": "Import",
     "finance": "Finance",
     "generation": "Generation",
@@ -33,6 +19,27 @@
     "settings": "Settings",
     "pageDashboard": "Dashboard",
     "pageAdvancedManagement": "Advanced Management",
+    "pageAddResidents": "Agregar residentes",
+    "addResidentsSummaryTitle": "Resumen",
+    "residentsCountLabel": "Residentes registrados",
+    "residentsColumnTitle": "Columna de residentes",
+    "addResidentAction": "Agregar residente",
+    "emptyResidents": "Aún no hay residentes agregados.",
+    "emptyResidentsSearch": "No se encontraron residentes con ese criterio.",
+    "searchResidentsPlaceholder": "Buscar residente por nombre, piso o código",
+    "addResidentModalTitle": "Nuevo residente",
+    "residentNameLabel": "Nombre",
+    "residentFloorLabel": "Piso",
+    "residentCodeLabel": "Código",
+    "shareResidentAction": "Compartir",
+    "residentsLoading": "Cargando residentes…",
+    "residentsLoadError": "No se pudo cargar la lista de residentes.",
+    "savingResidentAction": "Guardando…",
+    "addResidentCodeExists": "Ya existe un residente con ese código.",
+    "residentHasCredentials": "Cuenta activa",
+    "addResidentRequired": "Completa nombre, piso y código para continuar.",
+    "cancelAction": "Cancelar",
+    "saveResidentAction": "Guardar residente",
     "pageImport": "Import",
     "pageFinance": "Finance",
     "pageGeneration": "Generation",
@@ -40,6 +47,27 @@
     "pageInformation": "Information",
     "pageProjects": "Projects",
     "pageSettings": "Settings"
+  },
+  "resident": {
+    "navDashboard": "Dashboard Residente",
+    "navFinance": "Finanzas",
+    "navPayments": "Pago",
+    "navServices": "Servicios",
+    "navIncidents": "Incidencias",
+    "navSupport": "Soporte Técnico",
+    "dashboardTitle": "Dashboard Residente",
+    "welcome": "Bienvenido, {name}.",
+    "profileTitle": "Tus datos",
+    "financeTitle": "Finanzas del residente",
+    "financeSubtitle": "Aquí verás tus cuotas y estado de cuenta, {name}.",
+    "paymentsTitle": "Pago",
+    "paymentsSubtitle": "Aquí podrás registrar y revisar tus pagos, {name}.",
+    "servicesTitle": "Servicios",
+    "servicesSubtitle": "Reserva y consulta servicios disponibles para tu unidad, {name}.",
+    "incidentsTitle": "Mis incidencias",
+    "incidentsSubtitle": "Revisa y reporta incidencias asociadas a tu unidad, {name}.",
+    "supportTitle": "Soporte Técnico",
+    "supportSubtitle": "Contacta al equipo de soporte de tu condominio, {name}."
   },
   "auth": {
     "tabsAria": "Sign in or create account",
@@ -68,228 +96,15 @@
     "signIn": "Sign in",
     "createAccount": "Register admin",
     "ariaLogin": "Sign in form",
-    "ariaRegister": "Administrator registration form"
-  },
-  "hero": {
-    "eyebrow": "FOR BUILDINGS & CONDOMINIUMS",
-    "title": "Operations for condominiums and residential towers—one platform.",
-    "lead": "BuildingFex helps boards and property managers run common areas, collections, maintenance, and communications with the same experience on this site and in the web application.",
-    "logoPrimary": "Building",
-    "logoAccent": "Fex",
-    "ctaPrimary": "Open the web application",
-    "columnTitle": "What BuildingFex covers",
-    "cardToggleExpand": "Show full description: {title}",
-    "cardToggleCollapse": "Hide full description: {title}",
-    "cards": [
-      {
-        "icon": "pi-building",
-        "title": "Common areas",
-        "text": "Bookings, rules, and upkeep in one view.",
-        "detail": "Configure calendars, capacity limits, and approval flows so residents book pools, gyms, and shared rooms without overloading staff. Post rules, attach checklists, and keep maintenance tied to each space so nothing slips between spreadsheets and chat threads."
-      },
-      {
-        "icon": "pi-wallet",
-        "title": "Collections",
-        "text": "Fees, reminders, and payment visibility for owners.",
-        "detail": "Define fee schedules, issue reminders, and give owners a clear picture of balances and history. Finance teams can track partial payments, notes, and exceptions in one place—reducing disputes and repeated back-and-forth over email."
-      },
-      {
-        "icon": "pi-wrench",
-        "title": "Maintenance",
-        "text": "Requests, vendors, and status for the whole building.",
-        "detail": "Open work orders from residents or staff, assign vendors, and follow status from reported to closed. Attach photos, set priorities, and keep a timeline the board can audit—so recurring issues and SLAs stay visible instead of buried in messages."
-      },
-      {
-        "icon": "pi-megaphone",
-        "title": "Announcements",
-        "text": "Official notices to residents and committees.",
-        "detail": "Publish building-wide or targeted notices with attachments and clear effective dates. Residents see what matters in context, and committees retain a traceable record of official communications instead of scattered PDFs in inboxes."
-      },
-      {
-        "icon": "pi-id-card",
-        "title": "Access & visitors",
-        "text": "Registers aligned with building policies.",
-        "detail": "Pre-register guests, log vehicles, and align front desk or guard workflows with your access policy. A consistent register helps security and the board answer “who was on site?” without digging through paper logs or ad hoc spreadsheets."
-      },
-      {
-        "icon": "pi-folder-open",
-        "title": "Documents",
-        "text": "Minutes, regulations, and files for the community.",
-        "detail": "Centralize minutes, regulations, insurance, and contracts with sensible permissions for board, managers, and residents where appropriate. Versioning and search mean fewer “send me that file again” requests and faster onboarding for new administrators."
-      }
-    ]
-  },
-  "subscriptions": {
-    "heading": "Subscriptions",
-    "perMonth": "per month",
-    "priceFmt": "S/ {price} per month (PEN).",
-    "priceAria": "{amount} soles per month",
-    "ctaLabel": "Subscribe",
-    "ctaDisabledHint": "Set VITE_WEB_APP_URL in your environment to enable this link.",
-    "plans": [
-      {
-        "id": "u10-15",
-        "name": "Essential",
-        "range": "10–15 apartments",
-        "price": "40",
-        "highlight": "Billed monthly in Peruvian soles (PEN).",
-        "features": [
-          "Built for smaller buildings and boutique condominiums.",
-          "Common areas, collections, and announcements in one place.",
-          "Documents and visitor logs for your community.",
-          "Web console for administrators and boards.",
-          "Email support on business days."
-        ],
-        "path": "/app/subscribe?plan=10-15"
-      },
-      {
-        "id": "u16-40",
-        "name": "Standard",
-        "range": "16–40 apartments",
-        "price": "80",
-        "highlight": "Billed monthly in PEN. Covers up to 40 units.",
-        "features": [
-          "Designed for mid-size towers and active communities.",
-          "Same capabilities as Essential with higher capacity.",
-          "Clearer visibility into fees and delinquency.",
-          "Broadcast updates to residents and committees.",
-          "Priority operational support."
-        ],
-        "path": "/app/subscribe?plan=16-40"
-      },
-      {
-        "id": "u41-80",
-        "name": "Scale",
-        "range": "41–80 apartments",
-        "price": "120",
-        "highlight": "Billed monthly in PEN. Tier set to avoid overlap with 16–40.",
-        "features": [
-          "Large compounds and high-rise portfolios.",
-          "Performance and limits matched to building size.",
-          "Reporting for larger boards and committees.",
-          "Help rolling out and onboarding your team.",
-          "Support channel with agreed response times."
-        ],
-        "path": "/app/subscribe?plan=41-80"
-      }
-    ]
-  },
-  "videos": {
-    "product": {
-      "title": "About the product",
-      "placeholder": "YouTube video not configured yet. Add the ID to your environment and redeploy.",
-      "embedAria": "About the product video",
-      "iframeTitle": "BuildingFex product overview on YouTube"
-    },
-    "team": {
-      "title": "About the team",
-      "placeholder": "Team video not configured yet. Paste the YouTube video ID later.",
-      "embedAria": "About the team video",
-      "iframeTitle": "BuildingFex team and process on YouTube"
-    }
-  },
-  "features": {
-    "heading": "Why property managers choose BuildingFex",
-    "headingBlack": "Technology as",
-    "headingOrange": "a strategic ally\nfor your building",
-    "paragraphs": [
-      "We bring digital tools into everyday operations—from finances to resident communications—so boards and managers work with clarity and fewer manual steps.",
-      "Our roadmap pairs solid engineering with transparent terms and professional ethics, so communities can trust both the platform and the process.",
-      "Whether you oversee a small building or a large tower, you get a consistent experience on this site and inside the web application."
-    ],
-    "items": [
-      {
-        "icon": "pi-desktop",
-        "title": "Technology as a strategic ally",
-        "text": "We integrate digital tools across processes—from financial management to resident communication—so nothing important lives in disconnected spreadsheets."
-      },
-      {
-        "icon": "pi-chart-bar",
-        "title": "Technology with BI (Business Intelligence)",
-        "text": "We use business intelligence to produce reports with clear indicators for efficient, data-informed decisions."
-      },
-      {
-        "icon": "pi-bolt",
-        "title": "AI across internal workflows",
-        "text": "We apply artificial intelligence to automate tasks, optimize resources, and support better decision-making."
-      }
-    ]
-  },
-  "cta": {
-    "heroTitle": "How can we help you?",
-    "searchPlaceholder": "Search",
-    "searchAria": "Search frequently asked questions",
-    "faqTitle": "Frequently asked questions",
-    "supportBefore": "Didn’t find what you need? Open your profile, go to ",
-    "supportBold": "Support",
-    "supportAfter": ", and submit a ticket—we’ll reply there.",
-    "searchEmpty": "No results match your search.",
-    "faqItems": [
-      {
-        "question": "What is BuildingFex?",
-        "answer": "A platform to run condominiums and residential buildings—common areas, collections, maintenance, and resident communications—with the same experience on this site and in the web app."
-      },
-      {
-        "question": "How do I pick a subscription plan?",
-        "answer": "Choose based on how many apartments your building has. Amounts are in Peruvian soles (PEN) and billing is monthly. If you’re unsure at a range boundary, contact us via Support."
-      },
-      {
-        "question": "How do I contact the team?",
-        "answer": "Email hola@ejemplo.com or open a ticket from Support in your profile once you have access to the application."
-      },
-      {
-        "question": "Where are the product and team videos?",
-        "answer": "This landing includes dedicated sections below. If they don’t load, the YouTube IDs may still need to be set in your deployment environment."
-      },
-      {
-        "question": "Is my data protected?",
-        "answer": "We follow solid security practices and clear terms. Legal details are in the terms of service linked in the footer."
-      }
-    ]
-  },
-  "footer": {
-    "copy": "© {year} BuildingFex. All rights reserved.",
-    "top": "Back to top",
-    "privacy": "Privacy policy",
-    "terms": "Terms of service",
-    "legalNavAria": "Legal",
-    "developedBy": "Developed by",
-    "developerName": "BuildingFex",
-    "developerBadgeAria": "BuildingFex (opens in a new tab)",
-    "termsAria": "Terms of service (opens on this site)"
-  },
-  "privacy": {
-    "title": "Privacy policy",
-    "lead": "This page is a placeholder. Replace with your privacy policy before production."
-  },
-  "terms": {
-    "title": "Terms of service",
-    "updated": "Last updated: April 2026. Placeholder document for coursework; replace with counsel-reviewed text before production.",
-    "sections": [
-      {
-        "title": "1. Purpose and ethics",
-        "body": "BuildingFex provides digital services under principles aligned with the ACM Code of Ethics and Professional Conduct and the IEEE Code of Ethics: honesty, fairness, privacy, and competence. We commit to disclose limitations of our software and to prioritize user safety and data stewardship."
-      },
-      {
-        "title": "2. Acceptable use",
-        "body": "You agree not to misuse the platform—including attempting unauthorized access, interfering with other users, or using the service to violate applicable law. Educational institutions remain responsible for compliance with local regulations (FERPA, GDPR analogues, etc.) where they apply."
-      },
-      {
-        "title": "3. Accounts and access",
-        "body": "Access to the web application may require credentials issued by BuildingFex or your institution. You are responsible for safeguarding credentials and for activity under your account."
-      },
-      {
-        "title": "4. Intellectual property",
-        "body": "The BuildingFex name, visual identity, and software are protected. Unless expressly permitted, you may not copy, modify, or redistribute our materials outside the scope of your license or institutional agreement."
-      },
-      {
-        "title": "5. Disclaimers",
-        "body": "Services are provided “as is” to the extent permitted by law. BuildingFex does not guarantee uninterrupted availability. Nothing in these terms constitutes legal or professional advice; institutions should obtain independent counsel for contractual matters."
-      },
-      {
-        "title": "6. Contact",
-        "body": "For questions about these terms, contact the BuildingFex team using the email provided in the contact section of this landing page."
-      }
-    ]
+    "ariaRegister": "Administrator registration form",
+    "inviteTitle": "Hola, te invitaron a unirte a este condominio",
+    "inviteSubtitle": "Tus datos son correctos:",
+    "inviteAccept": "Aceptar",
+    "inviteCredentialsTitle": "Crea tus credenciales",
+    "inviteCredentialsSubtitle": "Agrega un correo y una contraseña para acceder a la plataforma.",
+    "inviteCredentialsAria": "Formulario de credenciales del residente",
+    "inviteCredentialsSubmit": "Acceder",
+    "inviteLoading": "Cargando invitación…",
+    "inviteNotFound": "Esta invitación ya no es válida o el residente no existe."
   }
 }

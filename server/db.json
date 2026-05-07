@@ -1,0 +1,24 @@
+{
+  "users": [
+    {
+      "id": "admin-seed-1",
+      "name": "Admin Demo",
+      "email": "admin@buildingfex.test",
+      "password": "admin123",
+      "dni": "12345678",
+      "address": "Av. Principal 123",
+      "company": "BuildingFex",
+      "ruc": "20123456789",
+      "role": "admin"
+    },
+    {
+      "id": "resident-1778137645757",
+      "name": "Sebastian Martin Beingolea Montalvo",
+      "floor": "3",
+      "code": "302",
+      "email": "smbmontalvo@gmail.com",
+      "password": "12Sebastian12",
+      "role": "resident"
+    }
+  ]
+}

@@ -1,17 +1,109 @@
 <script setup>
-import { computed, ref, watch } from 'vue'
+import { computed, ref, watch, watchEffect } from 'vue'
 import { RouterLink, useRoute, useRouter } from 'vue-router'
 import { useI18n } from 'vue-i18n'
 import Button from 'primevue/button'
 import SkipLink from '../components/SkipLink.vue'
 import { MarketingRouteNames } from '@/marketing/domain/marketingRoutes.js'
 import { fakeBackendApi } from '@/marketing/infrastructure/api/fakeBackendApi.js'
+import { useSession } from '@/marketing/application/sessionStore.js'
 
 const route = useRoute()
 const router = useRouter()
 const { t } = useI18n()
+const { setAdminSession, setResidentSession } = useSession()
 
 const isRegister = computed(() => route.name === MarketingRouteNames.REGISTER)
+
+const isResidentInvite = computed(
+  () => route.name === MarketingRouteNames.LOGIN && route.query.invite === '1',
+)
+const inviteCode = computed(() => String(route.query.code ?? ''))
+
+const inviteStep = ref('welcome') // 'welcome' | 'credentials'
+const inviteResident = ref(null)
+const inviteFetchError = ref('')
+const inviteLoading = ref(false)
+const residentEmail = ref('')
+const residentPassword = ref('')
+const residentError = ref('')
+const residentLoading = ref(false)
+
+const inviteName = computed(() => inviteResident.value?.name ?? '')
+const inviteFloor = computed(() => inviteResident.value?.floor ?? '')
+const inviteCodeDisplay = computed(() => inviteResident.value?.code ?? inviteCode.value)
+
+watchEffect(async () => {
+  if (!isResidentInvite.value || !inviteCode.value) {
+    inviteResident.value = null
+    return
+  }
+  inviteLoading.value = true
+  inviteFetchError.value = ''
+  try {
+    inviteResident.value = await fakeBackendApi.residents.findByCode(inviteCode.value)
+  } catch (error) {
+    inviteResident.value = null
+    inviteFetchError.value =
+      error?.code === 'RESIDENT_NOT_FOUND'
+        ? t('auth.inviteNotFound')
+        : t('auth.genericError')
+  } finally {
+    inviteLoading.value = false
+  }
+})
+
+function onResidentInviteAccept() {
+  inviteStep.value = 'credentials'
+  residentError.value = ''
+}
+
+async function onResidentCredentialsSubmit() {
+  if (residentLoading.value) return
+  residentError.value = ''
+
+  const email = residentEmail.value.trim()
+  const password = residentPassword.value.trim()
+
+  if (!/^[^\s@]+@[^\s@]+\.[^\s@]+$/.test(email)) {
+    residentError.value = t('auth.emailInvalid')
+    return
+  }
+
+  if (password.length < 4) {
+    residentError.value = t('auth.passwordInvalid')
+    return
+  }
+
+  residentLoading.value = true
+  try {
+    const { user } = await fakeBackendApi.residents.setCredentials({
+      code: inviteCode.value,
+      email,
+      password,
+    })
+    setResidentSession({
+      id: user.id,
+      name: user.name,
+      floor: user.floor,
+      code: user.code,
+      email: user.email,
+    })
+    router.push({ name: MarketingRouteNames.APP_RESIDENT_DASHBOARD })
+  } catch (error) {
+    if (error?.code === 'EMAIL_ALREADY_EXISTS') {
+      residentError.value = t('auth.emailAlreadyExists')
+      return
+    }
+    if (error?.code === 'RESIDENT_NOT_FOUND') {
+      residentError.value = t('auth.inviteNotFound')
+      return
+    }
+    residentError.value = t('auth.genericError')
+  } finally {
+    residentLoading.value = false
+  }
+}
 
 const loginStep = ref(1)
 const loginEmail = ref('')
@@ -62,11 +154,28 @@ async function onLoginSubmit() {
   loginLoading.value = true
   loginEmailError.value = ''
   try {
-    await fakeBackendApi.auth.login({
+    const { user } = await fakeBackendApi.auth.login({
       email: loginEmail.value,
       password: loginPassword.value,
     })
-    router.push({ name: MarketingRouteNames.APP_DASHBOARD })
+
+    if (user.role === 'resident') {
+      setResidentSession({
+        id: user.id,
+        name: user.name,
+        floor: user.floor,
+        code: user.code,
+        email: user.email,
+      })
+      router.push({ name: MarketingRouteNames.APP_RESIDENT_DASHBOARD })
+    } else {
+      setAdminSession({
+        id: user.id,
+        name: user.name,
+        email: user.email,
+      })
+      router.push({ name: MarketingRouteNames.APP_DASHBOARD })
+    }
   } catch (error) {
     if (error?.code === 'INVALID_PASSWORD') {
       loginEmailError.value = t('auth.passwordInvalid')
@@ -98,6 +207,7 @@ async function onRegisterSubmit() {
       company: regCompany.value,
       ruc: regRuc.value,
     })
+    setAdminSession({ email: regEmail.value, name: regName.value })
     router.push({ name: MarketingRouteNames.APP_DASHBOARD })
   } catch (error) {
     if (error?.code === 'EMAIL_ALREADY_EXISTS') {
@@ -139,7 +249,102 @@ watch(loginEmail, () => {
   <div class="auth-page">
     <SkipLink />
     <main id="main-content" class="auth-main" role="main" tabindex="-1">
-      <div class="auth-shell">
+      <div v-if="isResidentInvite" class="auth-shell">
+        <div v-if="inviteStep === 'welcome'" class="auth-card auth-card--centered">
+          <div class="auth-brand">
+            <img
+              src="/logo-buildingfex.png"
+              :alt="t('brand')"
+              class="auth-logo"
+              width="200"
+              height="48"
+              decoding="async"
+            />
+          </div>
+
+          <p v-if="inviteLoading" class="auth-subtitle">{{ t('auth.inviteLoading') }}</p>
+          <p v-else-if="inviteFetchError" class="auth-error" role="alert">
+            {{ inviteFetchError }}
+          </p>
+
+          <template v-else-if="inviteResident">
+            <h1 class="auth-title auth-title--center">{{ t('auth.inviteTitle') }}</h1>
+            <p class="auth-subtitle">{{ t('auth.inviteSubtitle') }}</p>
+
+            <ul class="auth-invite-list" role="list">
+              <li><strong>{{ t('app.residentNameLabel') }}:</strong> {{ inviteName }}</li>
+              <li><strong>{{ t('app.residentFloorLabel') }}:</strong> {{ inviteFloor }}</li>
+              <li><strong>{{ t('app.residentCodeLabel') }}:</strong> {{ inviteCodeDisplay }}</li>
+            </ul>
+
+            <Button
+              type="button"
+              class="auth-submit"
+              rounded
+              severity="info"
+              :label="t('auth.inviteAccept')"
+              @click="onResidentInviteAccept"
+            />
+          </template>
+        </div>
+
+        <div v-else class="auth-card auth-card--centered">
+          <div class="auth-brand">
+            <img
+              src="/logo-buildingfex.png"
+              :alt="t('brand')"
+              class="auth-logo"
+              width="200"
+              height="48"
+              decoding="async"
+            />
+          </div>
+          <h1 class="auth-title auth-title--center">{{ t('auth.inviteCredentialsTitle') }}</h1>
+          <p class="auth-subtitle">{{ t('auth.inviteCredentialsSubtitle') }}</p>
+
+          <form
+            class="auth-form auth-form--narrow"
+            :aria-label="t('auth.inviteCredentialsAria')"
+            @submit.prevent="onResidentCredentialsSubmit"
+          >
+            <div class="auth-field">
+              <input
+                v-model="residentEmail"
+                class="auth-input"
+                type="email"
+                name="email"
+                autocomplete="email"
+                required
+                :aria-label="t('auth.emailPlaceholder')"
+                :placeholder="t('auth.emailPlaceholder')"
+              />
+            </div>
+            <div class="auth-field">
+              <input
+                v-model="residentPassword"
+                class="auth-input"
+                type="password"
+                name="password"
+                autocomplete="new-password"
+                required
+                :aria-label="t('auth.passwordPlaceholder')"
+                :placeholder="t('auth.passwordPlaceholder')"
+              />
+            </div>
+            <p v-if="residentError" class="auth-error" role="alert">{{ residentError }}</p>
+            <Button
+              type="submit"
+              class="auth-submit"
+              rounded
+              :label="t('auth.inviteCredentialsSubmit')"
+              :loading="residentLoading"
+              :disabled="residentLoading"
+              severity="info"
+            />
+          </form>
+        </div>
+      </div>
+      <div v-else class="auth-shell">
         <nav class="auth-tabs" :aria-label="t('auth.tabsAria')" role="tablist">
           <div class="auth-tabs__track">
             <span
@@ -569,6 +774,20 @@ watch(loginEmail, () => {
   font-weight: 600 !important;
   padding-top: 0.7rem !important;
   padding-bottom: 0.7rem !important;
+}
+
+.auth-invite-list {
+  list-style: none;
+  margin: 0 0 1.25rem;
+  padding: 0.85rem 1rem;
+  text-align: left;
+  background: #f5f5f7;
+  border-radius: 12px;
+  display: flex;
+  flex-direction: column;
+  gap: 0.4rem;
+  font-size: 0.95rem;
+  color: #1d1d1f;
 }
 
 @media (prefers-reduced-motion: reduce) {

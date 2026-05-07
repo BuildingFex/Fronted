@@ -1,15 +1,17 @@
 <script setup>
-import { computed, ref } from 'vue'
+import { computed } from 'vue'
 import { RouterLink, RouterView, useRoute, useRouter } from 'vue-router'
 import { useI18n } from 'vue-i18n'
 import SkipLink from '../components/SkipLink.vue'
 import { MarketingRouteNames } from '@/marketing/domain/marketingRoutes.js'
+import { useSession } from '@/marketing/application/sessionStore.js'
 
 const { t, locale } = useI18n()
 const route = useRoute()
 const router = useRouter()
+const { isResident, clearSession } = useSession()
 
-const appNavItems = computed(() => [
+const adminNavItems = computed(() => [
   {
     key: 'dashboard',
     label: t('app.dashboard'),
@@ -21,6 +23,12 @@ const appNavItems = computed(() => [
     label: t('app.advancedManagement'),
     icon: 'pi pi-sitemap',
     routeName: MarketingRouteNames.APP_ADVANCED_MANAGEMENT,
+  },
+  {
+    key: 'addResidents',
+    label: t('app.addResidents'),
+    icon: 'pi pi-users',
+    routeName: MarketingRouteNames.APP_ADD_RESIDENTS,
   },
   {
     key: 'import',
@@ -53,15 +61,56 @@ const appNavItems = computed(() => [
     routeName: MarketingRouteNames.APP_INFORMATION,
   },
 ])
+
+const residentNavItems = computed(() => [
+  {
+    key: 'residentDashboard',
+    label: t('resident.navDashboard'),
+    icon: 'pi pi-th-large',
+    routeName: MarketingRouteNames.APP_RESIDENT_DASHBOARD,
+  },
+  {
+    key: 'residentFinance',
+    label: t('resident.navFinance'),
+    icon: 'pi pi-wallet',
+    routeName: MarketingRouteNames.APP_RESIDENT_FINANCE,
+  },
+  {
+    key: 'residentPayments',
+    label: t('resident.navPayments'),
+    icon: 'pi pi-credit-card',
+    routeName: MarketingRouteNames.APP_RESIDENT_PAYMENTS,
+  },
+  {
+    key: 'residentServices',
+    label: t('resident.navServices'),
+    icon: 'pi pi-bolt',
+    routeName: MarketingRouteNames.APP_RESIDENT_SERVICES,
+  },
+  {
+    key: 'residentIncidents',
+    label: t('resident.navIncidents'),
+    icon: 'pi pi-exclamation-circle',
+    routeName: MarketingRouteNames.APP_RESIDENT_INCIDENTS,
+  },
+  {
+    key: 'residentSupport',
+    label: t('resident.navSupport'),
+    icon: 'pi pi-question-circle',
+    routeName: MarketingRouteNames.APP_RESIDENT_SUPPORT,
+  },
+])
+
+const appNavItems = computed(() =>
+  isResident.value ? residentNavItems.value : adminNavItems.value,
+)
 const activeAppNavIndex = computed(() =>
   appNavItems.value.findIndex((item) => item.routeName === route.name),
 )
 const isAppNavPillVisible = computed(() => activeAppNavIndex.value >= 0)
 
-/** Demo: segmento activo (0 planificación, 1 periodo); sin lógica de negocio */
-const shellSegment = ref(1)
-
 function onLogout() {
+  clearSession()
   router.push({ name: MarketingRouteNames.LOGIN })
 }
 
@@ -86,62 +135,6 @@ function toggleAppLocale() {
           />
         </RouterLink>
 
-        <nav class="app-shell__segment" role="tablist" :aria-label="t('app.segmentAria')">
-          <div class="app-shell__segment-track">
-            <span
-              class="app-shell__segment-pill"
-              :class="{ 'app-shell__segment-pill--right': shellSegment === 1 }"
-              aria-hidden="true"
-            />
-            <button
-              type="button"
-              role="tab"
-              class="app-shell__segment-tab"
-              :class="{ 'app-shell__segment-tab--active': shellSegment === 0 }"
-              :aria-selected="shellSegment === 0"
-              @click="shellSegment = 0"
-            >
-              <i class="pi pi-calendar app-shell__segment-tab-icon" aria-hidden="true" />
-              <span class="app-shell__segment-tab-text">{{ t('app.planningChip') }}</span>
-            </button>
-            <button
-              type="button"
-              role="tab"
-              class="app-shell__segment-tab"
-              :class="{ 'app-shell__segment-tab--active': shellSegment === 1 }"
-              :aria-selected="shellSegment === 1"
-              @click="shellSegment = 1"
-            >
-              <span class="app-shell__segment-tab-text">{{ t('app.periodChip') }}</span>
-            </button>
-          </div>
-        </nav>
-      </header>
-
-      <div class="app-shell__divider" role="presentation" />
-
-      <nav class="app-shell__nav" :aria-label="t('app.sidebarNav')">
-        <div class="app-shell__nav-track" :style="{ '--nav-pill-index': activeAppNavIndex }">
-          <span
-            class="app-shell__nav-pill"
-            :class="{ 'app-shell__nav-pill--hidden': !isAppNavPillVisible }"
-            aria-hidden="true"
-          />
-          <RouterLink
-            v-for="item in appNavItems"
-            :key="item.key"
-            class="app-shell__nav-link"
-            active-class="app-shell__nav-link--active"
-            exact-active-class="app-shell__nav-link--active"
-            :to="{ name: item.routeName }"
-          >
-            <i :class="[item.icon, 'app-shell__nav-link-icon']" aria-hidden="true" />
-            <span>{{ item.label }}</span>
-          </RouterLink>
-        </div>
-      </nav>
-
-      <footer class="app-shell__footer">
         <button
           type="button"
           class="app-shell__lang-switch-btn"
@@ -168,6 +161,32 @@ function toggleAppLocale() {
             >EN</span>
           </span>
         </button>
+      </header>
+
+      <div class="app-shell__divider" role="presentation" />
+
+      <nav class="app-shell__nav" :aria-label="t('app.sidebarNav')">
+        <div class="app-shell__nav-track" :style="{ '--nav-pill-index': activeAppNavIndex }">
+          <span
+            class="app-shell__nav-pill"
+            :class="{ 'app-shell__nav-pill--hidden': !isAppNavPillVisible }"
+            aria-hidden="true"
+          />
+          <RouterLink
+            v-for="item in appNavItems"
+            :key="item.key"
+            class="app-shell__nav-link"
+            active-class="app-shell__nav-link--active"
+            exact-active-class="app-shell__nav-link--active"
+            :to="{ name: item.routeName }"
+          >
+            <i :class="[item.icon, 'app-shell__nav-link-icon']" aria-hidden="true" />
+            <span>{{ item.label }}</span>
+          </RouterLink>
+        </div>
+      </nav>
+
+      <footer class="app-shell__footer">
         <RouterLink
           class="app-shell__chip app-shell__chip--outline app-shell__chip--footer"
           active-class="app-shell__chip--outline-active"
