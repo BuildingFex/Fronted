@@ -1,13 +1,12 @@
-import { createApp } from 'vue'
-import { watch } from 'vue'
+import { createApp, watch } from 'vue'
 import PrimeVue from 'primevue/config'
 import Aura from '@primevue/themes/aura'
-import App from '@/marketing/presentation/App.vue'
-import i18n from '@/marketing/infrastructure/i18n'
-import router from '@/marketing/presentation/router'
-import '@/marketing/presentation/assets/main.css'
+import App from '@/shell/presentation/App.vue'
+import i18n from '@/shell/infrastructure/i18n'
+import router from '@/shell/presentation/router'
+import '@/shell/presentation/assets/main.css'
 import 'primeicons/primeicons.css'
-import { syncDocumentLocale } from '@/marketing/application/syncDocumentLocale.js'
+import { syncDocumentLocale } from '@/shell/application/syncDocumentLocale.js'
 
 const app = createApp(App)
 

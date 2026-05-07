@@ -19,6 +19,53 @@
       "email": "smbmontalvo@gmail.com",
       "password": "12Sebastian12",
       "role": "resident"
+    },
+    {
+      "id": "resident-1778175041856",
+      "name": "Valeria",
+      "floor": "5",
+      "code": "501",
+      "email": "smbmonta3lvo@gmail.com",
+      "password": "12Sebastian12",
+      "role": "resident"
+    },
+    {
+      "id": "resident-1778188214199",
+      "name": "Omar",
+      "floor": "2",
+      "code": "203",
+      "email": "smbmontalvo3@gmail.com",
+      "password": "RDPbGhMQ99CSy-_",
+      "role": "resident"
+    },
+    {
+      "id": "resident-1778188760782",
+      "name": "Carlos",
+      "floor": "3",
+      "code": "2032",
+      "email": "",
+      "password": "",
+      "role": "resident"
+    }
+  ],
+  "socialSpaces": [
+    {
+      "id": "space-1778188293343",
+      "name": "GYM",
+      "description": "Zona para entrenar",
+      "capacity": 2
+    }
+  ],
+  "reservations": [
+    {
+      "id": "reservation-1778188318981",
+      "spaceId": "space-1778188293343",
+      "residentId": "resident-1778188214199",
+      "residentName": "Omar",
+      "residentCode": "203",
+      "date": "2026-05-08",
+      "startTime": "10:00",
+      "endTime": "11:00"
     }
   ]
 }
