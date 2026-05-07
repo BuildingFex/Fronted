@@ -5,6 +5,7 @@ import { useI18n } from 'vue-i18n'
 import Button from 'primevue/button'
 import SkipLink from '../components/SkipLink.vue'
 import { MarketingRouteNames } from '@/marketing/domain/marketingRoutes.js'
+import { fakeBackendApi } from '@/marketing/infrastructure/api/fakeBackendApi.js'
 
 const route = useRoute()
 const router = useRouter()
@@ -12,53 +13,101 @@ const { t } = useI18n()
 
 const isRegister = computed(() => route.name === MarketingRouteNames.REGISTER)
 
-/** Demo: correos que simulan “no registrados”. Cualquier otro email con formato válido = registrado. */
-const HARDCODE_UNREGISTERED_EMAILS = ['noregist@example.com', 'no@buildingfex.test']
-
 const loginStep = ref(1)
 const loginEmail = ref('')
 const loginPassword = ref('')
 const loginEmailError = ref('')
+const loginLoading = ref(false)
 
 const regName = ref('')
 const regEmail = ref('')
 const regPassword = ref('')
+const regDni = ref('')
+const regAddress = ref('')
+const regCompany = ref('')
+const regRuc = ref('')
+const registerError = ref('')
+const registerLoading = ref(false)
 
-function isEmailRegisteredHardcoded(email) {
-  const e = email.trim().toLowerCase()
-  return !HARDCODE_UNREGISTERED_EMAILS.includes(e)
-}
-
-function onLoginContinue() {
+async function onLoginContinue() {
   loginEmailError.value = ''
   const raw = loginEmail.value.trim()
   if (!/^[^\s@]+@[^\s@]+\.[^\s@]+$/.test(raw)) {
     loginEmailError.value = t('auth.emailInvalid')
     return
   }
-  if (!isEmailRegisteredHardcoded(raw)) {
-    loginEmailError.value = t('auth.emailNotRegistered')
-    return
+  loginLoading.value = true
+  try {
+    const exists = await fakeBackendApi.auth.isEmailRegistered(raw)
+    if (!exists) {
+      loginEmailError.value = t('auth.emailNotRegistered')
+      return
+    }
+    loginStep.value = 2
+  } finally {
+    loginLoading.value = false
   }
-  loginStep.value = 2
 }
 
-function handleLoginSubmit() {
+async function handleLoginSubmit() {
+  if (loginLoading.value) return
   if (loginStep.value === 1) {
-    onLoginContinue()
+    await onLoginContinue()
     return
   }
-  onLoginSubmit()
+  await onLoginSubmit()
 }
 
-function onLoginSubmit() {
-  // Demo: sin backend; cualquier contraseña tras paso 2 entra a la vista en blanco
-  router.push({ name: MarketingRouteNames.APP_DASHBOARD })
+async function onLoginSubmit() {
+  loginLoading.value = true
+  loginEmailError.value = ''
+  try {
+    await fakeBackendApi.auth.login({
+      email: loginEmail.value,
+      password: loginPassword.value,
+    })
+    router.push({ name: MarketingRouteNames.APP_DASHBOARD })
+  } catch (error) {
+    if (error?.code === 'INVALID_PASSWORD') {
+      loginEmailError.value = t('auth.passwordInvalid')
+      return
+    }
+    if (error?.code === 'EMAIL_NOT_FOUND') {
+      loginStep.value = 1
+      loginPassword.value = ''
+      loginEmailError.value = t('auth.emailNotRegistered')
+      return
+    }
+    loginEmailError.value = t('auth.genericError')
+  } finally {
+    loginLoading.value = false
+  }
 }
 
-function onRegisterSubmit() {
-  // Demo: sin backend; crear cuenta lleva al panel (dashboard)
-  router.push({ name: MarketingRouteNames.APP_DASHBOARD })
+async function onRegisterSubmit() {
+  if (registerLoading.value) return
+  registerLoading.value = true
+  registerError.value = ''
+  try {
+    await fakeBackendApi.auth.registerAdmin({
+      name: regName.value,
+      email: regEmail.value,
+      password: regPassword.value,
+      dni: regDni.value,
+      address: regAddress.value,
+      company: regCompany.value,
+      ruc: regRuc.value,
+    })
+    router.push({ name: MarketingRouteNames.APP_DASHBOARD })
+  } catch (error) {
+    if (error?.code === 'EMAIL_ALREADY_EXISTS') {
+      registerError.value = t('auth.emailAlreadyExists')
+      return
+    }
+    registerError.value = t('auth.genericError')
+  } finally {
+    registerLoading.value = false
+  }
 }
 
 watch(
@@ -68,6 +117,11 @@ watch(
       loginStep.value = 1
       loginPassword.value = ''
       loginEmailError.value = ''
+      loginLoading.value = false
+    }
+    if (name === MarketingRouteNames.REGISTER) {
+      registerError.value = ''
+      registerLoading.value = false
     }
   },
 )
@@ -136,6 +190,7 @@ watch(loginEmail, () => {
                 type="email"
                 name="email"
                 autocomplete="email"
+                :disabled="loginLoading"
                 required
                 :aria-label="t('auth.emailPlaceholder')"
                 :placeholder="t('auth.emailPlaceholder')"
@@ -148,6 +203,7 @@ watch(loginEmail, () => {
                 type="password"
                 name="password"
                 autocomplete="current-password"
+                :disabled="loginLoading"
                 required
                 :aria-label="t('auth.passwordPlaceholder')"
                 :placeholder="t('auth.passwordPlaceholder')"
@@ -159,6 +215,8 @@ watch(loginEmail, () => {
               class="auth-submit"
               rounded
               :label="loginStep === 1 ? t('auth.continue') : t('auth.signIn')"
+              :loading="loginLoading"
+              :disabled="loginLoading"
               severity="info"
             />
           </form>
@@ -186,6 +244,7 @@ watch(loginEmail, () => {
                 type="text"
                 name="name"
                 autocomplete="name"
+                :disabled="registerLoading"
                 required
                 :aria-label="t('auth.fullNamePlaceholder')"
                 :placeholder="t('auth.fullNamePlaceholder')"
@@ -198,6 +257,7 @@ watch(loginEmail, () => {
                 type="email"
                 name="email"
                 autocomplete="email"
+                :disabled="registerLoading"
                 required
                 :aria-label="t('auth.emailPlaceholder')"
                 :placeholder="t('auth.emailPlaceholder')"
@@ -210,16 +270,72 @@ watch(loginEmail, () => {
                 type="password"
                 name="password"
                 autocomplete="new-password"
+                :disabled="registerLoading"
                 required
                 :aria-label="t('auth.passwordPlaceholder')"
                 :placeholder="t('auth.passwordPlaceholder')"
               />
             </div>
+            <div class="auth-field">
+              <input
+                v-model="regDni"
+                class="auth-input"
+                type="text"
+                name="dni"
+                autocomplete="off"
+                :disabled="registerLoading"
+                required
+                :aria-label="t('auth.dniPlaceholder')"
+                :placeholder="t('auth.dniPlaceholder')"
+              />
+            </div>
+            <div class="auth-field">
+              <input
+                v-model="regAddress"
+                class="auth-input"
+                type="text"
+                name="address"
+                autocomplete="street-address"
+                :disabled="registerLoading"
+                required
+                :aria-label="t('auth.addressPlaceholder')"
+                :placeholder="t('auth.addressPlaceholder')"
+              />
+            </div>
+            <div class="auth-field">
+              <input
+                v-model="regCompany"
+                class="auth-input"
+                type="text"
+                name="company"
+                autocomplete="organization"
+                :disabled="registerLoading"
+                required
+                :aria-label="t('auth.companyPlaceholder')"
+                :placeholder="t('auth.companyPlaceholder')"
+              />
+            </div>
+            <div class="auth-field">
+              <input
+                v-model="regRuc"
+                class="auth-input"
+                type="text"
+                name="ruc"
+                autocomplete="off"
+                :disabled="registerLoading"
+                required
+                :aria-label="t('auth.rucPlaceholder')"
+                :placeholder="t('auth.rucPlaceholder')"
+              />
+            </div>
+            <p v-if="registerError" class="auth-error" role="alert">{{ registerError }}</p>
             <Button
               type="submit"
               class="auth-submit"
               rounded
               :label="t('auth.createAccount')"
+              :loading="registerLoading"
+              :disabled="registerLoading"
               severity="info"
             />
           </form>

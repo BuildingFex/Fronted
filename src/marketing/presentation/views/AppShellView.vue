@@ -9,11 +9,54 @@ const { t, locale } = useI18n()
 const route = useRoute()
 const router = useRouter()
 
-const isAppProjectsRoute = computed(() => route.name === MarketingRouteNames.APP_PROJECTS)
-const isAppDashboardRoute = computed(() => route.name === MarketingRouteNames.APP_DASHBOARD)
-const isAppNavPillVisible = computed(
-  () => isAppDashboardRoute.value || isAppProjectsRoute.value,
+const appNavItems = computed(() => [
+  {
+    key: 'dashboard',
+    label: t('app.dashboard'),
+    icon: 'pi pi-th-large',
+    routeName: MarketingRouteNames.APP_DASHBOARD,
+  },
+  {
+    key: 'advancedManagement',
+    label: t('app.advancedManagement'),
+    icon: 'pi pi-sitemap',
+    routeName: MarketingRouteNames.APP_ADVANCED_MANAGEMENT,
+  },
+  {
+    key: 'import',
+    label: t('app.import'),
+    icon: 'pi pi-upload',
+    routeName: MarketingRouteNames.APP_IMPORT,
+  },
+  {
+    key: 'finance',
+    label: t('app.finance'),
+    icon: 'pi pi-wallet',
+    routeName: MarketingRouteNames.APP_FINANCE,
+  },
+  {
+    key: 'generation',
+    label: t('app.generation'),
+    icon: 'pi pi-cog',
+    routeName: MarketingRouteNames.APP_GENERATION,
+  },
+  {
+    key: 'incidents',
+    label: t('app.incidents'),
+    icon: 'pi pi-exclamation-circle',
+    routeName: MarketingRouteNames.APP_INCIDENTS,
+  },
+  {
+    key: 'information',
+    label: t('app.information'),
+    icon: 'pi pi-info-circle',
+    routeName: MarketingRouteNames.APP_INFORMATION,
+  },
+])
+const activeAppNavIndex = computed(() =>
+  appNavItems.value.findIndex((item) => item.routeName === route.name),
 )
+const isAppNavPillVisible = computed(() => activeAppNavIndex.value >= 0)
 
 /** Demo: segmento activo (0 planificación, 1 periodo); sin lógica de negocio */
 const shellSegment = ref(1)
@@ -78,30 +121,22 @@ function toggleAppLocale() {
       <div class="app-shell__divider" role="presentation" />
 
       <nav class="app-shell__nav" :aria-label="t('app.sidebarNav')">
-        <div class="app-shell__nav-track">
+        <div class="app-shell__nav-track" :style="{ '--nav-pill-index': activeAppNavIndex }">
           <span
             class="app-shell__nav-pill"
-            :class="{
-              'app-shell__nav-pill--second': isAppProjectsRoute,
-              'app-shell__nav-pill--hidden': !isAppNavPillVisible,
-            }"
+            :class="{ 'app-shell__nav-pill--hidden': !isAppNavPillVisible }"
             aria-hidden="true"
           />
           <RouterLink
+            v-for="item in appNavItems"
+            :key="item.key"
             class="app-shell__nav-link"
-            :class="{ 'app-shell__nav-link--active': isAppDashboardRoute }"
-            :to="{ name: MarketingRouteNames.APP_DASHBOARD }"
+            active-class="app-shell__nav-link--active"
+            exact-active-class="app-shell__nav-link--active"
+            :to="{ name: item.routeName }"
           >
-            <i class="pi pi-th-large app-shell__nav-link-icon" aria-hidden="true" />
-            <span>{{ t('app.dashboard') }}</span>
-          </RouterLink>
-          <RouterLink
-            class="app-shell__nav-link"
-            :class="{ 'app-shell__nav-link--active': isAppProjectsRoute }"
-            :to="{ name: MarketingRouteNames.APP_PROJECTS }"
-          >
-            <i class="pi pi-folder-open app-shell__nav-link-icon" aria-hidden="true" />
-            <span>{{ t('app.projects') }}</span>
+            <i :class="[item.icon, 'app-shell__nav-link-icon']" aria-hidden="true" />
+            <span>{{ item.label }}</span>
           </RouterLink>
         </div>
       </nav>
@@ -340,10 +375,10 @@ function toggleAppLocale() {
   align-items: center;
   justify-content: center;
   gap: 0.4rem;
-  padding: 0.4rem 0.55rem;
+  padding: 0.32rem 0.5rem;
   border: none;
   border-radius: var(--shell-pill-radius);
-  font-size: 0.6875rem;
+  font-size: 0.625rem;
   font-weight: 600;
   letter-spacing: -0.02em;
   font-family: inherit;
@@ -427,11 +462,10 @@ function toggleAppLocale() {
 .app-shell__nav-track {
   --nav-p: 0.21rem;
   --nav-gap: 0.21rem;
-
-  position: relative;
+  --nav-item-height: 2rem;
   display: grid;
-  grid-template-rows: 1fr 1fr;
   grid-template-columns: 1fr;
+  grid-auto-rows: var(--nav-item-height);
   gap: var(--nav-gap);
   padding: var(--nav-p);
   width: 100%;
@@ -439,6 +473,7 @@ function toggleAppLocale() {
   border-radius: 14px;
   background: rgba(0, 0, 0, 0.06);
   box-sizing: border-box;
+  position: relative;
 }
 
 .app-shell__nav-pill {
@@ -447,20 +482,17 @@ function toggleAppLocale() {
   left: var(--nav-p);
   right: var(--nav-p);
   z-index: 0;
-  height: calc((100% - 2 * var(--nav-p) - var(--nav-gap)) / 2);
+  height: var(--nav-item-height);
   border-radius: 12px;
   background: #ffffff;
   box-shadow: 0 1px 5px rgba(0, 0, 0, 0.07);
   pointer-events: none;
   opacity: 1;
+  transform: translateY(calc((var(--nav-item-height) + var(--nav-gap)) * var(--nav-pill-index)));
   transition:
     transform 0.42s cubic-bezier(0.34, 1.2, 0.64, 1),
     opacity 0.2s ease;
   will-change: transform;
-}
-
-.app-shell__nav-pill--second {
-  transform: translateY(calc(100% + var(--nav-gap)));
 }
 
 .app-shell__nav-pill--hidden {
@@ -477,9 +509,9 @@ function toggleAppLocale() {
   margin: 0;
   width: 100%;
   text-align: center;
-  padding: 0.5rem 0.4rem;
+  padding: 0.3rem 0.35rem;
   border-radius: 12px;
-  font-size: 0.8125rem;
+  font-size: 0.75rem;
   font-weight: 500;
   letter-spacing: -0.02em;
   color: var(--shell-muted);
@@ -506,7 +538,7 @@ function toggleAppLocale() {
 }
 
 .app-shell__nav-link-icon {
-  font-size: 0.95rem;
+  font-size: 0.85rem;
   color: var(--shell-muted);
   width: 1.1rem;
   text-align: center;
