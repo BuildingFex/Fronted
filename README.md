@@ -46,3 +46,16 @@ El código de la landing vive bajo `src/marketing/`, organizado por capas (domin
 ## Licencia
 
 Privado — BuildingFex.
+
+actualizar 
+git fecht 
+
+git checkout nonbrederama
+
+git branch 
+
+nonbrederama
+
+git add .
+git commit -m "mensaje"
+git push 
