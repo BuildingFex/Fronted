@@ -33,6 +33,18 @@ const deleteResidentSummary = ref(null)
 const deleteResidentHasErrors = ref(false)
 
 const totalResidents = computed(() => residents.value.length)
+const activeResidents = computed(() =>
+  residents.value.filter((r) => r.hasCredentials).length,
+)
+const totalSpaces = computed(() => spaces.value.length)
+
+function residentInitials(name) {
+  if (!name) return '?'
+  const parts = name.trim().split(/\s+/)
+  if (parts.length === 1) return parts[0][0].toUpperCase()
+  return (parts[0][0] + parts[parts.length - 1][0]).toUpperCase()
+}
+
 const filteredResidents = computed(() => {
   const query = searchQuery.value.trim().toLowerCase()
   if (!query) return residents.value
@@ -545,167 +557,181 @@ const groupedReservations = computed(() => {
 
 <template>
   <div class="app-view">
-    <section class="residents-layout">
-      <article class="residents-panel residents-panel--right">
-        <div class="residents-panel__top">
-          <h2 class="residents-panel__title">{{ t('app.residentsColumnTitle') }}</h2>
-          <button type="button" class="residents-panel__add-btn" @click="openAddResidentModal">
+    <header class="page-header">
+      <h1 class="page-header__title">{{ t('app.pageAdvancedManagement') }}</h1>
+      <div class="page-header__counters">
+        <span class="page-counter">{{ totalResidents }} {{ t('app.residentsCountLabel') }}</span>
+        <span class="page-counter__sep" aria-hidden="true" />
+        <span class="page-counter">{{ activeResidents }} {{ t('app.residentHasCredentials') }}</span>
+        <span class="page-counter__sep" aria-hidden="true" />
+        <span class="page-counter">{{ totalSpaces }} {{ t('app.spacesColumnTitle') }}</span>
+      </div>
+    </header>
+
+    <section class="mgmt-layout">
+      <article class="mgmt-panel">
+        <div class="mgmt-panel__header">
+          <h2 class="mgmt-panel__title">{{ t('app.residentsColumnTitle') }}</h2>
+          <button type="button" class="mgmt-btn mgmt-btn--blue" @click="openAddResidentModal">
             <i class="pi pi-plus" aria-hidden="true" />
             <span>{{ t('app.addResidentAction') }}</span>
           </button>
         </div>
 
-        <div class="residents-metric">
-          <span class="residents-metric__label">{{ t('app.residentsCountLabel') }}</span>
-          <strong class="residents-metric__value">{{ totalResidents }}</strong>
-        </div>
-
-        <label class="residents-search">
-          <i class="pi pi-search residents-search__icon" aria-hidden="true" />
+        <label class="mgmt-search">
+          <i class="pi pi-search mgmt-search__icon" aria-hidden="true" />
           <input
             v-model="searchQuery"
             type="text"
-            class="residents-search__input"
+            class="mgmt-search__input"
             :placeholder="t('app.searchResidentsPlaceholder')"
             :aria-label="t('app.searchResidentsPlaceholder')"
           />
         </label>
 
-        <p v-if="residentDeleteError" class="residents-empty residents-empty--error">
+        <p v-if="residentDeleteError" class="mgmt-msg mgmt-msg--error">
           {{ residentDeleteError }}
         </p>
 
-        <p v-if="isLoading" class="residents-empty">
-          {{ t('app.residentsLoading') }}
-        </p>
-        <p v-else-if="loadError" class="residents-empty residents-empty--error">
-          {{ loadError }}
-        </p>
-        <p v-else-if="!residents.length" class="residents-empty">
-          {{ t('app.emptyResidents') }}
-        </p>
-        <p v-else-if="!filteredResidents.length" class="residents-empty">
-          {{ t('app.emptyResidentsSearch') }}
-        </p>
-        <ul v-else class="residents-list" role="list">
-          <li v-for="resident in filteredResidents" :key="resident.id" class="residents-list__item">
-            <p class="residents-list__name">
-              {{ resident.name }}
-              <span
-                v-if="resident.hasCredentials"
-                class="residents-list__badge"
-                :title="t('app.residentHasCredentials')"
-              >
-                <i class="pi pi-check-circle" aria-hidden="true" />
-                {{ t('app.residentHasCredentials') }}
+        <div v-if="isLoading" class="mgmt-empty">
+          <i class="pi pi-spin pi-spinner" aria-hidden="true" />
+          <span>{{ t('app.residentsLoading') }}</span>
+        </div>
+        <div v-else-if="loadError" class="mgmt-empty mgmt-empty--error">
+          <i class="pi pi-exclamation-circle" aria-hidden="true" />
+          <span>{{ loadError }}</span>
+        </div>
+        <div v-else-if="!residents.length" class="mgmt-empty">
+          <i class="pi pi-inbox" aria-hidden="true" />
+          <span>{{ t('app.emptyResidents') }}</span>
+        </div>
+        <div v-else-if="!filteredResidents.length" class="mgmt-empty">
+          <i class="pi pi-search" aria-hidden="true" />
+          <span>{{ t('app.emptyResidentsSearch') }}</span>
+        </div>
+        <ul v-else class="r-list" role="list">
+          <li v-for="resident in filteredResidents" :key="resident.id" class="r-card">
+            <div class="r-card__row">
+              <span class="r-card__avatar" :class="{ 'r-card__avatar--active': resident.hasCredentials }">
+                {{ residentInitials(resident.name) }}
               </span>
-            </p>
-            <div class="residents-list__meta">
-              <span>{{ t('app.residentFloorLabel') }}: {{ resident.floor }}</span>
-              <span>{{ t('app.residentCodeLabel') }}: {{ resident.code }}</span>
-              <span v-if="resident.email">{{ t('auth.email') }}: {{ resident.email }}</span>
+              <div class="r-card__body">
+                <p class="r-card__name">
+                  {{ resident.name }}
+                  <span v-if="resident.hasCredentials" class="r-card__badge">
+                    <i class="pi pi-check-circle" aria-hidden="true" />
+                  </span>
+                </p>
+                <p class="r-card__meta">
+                  {{ t('app.residentFloorLabel') }} {{ resident.floor }} · {{ resident.code }}
+                  <template v-if="resident.email"> · {{ resident.email }}</template>
+                </p>
+              </div>
+              <div class="r-card__actions">
+                <button
+                  type="button"
+                  class="r-card__icon-btn"
+                  :title="t('app.shareResidentAction')"
+                  @click="generateResidentAccessLink(resident)"
+                >
+                  <i class="pi pi-link" aria-hidden="true" />
+                </button>
+                <button
+                  type="button"
+                  class="r-card__icon-btn r-card__icon-btn--danger"
+                  :title="t('app.deleteResidentAction')"
+                  :disabled="isDeletingResidentCascade && deleteResidentCandidate?.id === resident.id"
+                  @click="openDeleteResidentModal(resident)"
+                >
+                  <i class="pi pi-trash" aria-hidden="true" />
+                </button>
+              </div>
             </div>
-            <div class="residents-list__actions">
-              <button
-                type="button"
-                class="residents-list__share-btn"
-                @click="generateResidentAccessLink(resident)"
-              >
-                <i class="pi pi-share-alt" aria-hidden="true" />
-                <span>{{ t('app.shareResidentAction') }}</span>
-              </button>
-              <button
-                type="button"
-                class="residents-list__delete-btn"
-                :disabled="isDeletingResidentCascade && deleteResidentCandidate?.id === resident.id"
-                @click="openDeleteResidentModal(resident)"
-              >
-                <i class="pi pi-trash" aria-hidden="true" />
-                <span>{{ t('app.deleteResidentAction') }}</span>
-              </button>
-              <a
-                v-if="accessLinks[resident.id]"
-                class="residents-list__link"
-                :href="accessLinks[resident.id]"
-                target="_blank"
-                rel="noopener noreferrer"
-              >
-                {{ accessLinks[resident.id] }}
-              </a>
-            </div>
+            <a
+              v-if="accessLinks[resident.id]"
+              class="r-card__link"
+              :href="accessLinks[resident.id]"
+              target="_blank"
+              rel="noopener noreferrer"
+            >
+              {{ accessLinks[resident.id] }}
+            </a>
           </li>
         </ul>
       </article>
 
-      <article class="residents-panel residents-panel--right">
-        <div class="residents-panel__top">
-          <h2 class="residents-panel__title">{{ t('app.spacesColumnTitle') }}</h2>
-          <button type="button" class="residents-panel__add-btn" @click="openAddSpaceModal">
+      <article class="mgmt-panel">
+        <div class="mgmt-panel__header">
+          <h2 class="mgmt-panel__title">{{ t('app.spacesColumnTitle') }}</h2>
+          <button type="button" class="mgmt-btn mgmt-btn--blue" @click="openAddSpaceModal">
             <i class="pi pi-plus" aria-hidden="true" />
             <span>{{ t('app.addSpaceAction') }}</span>
           </button>
         </div>
 
-        <p v-if="spaceDeleteError" class="residents-empty residents-empty--error">
+        <p v-if="spaceDeleteError" class="mgmt-msg mgmt-msg--error">
           {{ spaceDeleteError }}
         </p>
 
-        <p v-if="isLoadingSpaces" class="residents-empty">
-          {{ t('app.spacesLoading') }}
-        </p>
-        <p v-else-if="spacesLoadError" class="residents-empty residents-empty--error">
-          {{ spacesLoadError }}
-        </p>
-        <p v-else-if="!spaces.length" class="residents-empty">
-          {{ t('app.emptySpaces') }}
-        </p>
-        <ul v-else class="residents-list" role="list">
+        <div v-if="isLoadingSpaces" class="mgmt-empty">
+          <i class="pi pi-spin pi-spinner" aria-hidden="true" />
+          <span>{{ t('app.spacesLoading') }}</span>
+        </div>
+        <div v-else-if="spacesLoadError" class="mgmt-empty mgmt-empty--error">
+          <i class="pi pi-exclamation-circle" aria-hidden="true" />
+          <span>{{ spacesLoadError }}</span>
+        </div>
+        <div v-else-if="!spaces.length" class="mgmt-empty">
+          <i class="pi pi-image" aria-hidden="true" />
+          <span>{{ t('app.emptySpaces') }}</span>
+        </div>
+        <ul v-else class="s-list" role="list">
           <li
             v-for="space in spaces"
             :key="space.id"
-            class="residents-list__item residents-list__item--clickable space-card"
+            class="s-card"
             tabindex="0"
             role="button"
             @click="openSpaceCalendar(space)"
             @keyup.enter="openSpaceCalendar(space)"
             @keyup.space.prevent="openSpaceCalendar(space)"
           >
-            <div v-if="space.imageUrl" class="space-card__image-wrapper">
+            <div class="s-card__thumb">
               <img
+                v-if="space.imageUrl"
                 :src="space.imageUrl"
                 :alt="t('app.spaceImageAlt', { name: space.name })"
-                class="space-card__image"
+                class="s-card__img"
               />
+              <div v-else class="s-card__placeholder" aria-hidden="true">
+                <i class="pi pi-image" />
+              </div>
             </div>
-            <div v-else class="space-card__image-placeholder" aria-hidden="true">
-              <i class="pi pi-image" />
+            <div class="s-card__info">
+              <p class="s-card__name">{{ space.name }}</p>
+              <p v-if="space.description" class="s-card__desc">{{ space.description }}</p>
+              <p v-if="space.capacity" class="s-card__cap">
+                <i class="pi pi-users" aria-hidden="true" />
+                {{ space.capacity }}
+              </p>
             </div>
-
-            <p class="residents-list__name">{{ space.name }}</p>
-            <div v-if="space.description" class="residents-list__meta">
-              <span>{{ space.description }}</span>
-            </div>
-            <div v-if="space.capacity" class="residents-list__meta">
-              <span>{{ t('app.spaceCapacityLabel') }}: {{ space.capacity }}</span>
-            </div>
-
-            <div class="space-card__actions" @click.stop @keyup.stop @keydown.stop>
+            <div class="s-card__actions" @click.stop @keyup.stop @keydown.stop>
               <button
                 type="button"
-                class="space-card__edit-btn"
+                class="r-card__icon-btn"
+                :title="t('app.editSpaceAction')"
                 @click.stop="openEditSpaceModal(space)"
               >
                 <i class="pi pi-pencil" aria-hidden="true" />
-                <span>{{ t('app.editSpaceAction') }}</span>
               </button>
               <button
                 type="button"
-                class="space-card__delete-btn"
+                class="r-card__icon-btn r-card__icon-btn--danger"
+                :title="t('app.deleteSpaceAction')"
                 :disabled="!!deletingSpaceIds[space.id]"
                 @click.stop="deleteSpace(space)"
               >
                 <i class="pi pi-trash" aria-hidden="true" />
-                <span>{{ t('app.deleteSpaceAction') }}</span>
               </button>
             </div>
           </li>
@@ -1163,13 +1189,13 @@ const groupedReservations = computed(() => {
           <span v-if="selectedSpace" class="resident-modal__title-suffix">— {{ selectedSpace.name }}</span>
         </h3>
 
-        <p v-if="isLoadingReservations" class="residents-empty">
+        <p v-if="isLoadingReservations" class="mgmt-msg">
           {{ t('app.reservationsLoading') }}
         </p>
-        <p v-else-if="reservationsLoadError" class="residents-empty residents-empty--error">
+        <p v-else-if="reservationsLoadError" class="mgmt-msg mgmt-msg--error">
           {{ reservationsLoadError }}
         </p>
-        <p v-else-if="!groupedReservations.length" class="residents-empty">
+        <p v-else-if="!groupedReservations.length" class="mgmt-msg">
           {{ t('app.emptyReservations') }}
         </p>
         <ul v-else class="reservations-list" role="list">
@@ -1202,80 +1228,106 @@ const groupedReservations = computed(() => {
 
 <style scoped>
 .app-view {
-  padding: 1.75rem 1.5rem;
-  max-width: 72rem;
+  padding: 1.5rem 1.25rem;
+  width: 100%;
+  box-sizing: border-box;
+  overflow: hidden;
 }
 
-.residents-layout {
+.page-header {
+  display: flex;
+  align-items: baseline;
+  justify-content: space-between;
+  gap: 0.75rem;
+  flex-wrap: wrap;
+  margin-bottom: 1.25rem;
+}
+
+.page-header__title {
+  margin: 0;
+  font-size: 1.35rem;
+  font-weight: 700;
+  color: #1d1d1f;
+  letter-spacing: -0.025em;
+}
+
+.page-header__counters {
+  display: flex;
+  align-items: center;
+  gap: 0.5rem;
+  flex-wrap: wrap;
+}
+
+.page-counter {
+  font-size: 0.8rem;
+  color: #86868b;
+  font-weight: 500;
+}
+
+.page-counter__sep {
+  width: 3px;
+  height: 3px;
+  border-radius: 50%;
+  background: #d2d2d7;
+}
+
+.mgmt-layout {
   display: grid;
   grid-template-columns: repeat(2, minmax(0, 1fr));
   gap: 1rem;
+  align-items: start;
 }
 
 @media (max-width: 860px) {
-  .residents-layout {
+  .mgmt-layout {
     grid-template-columns: minmax(0, 1fr);
   }
 }
 
-.residents-panel {
+.mgmt-panel {
   border: 1px solid #e8e8ed;
   border-radius: 14px;
   padding: 1rem;
   background: #ffffff;
 }
 
-.residents-panel__title {
-  margin: 0;
-  font-size: 1rem;
-  font-weight: 600;
-}
-
-.residents-panel__text {
-  margin: 0.5rem 0 0;
-  color: var(--apple-text-secondary, #6e6e73);
-}
-
-.residents-metric {
-  margin-top: 0.95rem;
-  display: inline-flex;
-  gap: 0.5rem;
-  align-items: center;
-  padding: 0.45rem 0.7rem;
-  border-radius: 999px;
-  background: #f5f5f7;
-}
-
-.residents-metric__label {
-  color: var(--apple-text-secondary, #6e6e73);
-  font-size: 0.875rem;
-}
-
-.residents-metric__value {
-  font-size: 0.95rem;
-}
-
-.residents-panel__top {
+.mgmt-panel__header {
   display: flex;
   align-items: center;
   justify-content: space-between;
-  gap: 0.75rem;
+  gap: 0.5rem;
 }
 
-.residents-panel__add-btn {
+.mgmt-panel__title {
+  margin: 0;
+  font-size: 0.95rem;
+  font-weight: 600;
+  color: #1d1d1f;
+}
+
+.mgmt-btn {
   display: inline-flex;
   align-items: center;
-  gap: 0.35rem;
+  gap: 0.3rem;
   border: none;
-  border-radius: 999px;
-  background: var(--apple-blue, #0a84ff);
-  color: #fff;
-  padding: 0.5rem 0.8rem;
+  border-radius: 980px;
+  padding: 0.4rem 0.75rem;
   font-weight: 600;
+  font-size: 0.8rem;
   cursor: pointer;
+  transition: filter 0.15s ease;
 }
 
-.residents-search {
+.mgmt-btn:hover {
+  filter: brightness(0.92);
+}
+
+.mgmt-btn--blue {
+  background: #0a84ff;
+  color: #ffffff;
+}
+
+.mgmt-search {
   margin-top: 0.85rem;
   display: flex;
   align-items: center;
@@ -1284,221 +1336,298 @@ const groupedReservations = computed(() => {
   border-radius: 10px;
   padding: 0.5rem 0.65rem;
   background: #ffffff;
+  transition: border-color 0.15s ease;
 }
 
-.residents-search__icon {
-  color: #6e6e73;
-  font-size: 0.9rem;
+.mgmt-search:focus-within {
+  border-color: #0a84ff;
 }
 
-.residents-search__input {
+.mgmt-search__icon {
+  color: #86868b;
+  font-size: 0.85rem;
+}
+
+.mgmt-search__input {
   width: 100%;
   border: none;
   outline: none;
   background: transparent;
   font: inherit;
   color: #1d1d1f;
+  font-size: 0.875rem;
 }
 
-.residents-search__input::placeholder {
+.mgmt-search__input::placeholder {
   color: #86868b;
 }
 
-.residents-empty {
-  margin: 1rem 0 0;
-  color: var(--apple-text-secondary, #6e6e73);
+.mgmt-msg {
+  margin: 0.75rem 0 0;
+  color: #6e6e73;
+  font-size: 0.825rem;
 }
 
-.residents-empty--error {
-  color: #b42318;
+.mgmt-msg--error {
+  color: #ff3b30;
 }
 
-.residents-list__badge {
-  display: inline-flex;
+.mgmt-empty {
+  display: flex;
+  flex-direction: column;
   align-items: center;
-  gap: 0.25rem;
-  margin-left: 0.4rem;
-  padding: 0.1rem 0.45rem;
-  border-radius: 999px;
-  background: #e6f4ea;
-  color: #166534;
-  font-size: 0.7rem;
-  font-weight: 600;
-  vertical-align: middle;
+  gap: 0.4rem;
+  padding: 2rem 1rem;
+  color: #86868b;
+  font-size: 0.85rem;
+  text-align: center;
 }
 
-.residents-list {
-  margin: 0.9rem 0 0;
+.mgmt-empty .pi {
+  font-size: 1.5rem;
+  color: #c7c7cc;
+}
+
+.mgmt-empty--error {
+  color: #ff3b30;
+}
+
+.mgmt-empty--error .pi {
+  color: #ff3b30;
+}
+
+.r-list {
+  margin: 0.85rem 0 0;
   padding: 0;
   list-style: none;
   display: flex;
   flex-direction: column;
+  gap: 0.5rem;
+}
+
+.r-card {
+  border: 1px solid #e8e8ed;
+  border-radius: 10px;
+  padding: 0.7rem 0.8rem;
+  background: #fafafc;
+  transition: background 0.15s ease;
+}
+
+.r-card:hover {
+  background: #f5f5f7;
+}
+
+.r-card__row {
+  display: flex;
+  align-items: center;
   gap: 0.65rem;
 }
 
-.residents-list__item {
-  border: 1px solid #ececf1;
-  border-radius: 10px;
-  padding: 0.75rem 0.85rem;
-  background: #fafafd;
+.r-card__avatar {
+  flex-shrink: 0;
+  width: 2.2rem;
+  height: 2.2rem;
+  border-radius: 50%;
+  background: #e8e8ed;
+  color: #6e6e73;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  font-weight: 600;
+  font-size: 0.75rem;
+  letter-spacing: 0.02em;
 }
 
-.residents-list__item--clickable {
-  cursor: pointer;
-  transition: border-color 0.15s ease, background 0.15s ease;
+.r-card__avatar--active {
+  background: #d1fae5;
+  color: #166534;
 }
 
-.residents-list__item--clickable:hover,
-.residents-list__item--clickable:focus-visible {
-  border-color: #c7d2fe;
-  background: #f0f4ff;
-  outline: none;
+.r-card__body {
+  flex: 1;
+  min-width: 0;
 }
 
-.residents-list__name {
+.r-card__name {
   margin: 0;
   font-weight: 600;
+  font-size: 0.875rem;
+  color: #1d1d1f;
+  display: flex;
+  align-items: center;
+  gap: 0.3rem;
+}
+
+.r-card__badge {
+  color: #34c759;
+  font-size: 0.7rem;
+  display: inline-flex;
+}
+
+.r-card__meta {
+  margin: 0.15rem 0 0;
+  font-size: 0.75rem;
+  color: #86868b;
+  white-space: nowrap;
+  overflow: hidden;
+  text-overflow: ellipsis;
+}
+
+.r-card__actions {
+  flex-shrink: 0;
+  display: flex;
+  gap: 0.25rem;
+}
+
+.r-card__icon-btn {
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  width: 1.85rem;
+  height: 1.85rem;
+  border: none;
+  border-radius: 8px;
+  background: transparent;
+  color: #86868b;
+  cursor: pointer;
+  font-size: 0.8rem;
+  transition: background 0.12s ease, color 0.12s ease;
+}
+
+.r-card__icon-btn:hover {
+  background: #f2f2f7;
   color: #1d1d1f;
 }
 
-.residents-list__meta {
-  margin-top: 0.35rem;
-  display: flex;
-  gap: 0.85rem;
-  flex-wrap: wrap;
-  color: #6e6e73;
-  font-size: 0.875rem;
+.r-card__icon-btn--danger:hover {
+  background: #fff2f2;
+  color: #ff3b30;
 }
 
-.residents-list__actions {
-  margin-top: 0.65rem;
-  display: flex;
-  flex-wrap: wrap;
-  gap: 0.45rem;
-  align-items: center;
-}
-
-.residents-list__share-btn {
-  display: inline-flex;
-  align-items: center;
-  gap: 0.35rem;
-  border: none;
-  border-radius: 999px;
-  background: #eaf3ff;
-  color: #0a84ff;
-  padding: 0.38rem 0.68rem;
-  font-weight: 600;
-  cursor: pointer;
-}
-
-.residents-list__delete-btn {
-  display: inline-flex;
-  align-items: center;
-  gap: 0.35rem;
-  border: 1px solid #f5c2c7;
-  border-radius: 999px;
-  background: #fdecee;
-  color: #b42318;
-  padding: 0.38rem 0.68rem;
-  font-weight: 600;
-  cursor: pointer;
-}
-
-.residents-list__delete-btn:disabled {
-  opacity: 0.55;
+.r-card__icon-btn:disabled {
+  opacity: 0.35;
   cursor: not-allowed;
 }
 
-.residents-list__link {
-  font-size: 0.825rem;
+.r-card__link {
+  display: block;
+  margin-top: 0.45rem;
+  padding: 0.3rem 0.55rem;
+  border-radius: 6px;
+  background: #f5f5f7;
+  font-size: 0.7rem;
   color: #0a84ff;
-  text-decoration: underline;
+  text-decoration: none;
   overflow-wrap: anywhere;
-  flex-basis: 100%;
+  word-break: break-all;
 }
 
-.space-card {
+.r-card__link:hover {
+  text-decoration: underline;
+}
+
+.s-list {
+  margin: 0.85rem 0 0;
+  padding: 0;
+  list-style: none;
   display: flex;
   flex-direction: column;
-  gap: 0.45rem;
+  gap: 0.5rem;
 }
 
-.space-card__image-wrapper {
-  width: 100%;
-  aspect-ratio: 16 / 9;
+.s-card {
+  display: flex;
+  align-items: center;
+  gap: 0.75rem;
+  border: 1px solid #e8e8ed;
+  border-radius: 10px;
+  padding: 0.6rem 0.75rem;
+  background: #fafafc;
+  cursor: pointer;
+  transition: background 0.15s ease;
+}
+
+.s-card:hover {
+  background: #f5f5f7;
+}
+
+.s-card:focus-visible {
+  outline: 2px solid #0a84ff;
+  outline-offset: 2px;
+}
+
+.s-card__thumb {
+  flex-shrink: 0;
+  width: 4rem;
+  height: 3rem;
   border-radius: 8px;
   overflow: hidden;
-  background: #f0f0f4;
+  background: #f5f5f7;
 }
 
-.space-card__image {
+.s-card__img {
   width: 100%;
   height: 100%;
   object-fit: cover;
   display: block;
 }
 
-.space-card__image-placeholder {
+.s-card__placeholder {
   width: 100%;
-  aspect-ratio: 16 / 9;
-  border-radius: 8px;
-  background: #f0f0f4;
+  height: 100%;
   display: flex;
   align-items: center;
   justify-content: center;
   color: #c7c7cc;
-  font-size: 1.6rem;
+  font-size: 1.1rem;
 }
 
-.space-card__actions {
-  margin-top: 0.55rem;
-  display: flex;
-  flex-wrap: wrap;
-  gap: 0.4rem;
+.s-card__info {
+  flex: 1;
+  min-width: 0;
 }
 
-.space-card__edit-btn {
-  display: inline-flex;
-  align-items: center;
-  gap: 0.35rem;
-  border: 1px solid #d2d2d7;
-  border-radius: 999px;
-  background: #ffffff;
+.s-card__name {
+  margin: 0;
+  font-weight: 600;
+  font-size: 0.875rem;
   color: #1d1d1f;
-  padding: 0.32rem 0.68rem;
-  font-weight: 600;
-  cursor: pointer;
-  font-size: 0.85rem;
 }
 
-.space-card__edit-btn:hover {
-  border-color: #c7d2fe;
-  color: #0a84ff;
+.s-card__desc {
+  margin: 0.1rem 0 0;
+  color: #86868b;
+  font-size: 0.75rem;
+  line-height: 1.35;
+  display: -webkit-box;
+  -webkit-line-clamp: 1;
+  -webkit-box-orient: vertical;
+  overflow: hidden;
 }
 
-.space-card__delete-btn {
-  display: inline-flex;
+.s-card__cap {
+  margin: 0.2rem 0 0;
+  display: flex;
   align-items: center;
-  gap: 0.35rem;
-  border: 1px solid #f5c2c7;
-  border-radius: 999px;
-  background: #fdecee;
-  color: #b42318;
-  padding: 0.32rem 0.68rem;
-  font-weight: 600;
-  cursor: pointer;
-  font-size: 0.85rem;
+  gap: 0.2rem;
+  font-size: 0.72rem;
+  color: #86868b;
 }
 
-.space-card__delete-btn:disabled {
-  opacity: 0.55;
-  cursor: not-allowed;
+.s-card__cap .pi {
+  font-size: 0.62rem;
+}
+
+.s-card__actions {
+  flex-shrink: 0;
+  display: flex;
+  gap: 0.2rem;
 }
 
 .resident-modal-backdrop {
   position: fixed;
   inset: 0;
-  background: rgba(0, 0, 0, 0.42);
+  background: rgba(0, 0, 0, 0.35);
   display: flex;
   align-items: center;
   justify-content: center;
@@ -1507,49 +1636,51 @@ const groupedReservations = computed(() => {
 }
 
 .resident-modal {
-  width: min(100%, 27rem);
+  width: min(100%, 26rem);
   background: #ffffff;
   border-radius: 14px;
-  border: 1px solid #ececf1;
-  padding: 1rem;
+  border: 1px solid #e8e8ed;
+  padding: 1.15rem;
   max-height: 90vh;
   overflow-y: auto;
 }
 
 .resident-modal--wide {
-  width: min(100%, 38rem);
+  width: min(100%, 36rem);
 }
 
 .resident-modal__title {
   margin: 0;
-  font-size: 1.1rem;
+  font-size: 1.05rem;
+  font-weight: 600;
+  color: #1d1d1f;
 }
 
 .resident-modal__title-suffix {
   font-weight: 500;
-  color: #6e6e73;
-  margin-left: 0.25rem;
+  color: #86868b;
+  margin-left: 0.2rem;
 }
 
 .resident-modal__header {
   display: flex;
   align-items: center;
   justify-content: space-between;
-  gap: 0.6rem;
+  gap: 0.5rem;
   flex-wrap: wrap;
 }
 
 .resident-modal__bulk-btn {
   display: inline-flex;
   align-items: center;
-  gap: 0.35rem;
-  border: 1px solid #c7d2fe;
-  background: #eaf3ff;
+  gap: 0.3rem;
+  border: 1px solid #d2d2d7;
+  background: #f5f5f7;
   color: #0a84ff;
-  border-radius: 999px;
-  padding: 0.35rem 0.7rem;
+  border-radius: 980px;
+  padding: 0.32rem 0.65rem;
   font-weight: 600;
-  font-size: 0.8125rem;
+  font-size: 0.78rem;
   cursor: pointer;
 }
 
@@ -1559,15 +1690,15 @@ const groupedReservations = computed(() => {
 }
 
 .resident-modal__hint {
-  margin: 0.55rem 0 0;
+  margin: 0.5rem 0 0;
   color: #1d1d1f;
-  font-size: 0.875rem;
+  font-size: 0.85rem;
 }
 
 .resident-modal__example {
-  margin: 0.2rem 0 0;
-  color: #6e6e73;
-  font-size: 0.825rem;
+  margin: 0.15rem 0 0;
+  color: #86868b;
+  font-size: 0.78rem;
   font-family: ui-monospace, SFMono-Regular, Menlo, monospace;
 }
 
@@ -1575,12 +1706,17 @@ const groupedReservations = computed(() => {
   width: 100%;
   border: 1px solid #d2d2d7;
   border-radius: 10px;
-  padding: 0.55rem 0.65rem;
+  padding: 0.5rem 0.6rem;
   font: inherit;
   font-family: ui-monospace, SFMono-Regular, Menlo, monospace;
-  font-size: 0.875rem;
+  font-size: 0.85rem;
   resize: vertical;
   box-sizing: border-box;
+}
+
+.resident-modal__textarea:focus {
+  outline: none;
+  border-color: #0a84ff;
 }
 
 .bulk-results {
@@ -1589,28 +1725,28 @@ const groupedReservations = computed(() => {
   padding: 0;
   display: flex;
   flex-direction: column;
-  gap: 0.3rem;
+  gap: 0.25rem;
   max-height: 14rem;
   overflow-y: auto;
 }
 
 .bulk-results__item {
   display: flex;
-  gap: 0.55rem;
+  gap: 0.5rem;
   align-items: flex-start;
-  border-radius: 8px;
-  padding: 0.4rem 0.55rem;
-  font-size: 0.85rem;
+  border-radius: 6px;
+  padding: 0.35rem 0.5rem;
+  font-size: 0.8rem;
 }
 
 .bulk-results__item--ok {
-  background: #e6f4ea;
+  background: #f0fdf4;
   color: #166534;
 }
 
 .bulk-results__item--error {
-  background: #fdecee;
-  color: #b42318;
+  background: #fff2f2;
+  color: #ff3b30;
 }
 
 .bulk-results__line {
@@ -1623,46 +1759,56 @@ const groupedReservations = computed(() => {
 }
 
 .resident-modal__form {
-  margin-top: 0.9rem;
+  margin-top: 0.85rem;
   display: flex;
   flex-direction: column;
-  gap: 0.7rem;
+  gap: 0.65rem;
 }
 
 .resident-modal__field {
   display: flex;
   flex-direction: column;
-  gap: 0.3rem;
-  font-size: 0.9rem;
+  gap: 0.25rem;
+  font-size: 0.85rem;
+  color: #6e6e73;
+  font-weight: 500;
 }
 
 .resident-modal__field input {
   border: 1px solid #d2d2d7;
   border-radius: 10px;
-  padding: 0.55rem 0.65rem;
+  padding: 0.5rem 0.6rem;
   font: inherit;
+  color: #1d1d1f;
+  font-weight: 400;
+}
+
+.resident-modal__field input:focus {
+  outline: none;
+  border-color: #0a84ff;
 }
 
 .space-image-field {
   border: 1px dashed #d2d2d7;
   border-radius: 10px;
-  padding: 0.65rem 0.7rem;
-  background: #fafafd;
+  padding: 0.6rem 0.65rem;
+  background: #fafafc;
 }
 
 .space-image-field__hint {
   margin: 0.1rem 0 0;
-  color: #6e6e73;
-  font-size: 0.8rem;
+  color: #86868b;
+  font-size: 0.75rem;
+  font-weight: 400;
 }
 
 .space-image-field__preview {
-  margin-top: 0.55rem;
+  margin-top: 0.5rem;
   width: 100%;
   aspect-ratio: 16 / 9;
   border-radius: 8px;
   overflow: hidden;
-  background: #f0f0f4;
+  background: #f5f5f7;
 }
 
 .space-image-field__preview img {
@@ -1673,23 +1819,23 @@ const groupedReservations = computed(() => {
 }
 
 .space-image-field__controls {
-  margin-top: 0.55rem;
+  margin-top: 0.5rem;
   display: flex;
   flex-wrap: wrap;
-  gap: 0.4rem;
+  gap: 0.35rem;
 }
 
 .space-image-field__btn {
   display: inline-flex;
   align-items: center;
-  gap: 0.35rem;
-  border: 1px solid #c7d2fe;
-  background: #eaf3ff;
+  gap: 0.3rem;
+  border: 1px solid #d2d2d7;
+  background: #ffffff;
   color: #0a84ff;
-  border-radius: 999px;
-  padding: 0.4rem 0.75rem;
+  border-radius: 980px;
+  padding: 0.35rem 0.65rem;
   font-weight: 600;
-  font-size: 0.825rem;
+  font-size: 0.78rem;
   cursor: pointer;
 }
 
@@ -1702,107 +1848,111 @@ const groupedReservations = computed(() => {
   align-items: center;
   border: 1px solid #d2d2d7;
   background: #ffffff;
-  color: #1d1d1f;
-  border-radius: 999px;
-  padding: 0.4rem 0.75rem;
+  color: #86868b;
+  border-radius: 980px;
+  padding: 0.35rem 0.65rem;
   font-weight: 600;
-  font-size: 0.825rem;
+  font-size: 0.78rem;
   cursor: pointer;
 }
 
 .space-image-field__remove:disabled,
 .space-image-field__btn:has(input:disabled) {
-  opacity: 0.6;
+  opacity: 0.5;
   cursor: not-allowed;
 }
 
 .resident-modal__error {
   margin: 0;
-  color: #b42318;
-  font-size: 0.825rem;
+  color: #ff3b30;
+  font-size: 0.78rem;
 }
 
 .resident-modal__actions {
   display: flex;
   justify-content: flex-end;
   gap: 0.5rem;
-  margin-top: 0.35rem;
+  margin-top: 0.4rem;
 }
 
 .resident-modal__btn {
   border: none;
   border-radius: 8px;
-  padding: 0.5rem 0.8rem;
+  padding: 0.48rem 0.85rem;
   font-weight: 600;
+  font-size: 0.85rem;
   cursor: pointer;
+  transition: filter 0.12s ease;
+}
+
+.resident-modal__btn:hover {
+  filter: brightness(0.93);
 }
 
 .resident-modal__btn--secondary {
-  background: #f0f0f4;
+  background: #f2f2f7;
   color: #1d1d1f;
 }
 
 .resident-modal__btn--primary {
-  background: var(--apple-blue, #0a84ff);
+  background: #0a84ff;
   color: #ffffff;
 }
 
 .resident-modal__btn--danger {
-  background: #b42318;
+  background: #ff3b30;
   color: #ffffff;
   display: inline-flex;
   align-items: center;
-  gap: 0.4rem;
-}
-
-.resident-modal__btn--danger:hover:not(:disabled) {
-  background: #9a1f15;
+  gap: 0.35rem;
 }
 
 .resident-modal__btn--danger:disabled {
-  opacity: 0.55;
+  opacity: 0.5;
   cursor: not-allowed;
 }
 
 .resident-modal--danger {
-  border-color: #fde0e0;
+  border-color: #e8e8ed;
 }
 
 .resident-modal__title--danger {
   display: inline-flex;
   align-items: center;
-  gap: 0.45rem;
-  color: #9a2a1f;
+  gap: 0.4rem;
+  color: #ff3b30;
 }
 
 .resident-modal__title--danger .pi {
-  color: #d97706;
+  color: #ff9500;
 }
 
 .resident-modal__warning {
-  margin: 0.5rem 0 0.85rem;
+  margin: 0.5rem 0 0.75rem;
   color: #1d1d1f;
-  font-size: 0.92rem;
+  font-size: 0.85rem;
 }
 
 .delete-impact {
-  background: #fff8f0;
-  border: 1px solid #fde0c4;
+  background: #fffbf5;
+  border: 1px solid #e8e8ed;
   border-radius: 10px;
-  padding: 0.7rem 0.8rem;
+  padding: 0.65rem 0.75rem;
 }
 
 .delete-impact__title {
-  margin: 0 0 0.45rem;
-  font-size: 0.825rem;
+  margin: 0 0 0.4rem;
+  font-size: 0.78rem;
   font-weight: 600;
-  color: #8a4a00;
+  color: #86868b;
+  text-transform: uppercase;
+  letter-spacing: 0.04em;
 }
 
 .delete-impact__loading {
   margin: 0;
-  color: #6e6e73;
-  font-size: 0.85rem;
+  color: #86868b;
+  font-size: 0.8rem;
 }
 
 .delete-impact__list {
@@ -1811,55 +1961,55 @@ const groupedReservations = computed(() => {
   padding: 0;
   display: flex;
   flex-direction: column;
-  gap: 0.35rem;
+  gap: 0.3rem;
 }
 
 .delete-impact__item {
   display: flex;
   align-items: center;
-  gap: 0.45rem;
-  font-size: 0.85rem;
+  gap: 0.4rem;
+  font-size: 0.8rem;
   color: #1d1d1f;
 }
 
 .delete-impact__item .pi {
-  color: #d97706;
-  font-size: 0.85rem;
+  color: #ff9500;
+  font-size: 0.8rem;
 }
 
 .delete-impact__item--muted {
-  color: #6e6e73;
+  color: #86868b;
 }
 
 .delete-impact__item--muted .pi {
-  color: #6e6e73;
+  color: #c7c7cc;
 }
 
 .delete-summary {
-  background: #ecfdf3;
-  border: 1px solid #abefc6;
+  background: #f0fdf4;
+  border: 1px solid #e8e8ed;
   border-radius: 10px;
-  padding: 0.8rem 0.9rem;
+  padding: 0.7rem 0.8rem;
 }
 
 .delete-summary__title {
   margin: 0;
   display: inline-flex;
   align-items: center;
-  gap: 0.45rem;
-  font-size: 0.95rem;
+  gap: 0.4rem;
+  font-size: 0.9rem;
   font-weight: 600;
-  color: #166534;
+  color: #1d1d1f;
 }
 
 .delete-summary__title .pi {
-  color: #16a34a;
+  color: #34c759;
 }
 
 .delete-summary__subtitle {
-  margin: 0.4rem 0 0.55rem;
-  color: #166534;
-  font-size: 0.825rem;
+  margin: 0.35rem 0 0.5rem;
+  color: #6e6e73;
+  font-size: 0.78rem;
 }
 
 .delete-summary__list {
@@ -1868,46 +2018,47 @@ const groupedReservations = computed(() => {
   padding: 0;
   display: flex;
   flex-direction: column;
-  gap: 0.3rem;
+  gap: 0.25rem;
 }
 
 .delete-summary__item {
   display: inline-flex;
   align-items: center;
-  gap: 0.4rem;
-  font-size: 0.85rem;
+  gap: 0.35rem;
+  font-size: 0.8rem;
   color: #1d1d1f;
 }
 
 .delete-summary__item .pi {
-  color: #16a34a;
+  color: #34c759;
 }
 
 .delete-summary__partial {
-  margin: 0.55rem 0 0;
-  color: #b54708;
-  font-size: 0.8rem;
+  margin: 0.5rem 0 0;
+  color: #ff9500;
+  font-size: 0.75rem;
 }
 
 .reservations-list {
   list-style: none;
-  margin: 0.9rem 0 0;
+  margin: 0.85rem 0 0;
   padding: 0;
   display: flex;
   flex-direction: column;
-  gap: 0.85rem;
+  gap: 0.65rem;
 }
 
 .reservations-list__day {
-  border: 1px solid #ececf1;
+  border: 1px solid #e8e8ed;
   border-radius: 10px;
-  padding: 0.65rem 0.85rem;
-  background: #fafafd;
+  padding: 0.6rem 0.75rem;
+  background: #fafafc;
 }
 
 .reservations-list__date {
-  margin: 0 0 0.4rem;
-  font-size: 0.95rem;
+  margin: 0 0 0.35rem;
+  font-size: 0.875rem;
+  font-weight: 600;
   color: #1d1d1f;
 }
 
@@ -1917,14 +2068,14 @@ const groupedReservations = computed(() => {
   padding: 0;
   display: flex;
   flex-direction: column;
-  gap: 0.3rem;
+  gap: 0.2rem;
 }
 
 .reservations-list__slot {
   display: flex;
   justify-content: space-between;
-  gap: 0.85rem;
-  font-size: 0.875rem;
+  gap: 0.75rem;
+  font-size: 0.8rem;
   color: #1d1d1f;
 }
 
@@ -1933,6 +2084,6 @@ const groupedReservations = computed(() => {
 }
 
 .reservations-list__resident {
-  color: #6e6e73;
+  color: #86868b;
 }
 </style>
