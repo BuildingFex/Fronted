@@ -55,6 +55,7 @@ export function publicSpace(space) {
     name: space.name,
     description: space.description ?? '',
     capacity: space.capacity ?? null,
+    imageUrl: space.imageUrl ?? '',
   }
 }
 

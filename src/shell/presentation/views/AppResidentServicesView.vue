@@ -5,7 +5,7 @@ import { spacesApi } from '@/socialSpaces/infrastructure/spacesApi.js'
 import { reservationsApi } from '@/socialSpaces/infrastructure/reservationsApi.js'
 import { useSession } from '@/iam/application/sessionStore.js'
 
-const { t } = useI18n()
+const { t, locale } = useI18n()
 const { state } = useSession()
 const profile = computed(() => state.profile ?? {})
 
@@ -23,8 +23,126 @@ const reservationForm = reactive({
 const reservationError = ref('')
 const isSubmittingReservation = ref(false)
 
-const dayReservations = ref([])
-const isLoadingDay = ref(false)
+const allSpaceReservations = ref([])
+const isLoadingSpaceReservations = ref(false)
+
+const calendarMonth = ref(startOfMonth(new Date()))
+
+const isBusyHoursModalOpen = ref(false)
+const busyHoursDate = ref('')
+
+function startOfMonth(date) {
+  return new Date(date.getFullYear(), date.getMonth(), 1)
+}
+
+function formatDateKey(date) {
+  const y = date.getFullYear()
+  const m = String(date.getMonth() + 1).padStart(2, '0')
+  const d = String(date.getDate()).padStart(2, '0')
+  return `${y}-${m}-${d}`
+}
+
+function shiftMonth(amount) {
+  const base = calendarMonth.value
+  calendarMonth.value = new Date(base.getFullYear(), base.getMonth() + amount, 1)
+}
+
+function prevMonth() {
+  shiftMonth(-1)
+}
+
+function nextMonth() {
+  shiftMonth(1)
+}
+
+const todayKey = computed(() => formatDateKey(new Date()))
+
+const busyDateKeys = computed(() => {
+  const set = new Set()
+  for (const reservation of allSpaceReservations.value) {
+    if (reservation?.date) set.add(reservation.date)
+  }
+  return set
+})
+
+const calendarDays = computed(() => {
+  const month = calendarMonth.value
+  const firstOfMonth = new Date(month.getFullYear(), month.getMonth(), 1)
+  const offset = (firstOfMonth.getDay() + 6) % 7
+  const daysInMonth = new Date(
+    month.getFullYear(),
+    month.getMonth() + 1,
+    0,
+  ).getDate()
+
+  const buffer = []
+  for (let i = offset; i > 0; i--) {
+    buffer.push(new Date(month.getFullYear(), month.getMonth(), 1 - i))
+  }
+  for (let i = 1; i <= daysInMonth; i++) {
+    buffer.push(new Date(month.getFullYear(), month.getMonth(), i))
+  }
+  while (buffer.length < 42) {
+    const last = buffer[buffer.length - 1]
+    buffer.push(new Date(last.getFullYear(), last.getMonth(), last.getDate() + 1))
+  }
+
+  return buffer.map((date) => {
+    const key = formatDateKey(date)
+    return {
+      key,
+      label: date.getDate(),
+      isCurrentMonth: date.getMonth() === month.getMonth(),
+      isToday: key === todayKey.value,
+      isPast: key < todayKey.value,
+      isBusy: busyDateKeys.value.has(key),
+      isSelected: key === reservationForm.date,
+    }
+  })
+})
+
+const weekdayLabels = computed(() => {
+  const fmt = new Intl.DateTimeFormat(locale.value, { weekday: 'short' })
+  const labels = []
+  // 2024-01-01 was a Monday; iterate Mon..Sun.
+  for (let i = 0; i < 7; i++) {
+    const date = new Date(2024, 0, 1 + i)
+    labels.push(fmt.format(date).replace('.', ''))
+  }
+  return labels
+})
+
+const calendarMonthLabel = computed(() => {
+  const fmt = new Intl.DateTimeFormat(locale.value, {
+    month: 'long',
+    year: 'numeric',
+  })
+  return fmt.format(calendarMonth.value)
+})
+
+function formatFriendlyDate(dateKey) {
+  if (!dateKey) return ''
+  const [y, m, d] = dateKey.split('-').map(Number)
+  if (!y || !m || !d) return dateKey
+  const date = new Date(y, m - 1, d)
+  const fmt = new Intl.DateTimeFormat(locale.value, {
+    weekday: 'long',
+    day: 'numeric',
+    month: 'long',
+  })
+  return fmt.format(date)
+}
+
+const selectedDateLabel = computed(() => formatFriendlyDate(reservationForm.date))
+const busyHoursDateLabel = computed(() => formatFriendlyDate(busyHoursDate.value))
+
+const busyHoursForDate = computed(() => {
+  if (!busyHoursDate.value) return []
+  return allSpaceReservations.value
+    .filter((r) => r.date === busyHoursDate.value)
+    .slice()
+    .sort((a, b) => a.startTime.localeCompare(b.startTime))
+})
 
 async function loadSpaces() {
   isLoadingSpaces.value = true
@@ -40,38 +158,54 @@ async function loadSpaces() {
 
 onMounted(loadSpaces)
 
+async function loadSpaceReservations() {
+  if (!selectedSpace.value) {
+    allSpaceReservations.value = []
+    return
+  }
+  isLoadingSpaceReservations.value = true
+  try {
+    allSpaceReservations.value = await reservationsApi.listBySpace(
+      selectedSpace.value.id,
+    )
+  } catch {
+    allSpaceReservations.value = []
+  } finally {
+    isLoadingSpaceReservations.value = false
+  }
+}
+
 function openReserveModal(space) {
   selectedSpace.value = space
   reservationForm.date = ''
   reservationForm.startTime = ''
   reservationForm.endTime = ''
   reservationError.value = ''
-  dayReservations.value = []
+  allSpaceReservations.value = []
+  calendarMonth.value = startOfMonth(new Date())
   isReserveModalOpen.value = true
+  loadSpaceReservations()
 }
 
 function closeReserveModal() {
   if (isSubmittingReservation.value) return
   isReserveModalOpen.value = false
   selectedSpace.value = null
+  isBusyHoursModalOpen.value = false
 }
 
-async function refreshDayReservations() {
-  if (!selectedSpace.value || !reservationForm.date) {
-    dayReservations.value = []
-    return
-  }
-  isLoadingDay.value = true
-  try {
-    const all = await reservationsApi.listBySpace(selectedSpace.value.id)
-    dayReservations.value = all
-      .filter((r) => r.date === reservationForm.date)
-      .sort((a, b) => a.startTime.localeCompare(b.startTime))
-  } catch {
-    dayReservations.value = []
-  } finally {
-    isLoadingDay.value = false
-  }
+function selectCalendarDate(dateKey) {
+  reservationForm.date = dateKey
+  busyHoursDate.value = dateKey
+  isBusyHoursModalOpen.value = true
+}
+
+function closeBusyHoursModal() {
+  isBusyHoursModalOpen.value = false
+}
+
+function confirmDateFromBusyModal() {
+  isBusyHoursModalOpen.value = false
 }
 
 async function onReserveSubmit() {
@@ -107,7 +241,7 @@ async function onReserveSubmit() {
     }
     if (error?.code === 'RESERVATION_OVERLAP') {
       reservationError.value = t('app.reservationOverlap')
-      await refreshDayReservations()
+      await loadSpaceReservations()
       return
     }
     reservationError.value = t('auth.genericError')
@@ -144,6 +278,16 @@ async function onReserveSubmit() {
         @keyup.enter="openReserveModal(space)"
         @keyup.space.prevent="openReserveModal(space)"
       >
+        <div v-if="space.imageUrl" class="resident-space__image-wrapper">
+          <img
+            :src="space.imageUrl"
+            :alt="t('app.spaceImageAlt', { name: space.name })"
+            class="resident-space__image"
+          />
+        </div>
+        <div v-else class="resident-space__image-placeholder" aria-hidden="true">
+          <i class="pi pi-image" />
+        </div>
         <h2 class="resident-space__name">{{ space.name }}</h2>
         <p v-if="space.description" class="resident-space__description">
           {{ space.description }}
@@ -173,41 +317,106 @@ async function onReserveSubmit() {
         </h3>
 
         <form class="resident-modal__form" @submit.prevent="onReserveSubmit">
-          <label class="resident-modal__field">
-            <span>{{ t('app.reservationDateLabel') }}</span>
-            <input
-              v-model="reservationForm.date"
-              type="date"
-              @change="refreshDayReservations"
-            />
-          </label>
+          <div class="calendar" aria-label="Calendar">
+            <div class="calendar__header">
+              <button
+                type="button"
+                class="calendar__nav-btn"
+                :aria-label="t('app.calendarPrevMonth')"
+                :title="t('app.calendarPrevMonth')"
+                @click="prevMonth"
+              >
+                <i class="pi pi-chevron-left" aria-hidden="true" />
+              </button>
+              <span class="calendar__month-label">{{ calendarMonthLabel }}</span>
+              <button
+                type="button"
+                class="calendar__nav-btn"
+                :aria-label="t('app.calendarNextMonth')"
+                :title="t('app.calendarNextMonth')"
+                @click="nextMonth"
+              >
+                <i class="pi pi-chevron-right" aria-hidden="true" />
+              </button>
+            </div>
+
+            <div class="calendar__weekdays" aria-hidden="true">
+              <span v-for="(label, idx) in weekdayLabels" :key="idx">{{ label }}</span>
+            </div>
+
+            <div
+              v-if="isLoadingSpaceReservations"
+              class="calendar__loading"
+              role="status"
+            >
+              {{ t('app.reservationsLoading') }}
+            </div>
+
+            <div class="calendar__grid" role="grid">
+              <button
+                v-for="day in calendarDays"
+                :key="day.key"
+                type="button"
+                class="calendar__day"
+                :class="{
+                  'calendar__day--out': !day.isCurrentMonth,
+                  'calendar__day--busy': day.isBusy,
+                  'calendar__day--selected': day.isSelected,
+                  'calendar__day--today': day.isToday,
+                  'calendar__day--past': day.isPast,
+                }"
+                :aria-label="day.key"
+                :aria-pressed="day.isSelected"
+                @click="selectCalendarDate(day.key)"
+              >
+                <span class="calendar__day-number">{{ day.label }}</span>
+                <span
+                  v-if="day.isBusy"
+                  class="calendar__day-dot"
+                  :title="t('app.calendarBusyLegend')"
+                  aria-hidden="true"
+                />
+              </button>
+            </div>
+
+            <div class="calendar__legend">
+              <span class="calendar__legend-item">
+                <span class="calendar__legend-dot calendar__legend-dot--busy" />
+                {{ t('app.calendarBusyLegend') }}
+              </span>
+              <span class="calendar__legend-item">
+                <span class="calendar__legend-dot calendar__legend-dot--today" />
+                {{ t('app.calendarTodayLabel') }}
+              </span>
+            </div>
+
+            <p v-if="!reservationForm.date" class="calendar__hint">
+              {{ t('app.calendarSelectDateHint') }}
+            </p>
+            <p v-else class="calendar__selected">
+              <i class="pi pi-check-circle" aria-hidden="true" />
+              <span>
+                <strong>{{ t('app.selectedDateLabel') }}:</strong>
+                {{ selectedDateLabel }}
+              </span>
+            </p>
+          </div>
 
           <div class="resident-modal__row">
             <label class="resident-modal__field">
-              <span>{{ t('app.reservationStartLabel') }}</span>
+              <span class="resident-modal__field-label">
+                <i class="pi pi-clock" aria-hidden="true" />
+                {{ t('app.reservationStartLabel') }}
+              </span>
               <input v-model="reservationForm.startTime" type="time" />
             </label>
             <label class="resident-modal__field">
-              <span>{{ t('app.reservationEndLabel') }}</span>
+              <span class="resident-modal__field-label">
+                <i class="pi pi-clock" aria-hidden="true" />
+                {{ t('app.reservationEndLabel') }}
+              </span>
               <input v-model="reservationForm.endTime" type="time" />
             </label>
-          </div>
-
-          <div v-if="reservationForm.date" class="resident-modal__day-block">
-            <p class="resident-modal__day-title">
-              {{ t('app.reservedSlotsForDay') }}
-            </p>
-            <p v-if="isLoadingDay" class="resident-modal__day-empty">
-              {{ t('app.reservationsLoading') }}
-            </p>
-            <p v-else-if="!dayReservations.length" class="resident-modal__day-empty">
-              {{ t('app.noReservationsForDay') }}
-            </p>
-            <ul v-else class="resident-modal__day-list" role="list">
-              <li v-for="r in dayReservations" :key="r.id">
-                {{ r.startTime }} – {{ r.endTime }}
-              </li>
-            </ul>
           </div>
 
           <p v-if="reservationError" class="resident-modal__error">{{ reservationError }}</p>
@@ -234,6 +443,57 @@ async function onReserveSubmit() {
             </button>
           </div>
         </form>
+      </section>
+    </div>
+
+    <div
+      v-if="isBusyHoursModalOpen"
+      class="resident-modal-backdrop resident-modal-backdrop--top"
+      role="presentation"
+      @click.self="closeBusyHoursModal"
+    >
+      <section
+        class="resident-modal resident-modal--small"
+        role="dialog"
+        aria-modal="true"
+        :aria-label="t('app.busyHoursModalTitle')"
+      >
+        <h3 class="resident-modal__title">
+          <i class="pi pi-calendar-times" aria-hidden="true" />
+          {{ t('app.busyHoursModalTitle') }}
+        </h3>
+        <p class="resident-modal__title-suffix resident-modal__title-suffix--block">
+          {{ busyHoursDateLabel }}
+        </p>
+
+        <p
+          v-if="!busyHoursForDate.length"
+          class="resident-modal__day-empty resident-modal__day-empty--happy"
+        >
+          <i class="pi pi-check-circle" aria-hidden="true" />
+          {{ t('app.busyHoursEmptyHappy') }}
+        </p>
+        <div v-else class="resident-modal__day-chips" role="list">
+          <span
+            v-for="r in busyHoursForDate"
+            :key="r.id"
+            class="resident-modal__day-chip"
+            role="listitem"
+          >
+            <i class="pi pi-clock" aria-hidden="true" />
+            {{ r.startTime }} – {{ r.endTime }}
+          </span>
+        </div>
+
+        <div class="resident-modal__actions">
+          <button
+            type="button"
+            class="resident-modal__btn resident-modal__btn--primary"
+            @click="confirmDateFromBusyModal"
+          >
+            {{ t('app.busyHoursContinueAction') }}
+          </button>
+        </div>
       </section>
     </div>
   </div>
@@ -295,6 +555,35 @@ async function onReserveSubmit() {
   outline: none;
 }
 
+.resident-space__image-wrapper {
+  width: 100%;
+  aspect-ratio: 16 / 9;
+  border-radius: 8px;
+  overflow: hidden;
+  background: #f0f0f4;
+  margin-bottom: 0.1rem;
+}
+
+.resident-space__image {
+  width: 100%;
+  height: 100%;
+  object-fit: cover;
+  display: block;
+}
+
+.resident-space__image-placeholder {
+  width: 100%;
+  aspect-ratio: 16 / 9;
+  border-radius: 8px;
+  background: #f0f0f4;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  color: #c7c7cc;
+  font-size: 1.6rem;
+  margin-bottom: 0.1rem;
+}
+
 .resident-space__name {
   margin: 0;
   font-size: 1rem;
@@ -338,6 +627,11 @@ async function onReserveSubmit() {
   z-index: 1000;
 }
 
+.resident-modal-backdrop--top {
+  background: rgba(0, 0, 0, 0.32);
+  z-index: 1100;
+}
+
 .resident-modal {
   width: min(100%, 30rem);
   background: #ffffff;
@@ -346,6 +640,10 @@ async function onReserveSubmit() {
   padding: 1rem;
   max-height: 90vh;
   overflow-y: auto;
+}
+
+.resident-modal--small {
+  width: min(100%, 24rem);
 }
 
 .resident-modal__title {
@@ -357,6 +655,12 @@ async function onReserveSubmit() {
   font-weight: 500;
   color: #6e6e73;
   margin-left: 0.25rem;
+}
+
+.resident-modal__title-suffix--block {
+  display: block;
+  margin: 0.15rem 0 0.7rem;
+  text-transform: capitalize;
 }
 
 .resident-modal__form {
@@ -373,11 +677,37 @@ async function onReserveSubmit() {
   font-size: 0.9rem;
 }
 
+.resident-modal__field-label {
+  display: inline-flex;
+  align-items: center;
+  gap: 0.4rem;
+  color: #1d1d1f;
+  font-weight: 500;
+}
+
+.resident-modal__field-label .pi {
+  color: #0a84ff;
+  font-size: 0.85rem;
+}
+
 .resident-modal__field input {
   border: 1px solid #d2d2d7;
   border-radius: 10px;
   padding: 0.55rem 0.65rem;
   font: inherit;
+  background: #ffffff;
+  transition: border-color 0.15s ease, box-shadow 0.15s ease, background 0.15s ease;
+}
+
+.resident-modal__field input:hover {
+  border-color: #b9c4ff;
+}
+
+.resident-modal__field input:focus {
+  border-color: #0a84ff;
+  outline: none;
+  box-shadow: 0 0 0 3px rgba(10, 132, 255, 0.18);
+  background: #fbfcff;
 }
 
 .resident-modal__row {
@@ -387,17 +717,24 @@ async function onReserveSubmit() {
 }
 
 .resident-modal__day-block {
-  border: 1px solid #ececf1;
+  border: 1px solid #fde8c4;
   border-radius: 10px;
-  padding: 0.6rem 0.75rem;
-  background: #fafafd;
+  padding: 0.65rem 0.8rem;
+  background: linear-gradient(180deg, #fff8ec 0%, #fffaf2 100%);
 }
 
 .resident-modal__day-title {
-  margin: 0 0 0.35rem;
+  margin: 0 0 0.45rem;
   font-size: 0.85rem;
   font-weight: 600;
-  color: #1d1d1f;
+  color: #8a5a00;
+  display: inline-flex;
+  align-items: center;
+  gap: 0.4rem;
+}
+
+.resident-modal__day-title .pi {
+  color: #c98b1d;
 }
 
 .resident-modal__day-empty {
@@ -406,16 +743,53 @@ async function onReserveSubmit() {
   font-size: 0.825rem;
 }
 
-.resident-modal__day-list {
-  margin: 0;
-  padding-left: 1rem;
-  font-size: 0.85rem;
-  color: #1d1d1f;
+.resident-modal__day-empty--happy {
+  display: inline-flex;
+  align-items: center;
+  gap: 0.4rem;
+  color: #166534;
+  background: #e6f4ea;
+  padding: 0.3rem 0.6rem;
+  border-radius: 999px;
+  font-weight: 500;
+}
+
+.resident-modal__day-empty--happy .pi {
+  color: #16a34a;
+}
+
+.resident-modal__day-chips {
+  display: flex;
+  flex-wrap: wrap;
+  gap: 0.35rem;
+}
+
+.resident-modal__day-chip {
+  display: inline-flex;
+  align-items: center;
+  gap: 0.35rem;
+  border: 1px solid #f4d8a8;
+  background: #fff3dd;
+  color: #8a5a00;
+  padding: 0.28rem 0.6rem;
+  border-radius: 999px;
+  font-size: 0.8125rem;
+  font-weight: 500;
+  font-variant-numeric: tabular-nums;
+}
+
+.resident-modal__day-chip .pi {
+  color: #c98b1d;
+  font-size: 0.78rem;
 }
 
 .resident-modal__error {
   margin: 0;
-  color: #b42318;
+  color: #9a2a1f;
+  background: #fdecee;
+  border: 1px solid #f5c2c7;
+  padding: 0.4rem 0.6rem;
+  border-radius: 8px;
   font-size: 0.825rem;
 }
 
@@ -429,18 +803,244 @@ async function onReserveSubmit() {
 .resident-modal__btn {
   border: none;
   border-radius: 8px;
-  padding: 0.5rem 0.8rem;
+  padding: 0.55rem 0.95rem;
   font-weight: 600;
   cursor: pointer;
+  transition: background 0.15s ease, color 0.15s ease, box-shadow 0.15s ease, transform 0.05s ease;
+}
+
+.resident-modal__btn:disabled {
+  opacity: 0.6;
+  cursor: not-allowed;
 }
 
 .resident-modal__btn--secondary {
-  background: #f0f0f4;
+  background: #f4f4f7;
   color: #1d1d1f;
+}
+
+.resident-modal__btn--secondary:hover:not(:disabled) {
+  background: #ebebef;
 }
 
 .resident-modal__btn--primary {
   background: var(--apple-blue, #0a84ff);
   color: #ffffff;
+  box-shadow: 0 1px 2px rgba(10, 132, 255, 0.25);
+}
+
+.resident-modal__btn--primary:hover:not(:disabled) {
+  background: #0974e6;
+  box-shadow: 0 2px 6px rgba(10, 132, 255, 0.32);
+}
+
+.resident-modal__btn--primary:active:not(:disabled) {
+  transform: translateY(1px);
+}
+
+.calendar {
+  border: 1px solid #e6e6ec;
+  border-radius: 12px;
+  padding: 0.75rem 0.85rem 0.85rem;
+  background: linear-gradient(180deg, #fafbff 0%, #ffffff 100%);
+}
+
+.calendar__header {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  gap: 0.5rem;
+  margin-bottom: 0.5rem;
+}
+
+.calendar__nav-btn {
+  border: 1px solid #e6e6ec;
+  background: #ffffff;
+  color: #1d1d1f;
+  width: 1.85rem;
+  height: 1.85rem;
+  border-radius: 8px;
+  display: inline-flex;
+  align-items: center;
+  justify-content: center;
+  cursor: pointer;
+  transition: background 0.15s ease, border-color 0.15s ease, color 0.15s ease;
+}
+
+.calendar__nav-btn:hover {
+  background: #eaf3ff;
+  border-color: #c7d2fe;
+  color: #0a84ff;
+}
+
+.calendar__month-label {
+  font-weight: 600;
+  font-size: 0.95rem;
+  color: #1d1d1f;
+  text-transform: capitalize;
+  letter-spacing: -0.01em;
+}
+
+.calendar__weekdays {
+  display: grid;
+  grid-template-columns: repeat(7, 1fr);
+  text-align: center;
+  font-size: 0.72rem;
+  font-weight: 600;
+  letter-spacing: 0.04em;
+  text-transform: uppercase;
+  color: #8a8a8f;
+  margin-bottom: 0.25rem;
+}
+
+.calendar__loading {
+  font-size: 0.825rem;
+  color: #6e6e73;
+  padding: 0.4rem 0;
+}
+
+.calendar__grid {
+  display: grid;
+  grid-template-columns: repeat(7, 1fr);
+  gap: 0.18rem;
+}
+
+.calendar__day {
+  position: relative;
+  aspect-ratio: 1 / 1;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  border: 1px solid transparent;
+  background: transparent;
+  border-radius: 8px;
+  font: inherit;
+  font-size: 0.85rem;
+  color: #1d1d1f;
+  cursor: pointer;
+  padding: 0;
+  transition: background 0.15s ease, border-color 0.15s ease, color 0.15s ease, transform 0.05s ease;
+}
+
+.calendar__day-number {
+  font-variant-numeric: tabular-nums;
+  font-weight: 500;
+}
+
+.calendar__day:hover {
+  background: #eaf3ff;
+  border-color: #c7d2fe;
+  color: #0a84ff;
+}
+
+.calendar__day:focus-visible {
+  outline: none;
+  box-shadow: 0 0 0 3px rgba(10, 132, 255, 0.2);
+}
+
+.calendar__day--out {
+  color: #c7c7cc;
+}
+
+.calendar__day--past:not(.calendar__day--selected):not(.calendar__day--today) {
+  color: #b0b0b6;
+}
+
+.calendar__day--today:not(.calendar__day--selected) {
+  border-color: #0a84ff;
+  color: #0a84ff;
+  font-weight: 600;
+}
+
+.calendar__day--busy:not(.calendar__day--selected) {
+  background: #fff7e2;
+  color: #8a5a00;
+}
+
+.calendar__day--busy:hover:not(.calendar__day--selected) {
+  background: #ffeec2;
+  border-color: #f4d8a8;
+  color: #8a5a00;
+}
+
+.calendar__day--selected {
+  background: #0a84ff;
+  color: #ffffff;
+  border-color: #0a84ff;
+  font-weight: 600;
+  box-shadow: 0 2px 6px rgba(10, 132, 255, 0.28);
+}
+
+.calendar__day--selected:hover {
+  background: #0a84ff;
+  color: #ffffff;
+  border-color: #0a84ff;
+}
+
+.calendar__day-dot {
+  position: absolute;
+  bottom: 4px;
+  width: 5px;
+  height: 5px;
+  border-radius: 999px;
+  background: #c98b1d;
+}
+
+.calendar__day--selected .calendar__day-dot {
+  background: #ffffff;
+}
+
+.calendar__legend {
+  display: flex;
+  flex-wrap: wrap;
+  gap: 0.65rem;
+  margin-top: 0.6rem;
+  font-size: 0.75rem;
+  color: #6e6e73;
+}
+
+.calendar__legend-item {
+  display: inline-flex;
+  align-items: center;
+  gap: 0.35rem;
+}
+
+.calendar__legend-dot {
+  width: 0.55rem;
+  height: 0.55rem;
+  border-radius: 999px;
+  display: inline-block;
+}
+
+.calendar__legend-dot--busy {
+  background: #c98b1d;
+}
+
+.calendar__legend-dot--today {
+  background: transparent;
+  border: 1.5px solid #0a84ff;
+}
+
+.calendar__hint {
+  margin: 0.5rem 0 0;
+  font-size: 0.8rem;
+  color: #6e6e73;
+}
+
+.calendar__selected {
+  margin: 0.6rem 0 0;
+  display: inline-flex;
+  align-items: center;
+  gap: 0.4rem;
+  padding: 0.35rem 0.7rem;
+  border-radius: 999px;
+  background: #e6f4ea;
+  color: #166534;
+  font-size: 0.825rem;
+  text-transform: capitalize;
+}
+
+.calendar__selected .pi {
+  color: #16a34a;
 }
 </style>

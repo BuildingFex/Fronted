@@ -24,6 +24,36 @@ export const reservationsApi = {
     return Array.isArray(data) ? data.map(publicReservation) : []
   },
 
+  async removeBySpace(spaceId) {
+    const cleanSpaceId = String(spaceId ?? '').trim()
+    if (!cleanSpaceId) return { removed: 0 }
+    const { data } = await apiClient.get('/reservations', {
+      params: { spaceId: cleanSpaceId },
+    })
+    const items = Array.isArray(data) ? data : []
+    await Promise.all(
+      items.map((reservation) =>
+        apiClient.delete(`/reservations/${encodeURIComponent(reservation.id)}`),
+      ),
+    )
+    return { removed: items.length }
+  },
+
+  async removeByResident(residentId) {
+    const cleanResidentId = String(residentId ?? '').trim()
+    if (!cleanResidentId) return { removed: 0 }
+    const { data } = await apiClient.get('/reservations', {
+      params: { residentId: cleanResidentId },
+    })
+    const items = Array.isArray(data) ? data : []
+    await Promise.all(
+      items.map((reservation) =>
+        apiClient.delete(`/reservations/${encodeURIComponent(reservation.id)}`),
+      ),
+    )
+    return { removed: items.length }
+  },
+
   async add({ spaceId, residentId, residentName, residentCode, date, startTime, endTime }) {
     const cleanSpaceId = String(spaceId ?? '').trim()
     const cleanResidentId = String(residentId ?? '').trim()
