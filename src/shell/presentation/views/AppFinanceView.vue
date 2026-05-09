@@ -53,16 +53,6 @@ const handleSimulateCron = async () => {
   }
 }
 
-const handlePayment = async (receiptId) => {
-  try {
-    await store.simulatePaymentReconciliation(receiptId)
-    alert("Payment reconciled successfully.")
-    await store.loadData()
-  } catch (e) {
-    alert(e.message)
-  }
-}
-
 // Payment History grouped by Floor
 const floorSections = computed(() => {
   const sections = {};
@@ -115,6 +105,22 @@ const currentMonthData = computed(() => {
            else if(rc.status === 'Overdue') hasOverdue = true;
            else if(rc.status === 'Pending') hasPending = true;
          }
+       }
+    }
+
+    // Get today for implicit status checking
+    const todayYmd = `${dt.getFullYear()}-${(dt.getMonth()+1).toString().padStart(2, '0')}-${dt.getDate().toString().padStart(2, '0')}`;
+
+    // Include residents with no receipts defaulting to 'Pending' or 'Overdue'
+    if (store.getResidentFinancialStatus.value) {
+       for (const res of store.getResidentFinancialStatus.value) {
+          if (res.receipts.length === 0 && res.nextPaymentDate === dateStr) {
+             if (dateStr <= todayYmd) {
+                 hasOverdue = true;
+             } else {
+                 hasPending = true;
+             }
+          }
        }
     }
 
@@ -229,20 +235,6 @@ const getStatusBadgeClass = (status) => {
             <span class="status-badge" :class="getStatusBadgeClass(slotProps.data.overallStatus)">
               {{ t(`financeAdmin.status${slotProps.data.overallStatus}`) }}
             </span>
-          </template>
-        </Column>
-        <Column header="Actions">
-          <template #body="slotProps">
-            <!-- If they have pending receipts, allow simulating a payment -->
-            <div class="action-btns" v-if="slotProps.data.receipts && slotProps.data.receipts.length">
-                <Button 
-                   v-for="rc in slotProps.data.receipts.filter(r => r.status !== 'Paid')" 
-                   :key="rc.id"
-                   icon="pi pi-check" 
-                   class="p-button-sm p-button-rounded p-button-success" 
-                   v-tooltip="'Mark Paid (' + rc.dueDate + ')'" 
-                   @click="handlePayment(rc.id)" />
-            </div>
           </template>
         </Column>
       </DataTable>
