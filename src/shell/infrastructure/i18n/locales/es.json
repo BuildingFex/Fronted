@@ -128,8 +128,33 @@
     "pageIncidents": "Incidencias",
     "pageInformation": "Información",
     "pageProjects": "Proyectos",
-    "pageSettings": "Ajustes"
+    "pageSettings": "Ajustes",
+    "editIncident": "Editar incidencia",
+    "incidentDescription": "Descripción",
+    "incidentStatus": "Estado",
+    "incidentProvider": "Proveedor",
+    "editAction": "Editar",
+    "deleteAction": "Eliminar",
+    "noProviderAssigned": "Sin proveedor asignado",
+    "newIncident": "Nueva incidencia",
+    "residentData": "Tus datos",
+    "incidentDate": "Fecha",
+    "incidentActions": "Acciones",
+    "residentIncidentsFormTitle": "Reportar nueva incidencia",
+    "residentIncidentsDescriptionLabel": "Descripción",
+    "residentIncidentsSubmit": "Enviar incidencia",
+    "residentIncidentsListTitle": "Mis incidencias reportadas",
+    "residentIncidentsDescriptionPlaceholder": "Describe el problema...",
+    "incidentsTitle": "Mis incidencias",
+    "incidentsSubtitle": "Revisa y reporta incidencias asociadas a tu unidad"
+
+
+
   },
+  "incidentStatusOpen": "Abierta",
+  "incidentStatusInProgress": "En progreso",
+  "incidentStatusResolved": "Resuelta",
+
   "resident": {
     "navDashboard": "Dashboard Residente",
     "navFinance": "Finanzas",
