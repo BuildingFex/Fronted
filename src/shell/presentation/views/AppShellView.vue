@@ -45,13 +45,13 @@ const adminNavItems = computed(() => [
   {
     key: 'incidents',
     label: t('app.incidents'),
-    icon: 'pi pi-exclamation-circle',
+    icon: 'pi pi-flag',
     routeName: AppRouteNames.APP_INCIDENTS,
   },
   {
     key: 'information',
     label: t('app.information'),
-    icon: 'pi pi-info-circle',
+    icon: 'pi pi-book',
     routeName: AppRouteNames.APP_INFORMATION,
   },
 ])
@@ -84,7 +84,7 @@ const residentNavItems = computed(() => [
   {
     key: 'residentIncidents',
     label: t('resident.navIncidents'),
-    icon: 'pi pi-exclamation-circle',
+    icon: 'pi pi-flag',
     routeName: AppRouteNames.APP_RESIDENT_INCIDENTS,
   },
   {
@@ -204,6 +204,7 @@ function toggleAppLocale() {
 
 <style scoped>
 .app-shell {
+  --shell-sidebar-width: 13rem;
   --shell-sidebar-bg: #ffffff;
   --shell-border: #e8e8ed;
   --shell-text: #1d1d1f;
@@ -213,7 +214,6 @@ function toggleAppLocale() {
   --shell-danger-text: #b42318;
   --shell-pill-radius: 980px;
 
-  display: flex;
   min-height: 100vh;
   min-height: 100dvh;
   font-family: var(--apple-font, -apple-system, system-ui, sans-serif);
@@ -221,17 +221,39 @@ function toggleAppLocale() {
   background: var(--apple-bg-secondary, #f5f5f7);
 }
 
+/* Escritorio: sidebar fijo a la vista (ancho/posición estables; el main scrollea solo) */
 .app-shell__sidebar {
+  position: fixed;
+  top: 0;
+  left: 0;
+  z-index: 50;
+  height: 100vh;
+  height: 100dvh;
+  width: var(--shell-sidebar-width);
+  min-width: var(--shell-sidebar-width);
+  max-width: var(--shell-sidebar-width);
+  box-sizing: border-box;
   display: flex;
   flex-direction: column;
-  width: 13rem;
-  flex-shrink: 0;
+  overflow-x: hidden;
+  overflow-y: auto;
+  overscroll-behavior: contain;
+  -webkit-overflow-scrolling: touch;
   background: var(--shell-sidebar-bg);
   border-right: 1px solid var(--shell-border);
   padding: 1rem 0.55rem 1rem;
-  box-sizing: border-box;
   align-items: center;
   text-align: center;
+}
+
+.app-shell__main {
+  margin-left: var(--shell-sidebar-width);
+  min-height: 100vh;
+  min-height: 100dvh;
+  min-width: 0;
+  max-width: 100%;
+  overflow-x: auto;
+  background: var(--apple-bg, #ffffff);
 }
 
 .app-shell__top {
@@ -598,13 +620,6 @@ function toggleAppLocale() {
   border-radius: 12px;
 }
 
-.app-shell__main {
-  flex: 1;
-  min-width: 0;
-  min-height: inherit;
-  background: var(--apple-bg, #ffffff);
-}
-
 @media (prefers-reduced-motion: reduce) {
   .app-shell__segment-pill,
   .app-shell__nav-pill {
@@ -615,14 +630,32 @@ function toggleAppLocale() {
 
 @media (max-width: 720px) {
   .app-shell {
+    display: flex;
     flex-direction: column;
   }
 
   .app-shell__sidebar {
+    position: relative;
+    top: auto;
+    left: auto;
+    z-index: auto;
     width: 100%;
+    min-width: 0;
+    max-width: none;
+    height: auto;
+    min-height: 0;
+    flex: 0 0 auto;
+    overflow-x: visible;
+    overflow-y: visible;
     border-right: none;
     border-bottom: 1px solid var(--shell-border);
-    max-height: none;
+  }
+
+  .app-shell__main {
+    margin-left: 0;
+    flex: 1;
+    min-width: 0;
+    min-height: 0;
   }
 
   .app-shell__divider,

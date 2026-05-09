@@ -4,6 +4,7 @@ import { useI18n } from 'vue-i18n'
 import Button from 'primevue/button'
 import DataTable from 'primevue/datatable'
 import Column from 'primevue/column'
+import Dropdown from 'primevue/dropdown'
 
 import { useFinancesStore } from '../../../finances/application/financesStore.js'
 
@@ -65,6 +66,24 @@ const floorSections = computed(() => {
     floor,
     residents: sections[floor]
   })).sort((a,b) => parseInt(a.floor) - parseInt(b.floor));
+})
+
+const historyFloorFilter = ref('')
+
+const historyFloorOptions = computed(() => {
+  const all = { label: t('financeAdmin.allFloors'), value: '' }
+  const byFloor = floorSections.value.map((s) => ({
+    label: `${t('financeAdmin.tableFloor')} ${s.floor}`,
+    value: String(s.floor),
+  }))
+  return [all, ...byFloor]
+})
+
+const filteredFloorSections = computed(() => {
+  if (!historyFloorFilter.value) {
+    return floorSections.value
+  }
+  return floorSections.value.filter((s) => String(s.floor) === String(historyFloorFilter.value))
 })
 
 // Simple custom current month calendar logic to show colorful indicator dots
@@ -153,31 +172,70 @@ const getStatusBadgeClass = (status) => {
         <h1 class="finance-title">{{ t('financeAdmin.title') }}</h1>
         <p class="finance-subtitle">Manage resident payments, automatic receipts, and penalties.</p>
       </div>
-      <div class="finance-actions">
+      <div class="finance-toolbar">
         <Button 
           icon="pi pi-receipt" 
           :label="t('financeAdmin.generateReceipts')" 
-          class="p-button-outlined p-button-success glass-btn" 
+          class="p-button-outlined finance-toolbar__btn finance-toolbar__btn--primary" 
           @click="handleGenerateReceipts" 
           :loading="uiState.isGenerating"
         />
         <Button 
           icon="pi pi-cog" 
           :label="t('financeAdmin.simulateCron')" 
-          class="p-button-outlined p-button-danger glass-btn" 
+          class="p-button-outlined finance-toolbar__btn finance-toolbar__btn--danger" 
           @click="handleSimulateCron" 
           :loading="uiState.isCronRunning"
         />
       </div>
     </div>
 
-    <!-- Widgets row -->
-    <div class="widgets-row">
-      <!-- Calendar Widget -->
-      <div class="widget glass-widget calendar-widget">
-        <h2 class="widget-title"><i class="pi pi-calendar"></i> {{ t('financeAdmin.calendarTitle') }} - <span style="text-transform: capitalize">{{ currentMonthData.monthName }}</span></h2>
+    <div class="finance-main-row">
+      <div class="finance-panel finance-panel--table table-panel">
+        <DataTable 
+            :value="store.getResidentFinancialStatus.value" 
+            responsiveLayout="scroll" 
+            class="premium-table" 
+            :paginator="true" 
+            :rows="10">
+          
+          <Column field="name" :header="t('financeAdmin.tableResident')">
+             <template #body="slotProps">
+               <div class="resident-info">
+                  <strong>{{ slotProps.data.name }}</strong>
+                  <small>Floor {{ slotProps.data.floor }} - Apt {{ slotProps.data.code }}</small>
+               </div>
+             </template>
+          </Column>
+          <Column field="admissionDate" :header="t('financeAdmin.tableAdmission')"></Column>
+          <Column field="nextPaymentDate" :header="t('financeAdmin.tableNextPayment')">
+             <template #body="slotProps">
+                <span class="font-medium">{{ slotProps.data.nextPaymentDate }}</span>
+             </template>
+          </Column>
+          <Column :header="t('financeAdmin.tableCountdown')">
+            <template #body="slotProps">
+              <span class="days-left" :class="{'urgent': slotProps.data.daysUntilNextPayment <= 5}">
+                {{ slotProps.data.daysUntilNextPayment }} days
+              </span>
+            </template>
+          </Column>
+          <Column :header="t('financeAdmin.tableStatus')">
+            <template #body="slotProps">
+              <span class="status-badge" :class="getStatusBadgeClass(slotProps.data.overallStatus)">
+                {{ t(`financeAdmin.status${slotProps.data.overallStatus}`) }}
+              </span>
+            </template>
+          </Column>
+        </DataTable>
+      </div>
+
+      <div class="finance-panel finance-panel--calendar calendar-widget">
+        <h2 class="finance-panel__title">
+          <i class="pi pi-calendar" aria-hidden="true"></i>
+          {{ t('financeAdmin.calendarTitle') }} — <span class="finance-panel__title-month">{{ currentMonthData.monthName }}</span>
+        </h2>
         <div class="calendar-grid">
-           <!-- Weekdays header -->
            <div class="weekday-header">S</div>
            <div class="weekday-header">M</div>
            <div class="weekday-header">T</div>
@@ -185,8 +243,6 @@ const getStatusBadgeClass = (status) => {
            <div class="weekday-header">T</div>
            <div class="weekday-header">F</div>
            <div class="weekday-header">S</div>
-           
-          <!-- Calendar Days -->
           <div class="calendar-day" v-for="(day, idx) in currentMonthData.days" :key="idx" :class="{'empty-day': day.empty}">
             <span class="day-number" v-if="!day.empty">{{ day.date }}</span>
             <div class="day-dot" :class="day.status" v-if="day.status && !day.empty"></div>
@@ -199,55 +255,25 @@ const getStatusBadgeClass = (status) => {
         </div>
       </div>
     </div>
-    
-    <!-- Table -->
-    <div class="table-container glass-container">
-      <DataTable 
-          :value="store.getResidentFinancialStatus.value" 
-          responsiveLayout="scroll" 
-          class="premium-table" 
-          :paginator="true" 
-          :rows="10">
-        
-        <Column field="name" :header="t('financeAdmin.tableResident')">
-           <template #body="slotProps">
-             <div class="resident-info">
-                <strong>{{ slotProps.data.name }}</strong>
-                <small>Floor {{ slotProps.data.floor }} - Apt {{ slotProps.data.code }}</small>
-             </div>
-           </template>
-        </Column>
-        <Column field="admissionDate" :header="t('financeAdmin.tableAdmission')"></Column>
-        <Column field="nextPaymentDate" :header="t('financeAdmin.tableNextPayment')">
-           <template #body="slotProps">
-              <span class="font-medium">{{ slotProps.data.nextPaymentDate }}</span>
-           </template>
-        </Column>
-        <Column :header="t('financeAdmin.tableCountdown')">
-          <template #body="slotProps">
-            <span class="days-left" :class="{'urgent': slotProps.data.daysUntilNextPayment <= 5}">
-              {{ slotProps.data.daysUntilNextPayment }} days
-            </span>
-          </template>
-        </Column>
-        <Column :header="t('financeAdmin.tableStatus')">
-          <template #body="slotProps">
-            <span class="status-badge" :class="getStatusBadgeClass(slotProps.data.overallStatus)">
-              {{ t(`financeAdmin.status${slotProps.data.overallStatus}`) }}
-            </span>
-          </template>
-        </Column>
-      </DataTable>
-    </div>
 
-    <!-- Section History -->
-    <div class="sections-history">
-       <h2 class="section-main-title">{{ t('financeAdmin.paymentHistory') }}</h2>
-       
-       <div class="floor-section" v-for="section in floorSections" :key="section.floor">
+    <div class="finance-history">
+      <div class="finance-history__toolbar">
+        <h2 class="finance-history__heading">{{ t('financeAdmin.paymentHistory') }}</h2>
+        <Dropdown
+          v-if="historyFloorOptions.length > 1"
+          v-model="historyFloorFilter"
+          :options="historyFloorOptions"
+          option-label="label"
+          option-value="value"
+          class="finance-history__floor-filter"
+          :aria-label="t('financeAdmin.filterFloorAria')"
+        />
+      </div>
+
+       <div class="floor-section" v-for="section in filteredFloorSections" :key="section.floor">
           <h3 class="floor-title">Floor {{ section.floor }}</h3>
           <div class="history-cards">
-             <div class="history-card glass-card" v-for="res in section.residents" :key="res.id">
+             <div class="finance-card" v-for="res in section.residents" :key="res.id">
                 <h4>{{ res.name }} <span class="apt-code">#{{res.code}}</span></h4>
                 <ul class="receipt-list">
                    <li v-for="rc in res.receipts" :key="rc.id">
@@ -266,252 +292,449 @@ const getStatusBadgeClass = (status) => {
 
   </div>
   
-  <div v-else class="loading-state">
-     <i class="pi pi-spin pi-spinner" style="font-size: 2rem"></i>
+  <div v-else class="finance-loading" role="status" aria-live="polite">
+     <i class="pi pi-spin pi-spinner finance-loading__icon" aria-hidden="true"></i>
   </div>
 </template>
 
 <style scoped>
 .finance-view {
-  padding: 2rem;
-  max-width: 80rem;
+  padding: 1.75rem 1.5rem 2.5rem;
+  max-width: 72rem;
   margin: 0 auto;
-  font-family: 'Inter', sans-serif;
-  color: #2c3e50;
+  font-family: inherit;
+  color: var(--text);
   display: flex;
   flex-direction: column;
-  gap: 2.5rem;
+  gap: 2rem;
+  letter-spacing: -0.022em;
+  line-height: 1.47;
+  -webkit-font-smoothing: antialiased;
 }
 
 .finance-header {
   display: flex;
   justify-content: space-between;
   align-items: flex-end;
-  border-bottom: 2px solid #e2e8f0;
-  padding-bottom: 1rem;
+  flex-wrap: wrap;
+  gap: 1rem 1.5rem;
+  padding-bottom: 1.25rem;
+  border-bottom: 1px solid var(--border);
 }
 
 .finance-title {
   margin: 0;
-  font-size: 2.2rem;
-  font-weight: 800;
-  background: linear-gradient(90deg, #1e3a8a 0%, #3b82f6 100%);
-  -webkit-background-clip: text;
-  -webkit-text-fill-color: transparent;
+  font-size: 1.5rem;
+  font-weight: 600;
+  letter-spacing: -0.03em;
+  color: var(--text);
 }
 
 .finance-subtitle {
-  margin: 0.5rem 0 0 0;
-  color: #64748b;
-  font-size: 1rem;
+  margin: 0.35rem 0 0 0;
+  font-size: 0.9375rem;
+  font-weight: 400;
+  color: var(--muted);
+  max-width: 28rem;
+  line-height: 1.45;
 }
 
-.finance-actions {
+.finance-toolbar {
   display: flex;
-  gap: 1rem;
+  flex-wrap: wrap;
+  gap: 0.5rem;
+  align-items: center;
 }
 
-.glass-btn {
-  background: rgba(255, 255, 255, 0.7);
-  backdrop-filter: blur(10px);
-  border: 1px solid rgba(255,255,255,0.8);
+.finance-toolbar__btn.p-button.p-button-outlined {
+  border-radius: 980px;
   font-weight: 600;
-  transition: all 0.3s ease;
-  box-shadow: 0 4px 6px -1px rgba(0, 0, 0, 0.05);
+  font-size: 0.8125rem;
+  padding: 0.5rem 1rem;
+  border: 1px solid #d2d2d7;
+  background: var(--bg);
+  color: var(--text);
+  transition: background 0.15s ease, border-color 0.15s ease, opacity 0.15s ease;
+  box-shadow: none;
 }
 
-.glass-btn:hover {
-  transform: translateY(-2px);
-  box-shadow: 0 10px 15px -3px rgba(0, 0, 0, 0.1);
+.finance-toolbar__btn--primary.p-button.p-button-outlined {
+  color: #0a84ff;
+  border-color: rgba(10, 132, 255, 0.35);
+  background: rgba(10, 132, 255, 0.06);
 }
 
-/* WIDGETS */
-.widgets-row {
+.finance-toolbar__btn--danger.p-button.p-button-outlined {
+  color: #ff3b30;
+  border-color: rgba(255, 59, 48, 0.28);
+  background: rgba(255, 59, 48, 0.05);
+}
+
+.finance-toolbar__btn.p-button.p-button-outlined:not(:disabled):hover {
+  background: var(--bg-elevated);
+}
+
+.finance-toolbar__btn--primary.p-button.p-button-outlined:not(:disabled):hover {
+  background: rgba(10, 132, 255, 0.1);
+  border-color: rgba(10, 132, 255, 0.45);
+}
+
+.finance-toolbar__btn--danger.p-button.p-button-outlined:not(:disabled):hover {
+  background: rgba(255, 59, 48, 0.1);
+  border-color: rgba(255, 59, 48, 0.4);
+}
+
+.finance-toolbar__btn.p-button .p-button-icon {
+  color: inherit;
+}
+
+.finance-main-row {
   display: flex;
-  gap: 2rem;
+  flex-direction: row;
+  align-items: stretch;
+  gap: 1.25rem;
 }
 
-.widget {
-  flex: 1;
-  padding: 1.5rem;
-  border-radius: 1rem;
-  box-shadow: 0 10px 25px -5px rgba(0, 0, 0, 0.05);
+.table-panel {
+  flex: 1 1 58%;
+  min-width: 0;
 }
 
-.glass-widget {
-  background: linear-gradient(135deg, #f8fafc 0%, #f1f5f9 100%);
-  border: 1px solid #e2e8f0;
+.calendar-widget {
+  flex: 0 1 22rem;
+  min-width: 17rem;
 }
 
-.widget-title {
-  margin: 0 0 1rem 0;
-  font-size: 1.25rem;
-  font-weight: 700;
+@media (max-width: 1024px) {
+  .finance-main-row {
+    flex-direction: column;
+  }
+
+  .calendar-widget {
+    flex: 1 1 auto;
+    min-width: 0;
+    max-width: none;
+  }
+}
+
+.finance-panel {
+  padding: 1.25rem 1.35rem;
+  border-radius: var(--radius);
+  border: 1px solid var(--border);
+  background: var(--bg);
+  box-shadow: var(--shadow);
+}
+
+.finance-panel--calendar {
+  background: var(--bg-elevated);
+}
+
+.finance-panel__title {
+  margin: 0 0 1.125rem 0;
+  font-size: 1.0625rem;
+  font-weight: 600;
+  letter-spacing: -0.025em;
   display: flex;
   align-items: center;
   gap: 0.5rem;
-  color: #334155;
+  flex-wrap: wrap;
+  color: var(--text);
+}
+
+.finance-panel__title .pi {
+  color: var(--muted);
+  font-size: 1rem;
+}
+
+.finance-panel__title-month {
+  text-transform: capitalize;
+  color: var(--muted);
+  font-weight: 500;
 }
 
 .calendar-grid {
   display: grid;
   grid-template-columns: repeat(7, 1fr);
-  gap: 0.5rem;
+  gap: 0.35rem;
 }
 
 .calendar-day {
-  background: #ffffff;
-  border-radius: 0.5rem;
-  padding: 0.5rem;
+  background: var(--bg);
+  border-radius: 10px;
+  border: 1px solid rgba(0, 0, 0, 0.06);
+  padding: 0.4rem 0.35rem;
   text-align: center;
   position: relative;
-  font-weight: 600;
-  color: #475569;
-  min-height: 48px;
+  font-weight: 500;
+  font-size: 0.8125rem;
+  color: var(--text);
+  min-height: 2.75rem;
   display: flex;
   flex-direction: column;
   justify-content: center;
   align-items: center;
-  box-shadow: 0 2px 4px rgba(0,0,0,0.02);
 }
 
 .empty-day {
   background: transparent;
+  border: none;
   box-shadow: none;
 }
 
 .weekday-header {
-  font-weight: 800;
-  color: #94a3b8;
-  font-size: 0.85rem;
+  font-weight: 600;
+  color: var(--muted);
+  font-size: 0.6875rem;
+  text-transform: uppercase;
+  letter-spacing: 0.06em;
   text-align: center;
-  margin-bottom: 0.5rem;
+  margin-bottom: 0.25rem;
 }
 
 .day-dot {
-  width: 8px;
-  height: 8px;
+  width: 6px;
+  height: 6px;
   border-radius: 50%;
-  margin-top: 4px;
+  margin-top: 3px;
 }
 
-.day-dot.paid { background: #10b981; box-shadow: 0 0 5px #10b981; }
-.day-dot.pending { background: #f59e0b; box-shadow: 0 0 5px #f59e0b; }
-.day-dot.overdue { background: #ef4444; box-shadow: 0 0 5px #ef4444; }
+.day-dot.paid {
+  background: #34c759;
+  box-shadow: 0 0 0 1px rgba(52, 199, 89, 0.25);
+}
+
+.day-dot.pending {
+  background: #ff9500;
+  box-shadow: 0 0 0 1px rgba(255, 149, 0, 0.25);
+}
+
+.day-dot.overdue {
+  background: #ff3b30;
+  box-shadow: 0 0 0 1px rgba(255, 59, 48, 0.2);
+}
 
 .calendar-legend {
   display: flex;
-  gap: 1rem;
-  margin-top: 1rem;
-  font-size: 0.85rem;
-  color: #64748b;
+  flex-wrap: wrap;
+  gap: 0.75rem 1rem;
+  margin-top: 1.125rem;
+  padding-top: 1rem;
+  border-top: 1px solid var(--border);
+  font-size: 0.75rem;
+  color: var(--muted);
   font-weight: 500;
 }
-.legend-item { display: flex; align-items: center; gap: 0.3rem;}
 
-/* TABLE */
-.glass-container {
-  background: white;
-  border-radius: 1rem;
-  padding: 0.5rem;
-  box-shadow: 0 10px 25px -5px rgba(0, 0, 0, 0.05);
-  border: 1px solid #e2e8f0;
+.legend-item {
+  display: flex;
+  align-items: center;
+  gap: 0.4rem;
+}
+
+.finance-panel--table {
+  padding: 0.35rem;
+  overflow: hidden;
+}
+
+.premium-table :deep(.p-datatable) {
+  font-size: 0.875rem;
 }
 
 .premium-table :deep(.p-datatable-header) {
   background: transparent;
   border: none;
+  padding: 0.35rem 0.5rem;
 }
+
 .premium-table :deep(.p-datatable-thead > tr > th) {
-  background: #f8fafc;
-  color: #475569;
-  font-weight: 700;
-  border-bottom: 2px solid #e2e8f0;
+  background: var(--bg-elevated);
+  color: var(--muted);
+  font-weight: 600;
+  font-size: 0.6875rem;
+  text-transform: uppercase;
+  letter-spacing: 0.05em;
+  border: none;
+  border-bottom: 1px solid var(--border);
+  padding: 0.65rem 0.75rem;
+}
+
+.premium-table :deep(.p-datatable-tbody > tr) {
+  background: var(--bg);
+  transition: background 0.12s ease;
+}
+
+.premium-table :deep(.p-datatable-tbody > tr:hover) {
+  background: var(--bg-elevated);
+}
+
+.premium-table :deep(.p-datatable-tbody > tr > td) {
+  border: none;
+  border-bottom: 1px solid rgba(0, 0, 0, 0.06);
+  padding: 0.75rem;
+  vertical-align: middle;
+}
+
+.premium-table :deep(.p-paginator) {
+  background: transparent;
+  border: none;
+  padding: 0.6rem 0.5rem;
+  font-size: 0.8125rem;
+}
+
+.premium-table :deep(.p-paginator .p-paginator-page.p-highlight) {
+  background: var(--accent-dim);
+  color: var(--accent);
 }
 
 .resident-info {
   display: flex;
   flex-direction: column;
+  gap: 0.1rem;
 }
+
+.resident-info strong {
+  font-weight: 600;
+  color: var(--text);
+}
+
 .resident-info small {
-  color: #64748b;
+  color: var(--muted);
+  font-size: 0.75rem;
 }
 
 .days-left {
-  font-weight: 700;
-  color: #3b82f6;
-  background: #eff6ff;
-  padding: 0.3rem 0.6rem;
-  border-radius: 1rem;
+  font-weight: 600;
+  font-size: 0.8125rem;
+  color: #0a84ff;
+  background: rgba(10, 132, 255, 0.08);
+  padding: 0.25rem 0.55rem;
+  border-radius: 980px;
 }
+
 .days-left.urgent {
-  color: #ef4444;
-  background: #fef2f2;
+  color: #ff3b30;
+  background: rgba(255, 59, 48, 0.08);
 }
 
 .status-badge {
-  padding: 0.3rem 0.8rem;
-  border-radius: 2rem;
-  font-size: 0.85rem;
-  font-weight: 700;
+  padding: 0.25rem 0.65rem;
+  border-radius: 980px;
+  font-size: 0.6875rem;
+  font-weight: 600;
+  letter-spacing: 0.04em;
   text-transform: uppercase;
 }
 
-.status-paid { background: #d1fae5; color: #047857; }
-.status-pending { background: #fef3c7; color: #b45309; }
-.status-overdue { background: #fee2e2; color: #b91c1c; }
+.status-paid {
+  background: rgba(52, 199, 89, 0.14);
+  color: #248a3d;
+}
 
-/* HISTORY CARDS */
-.section-main-title {
-  margin-bottom: 1.5rem;
-  font-size: 1.8rem;
-  font-weight: 800;
-  color: #1e293b;
+.status-pending {
+  background: rgba(255, 149, 0, 0.14);
+  color: #c35b00;
+}
+
+.status-overdue {
+  background: rgba(255, 59, 48, 0.12);
+  color: #d70015;
+}
+
+.finance-history__toolbar {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  gap: 1rem 1.25rem;
+  flex-wrap: wrap;
+  margin-bottom: 1.25rem;
+}
+
+.finance-history__heading {
+  margin: 0;
+  font-size: 1.25rem;
+  font-weight: 600;
+  letter-spacing: -0.03em;
+  color: var(--text);
+}
+
+.finance-history__floor-filter {
+  min-width: 11rem;
+  flex: 0 1 auto;
+}
+
+.finance-history__floor-filter :deep(.p-dropdown) {
+  border-radius: 10px;
+  border: 1px solid #d2d2d7;
+  background: var(--bg);
+  font-size: 0.875rem;
+}
+
+.finance-history__floor-filter :deep(.p-dropdown:not(.p-disabled):hover) {
+  border-color: rgba(0, 0, 0, 0.14);
+}
+
+.finance-history__floor-filter :deep(.p-dropdown:not(.p-disabled).p-focus) {
+  outline: none;
+  border-color: #0a84ff;
+  box-shadow: 0 0 0 3px rgba(10, 132, 255, 0.18);
+}
+
+.finance-history__floor-filter :deep(.p-dropdown-label) {
+  padding: 0.5rem 0.75rem;
+  font-weight: 500;
+  color: var(--text);
 }
 
 .floor-section {
-  margin-bottom: 2.5rem;
+  margin-bottom: 2rem;
 }
 
 .floor-title {
-  font-size: 1.3rem;
-  color: #64748b;
-  border-bottom: 2px dashed #cbd5e1;
+  font-size: 0.8125rem;
+  font-weight: 600;
+  text-transform: uppercase;
+  letter-spacing: 0.06em;
+  color: var(--muted);
+  border-bottom: 1px solid var(--border);
   padding-bottom: 0.5rem;
-  margin-bottom: 1.5rem;
+  margin-bottom: 1rem;
 }
 
 .history-cards {
   display: grid;
-  grid-template-columns: repeat(auto-fill, minmax(300px, 1fr));
-  gap: 1.5rem;
+  grid-template-columns: repeat(auto-fill, minmax(280px, 1fr));
+  gap: 1rem;
 }
 
-.history-card {
-  padding: 1.5rem;
-  border-radius: 1rem;
+.finance-card {
+  padding: 1.15rem 1.25rem;
+  border-radius: var(--radius);
+  background: var(--bg);
+  border: 1px solid var(--border);
+  box-shadow: 0 2px 8px rgba(0, 0, 0, 0.04);
+  transition: box-shadow 0.2s ease, transform 0.2s ease;
 }
 
-.glass-card {
-  background: rgba(255,255,255,0.7);
-  backdrop-filter: blur(10px);
-  border: 1px solid rgba(255,255,255,0.6);
-  box-shadow: 0 4px 6px -1px rgba(0,0,0,0.05);
-  transition: transform 0.2s ease;
+.finance-card:hover {
+  box-shadow: var(--shadow);
+  transform: translateY(-1px);
 }
-.glass-card:hover { transform: translateY(-3px); }
 
-.history-card h4 {
-  margin: 0 0 1rem 0;
-  font-size: 1.1rem;
-  color: #334155;
+.finance-card h4 {
+  margin: 0 0 0.9rem 0;
+  font-size: 0.9375rem;
+  font-weight: 600;
+  letter-spacing: -0.02em;
+  color: var(--text);
   display: flex;
   justify-content: space-between;
+  align-items: baseline;
 }
 
 .apt-code {
-  color: #94a3b8;
-  font-weight: 600;
+  color: var(--muted);
+  font-weight: 500;
+  font-size: 0.8125rem;
 }
 
 .receipt-list {
@@ -520,47 +743,62 @@ const getStatusBadgeClass = (status) => {
   margin: 0;
   display: flex;
   flex-direction: column;
-  gap: 0.8rem;
+  gap: 0.55rem;
 }
 
 .receipt-list li {
   display: flex;
   justify-content: space-between;
   align-items: center;
-  background: white;
-  padding: 0.8rem 1rem;
-  border-radius: 0.5rem;
-  box-shadow: 0 1px 3px rgba(0,0,0,0.05);
-  border-left: 4px solid #e2e8f0;
+  gap: 0.75rem;
+  background: var(--bg-elevated);
+  padding: 0.65rem 0.75rem;
+  border-radius: 10px;
+  border: 1px solid rgba(0, 0, 0, 0.05);
 }
 
 .rc-info {
   display: flex;
   flex-direction: column;
-  font-size: 0.9rem;
+  gap: 0.1rem;
+  font-size: 0.8125rem;
 }
-.rc-info span { color: #64748b; }
-.rc-info strong { color: #1e293b; font-size: 1.05rem;}
+
+.rc-info span {
+  color: var(--muted);
+}
+
+.rc-info strong {
+  color: var(--text);
+  font-size: 0.9375rem;
+  font-weight: 600;
+}
 
 .small-badge {
-  font-size: 0.75rem;
-  padding: 0.2rem 0.5rem;
-  border-radius: 0.5rem;
+  font-size: 0.6875rem;
+  padding: 0.2rem 0.45rem;
+  border-radius: 6px;
+  font-weight: 600;
 }
+
 .empty-list {
-  color: #94a3b8;
+  color: var(--muted);
   font-style: italic;
+  font-size: 0.8125rem;
   justify-content: center !important;
   background: transparent !important;
   border: none !important;
-  box-shadow: none !important;
 }
 
-.loading-state {
+.finance-loading {
   display: flex;
   justify-content: center;
   align-items: center;
-  min-height: 50vh;
-  color: #3b82f6;
+  min-height: 45vh;
+  color: var(--accent);
+}
+
+.finance-loading__icon {
+  font-size: 2rem;
 }
 </style>

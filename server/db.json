@@ -82,15 +82,6 @@
       "company": "none",
       "ruc": "13738141",
       "role": "admin"
-    },
-    {
-      "id": "resident-1778357859675",
-      "name": "Saul",
-      "floor": "3",
-      "code": "1234",
-      "email": "user12@gmail.com",
-      "password": "Ps456rter",
-      "role": "resident"
     }
   ],
   "socialSpaces": [
@@ -128,7 +119,17 @@
       "endTime": "11:00"
     }
   ],
-  "receipts": [],
+  "receipts": [
+    {
+      "id": 1778364148547,
+      "residentId": "resident-1778364148485",
+      "issueDate": "2026-05-09",
+      "dueDate": "2026-06-07",
+      "amount": 150,
+      "status": "Pending",
+      "lateFee": 0
+    }
+  ],
   "financeSettings": {
     "baseMonthlyExpense": 150,
     "lateFeeRate": 0.05

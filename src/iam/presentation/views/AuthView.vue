@@ -199,7 +199,7 @@ async function onRegisterSubmit() {
   registerLoading.value = true
   registerError.value = ''
   try {
-    await authApi.registerAdmin({
+    const { user } = await authApi.registerAdmin({
       name: regName.value,
       email: regEmail.value,
       password: regPassword.value,
@@ -208,7 +208,11 @@ async function onRegisterSubmit() {
       company: regCompany.value,
       ruc: regRuc.value,
     })
-    setAdminSession({ email: regEmail.value, name: regName.value })
+    setAdminSession({
+      id: user.id,
+      name: user.name,
+      email: user.email,
+    })
     router.push({ name: AppRouteNames.APP_DASHBOARD })
   } catch (error) {
     if (error?.code === 'EMAIL_ALREADY_EXISTS') {

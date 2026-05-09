@@ -126,6 +126,8 @@
     "pageFinance": "Finanzas",
     "pageGeneration": "Generación",
     "pageIncidents": "Incidencias",
+    "incidentsAdminSubtitle": "Revisa, asigna proveedores y actualiza el estado de las incidencias del edificio.",
+    "incidentResidentName": "Residente",
     "pageInformation": "Información",
     "pageProjects": "Proyectos",
     "pageSettings": "Ajustes",
@@ -146,10 +148,17 @@
     "residentIncidentsListTitle": "Mis incidencias reportadas",
     "residentIncidentsDescriptionPlaceholder": "Describe el problema...",
     "incidentsTitle": "Mis incidencias",
-    "incidentsSubtitle": "Revisa y reporta incidencias asociadas a tu unidad"
-
-
-
+    "incidentsSubtitle": "Revisa y reporta incidencias asociadas a tu unidad",
+    "settingsProfileSubtitle": "Información de tu cuenta según tu rol.",
+    "settingsAdminProfileTitle": "Perfil del administrador",
+    "settingsResidentProfileTitle": "Tu perfil",
+    "settingsLoadingProfile": "Cargando perfil…",
+    "settingsProfileLoadError": "No se pudieron actualizar todos los datos desde el servidor.",
+    "settingsAdminDniLabel": "Documento de identidad (DNI)",
+    "settingsAdminAddressLabel": "Dirección",
+    "settingsAdminCompanyLabel": "Empresa",
+    "settingsAdminRucLabel": "RUC",
+    "settingsResidentAdmissionLabel": "Fecha de admisión"
   },
   "incidentStatusOpen": "Abierta",
   "incidentStatusInProgress": "En progreso",
@@ -230,7 +239,9 @@
     "calendarTitle": "Calendario de Pagos",
     "statusPending": "Pendiente",
     "statusPaid": "Pagado",
-    "statusOverdue": "En Mora"
+    "statusOverdue": "En Mora",
+    "allFloors": "Todos los pisos",
+    "filterFloorAria": "Filtrar historial de pagos por piso"
   },
   "supportResident": {
     "title": "¿Cómo te podemos ayudar?",

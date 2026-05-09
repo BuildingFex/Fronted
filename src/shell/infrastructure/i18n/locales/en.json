@@ -126,6 +126,8 @@
     "pageFinance": "Finance",
     "pageGeneration": "Generation",
     "pageIncidents": "Incidents",
+    "incidentsAdminSubtitle": "Review, assign providers, and update incident status across the building.",
+    "incidentResidentName": "Resident",
     "pageInformation": "Information",
     "pageProjects": "Projects",
     "pageSettings": "Settings",
@@ -146,7 +148,17 @@
     "residentIncidentsListTitle": "My reported incidents",
     "residentIncidentsDescriptionPlaceholder": "Describe the problem...",
     "incidentsSubtitle": "Review and report incidents associated with your unit",
-    "incidentsTitle": "My Incidents"
+    "incidentsTitle": "My Incidents",
+    "settingsProfileSubtitle": "Account information for your role.",
+    "settingsAdminProfileTitle": "Administrator profile",
+    "settingsResidentProfileTitle": "Your profile",
+    "settingsLoadingProfile": "Loading profile…",
+    "settingsProfileLoadError": "Could not refresh all fields from the server.",
+    "settingsAdminDniLabel": "ID document (DNI)",
+    "settingsAdminAddressLabel": "Address",
+    "settingsAdminCompanyLabel": "Company",
+    "settingsAdminRucLabel": "Tax ID (RUC)",
+    "settingsResidentAdmissionLabel": "Admission date"
   },
   "incidentStatusOpen": "Open",
   "incidentStatusInProgress": "In Progress",
@@ -226,7 +238,9 @@
     "calendarTitle": "Payment Calendar",
     "statusPending": "Pending",
     "statusPaid": "Paid",
-    "statusOverdue": "Overdue"
+    "statusOverdue": "Overdue",
+    "allFloors": "All floors",
+    "filterFloorAria": "Filter payment history by floor"
   },
   "supportResident": {
     "title": "How can we help you?",

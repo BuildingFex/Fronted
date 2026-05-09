@@ -60,4 +60,20 @@ export const authApi = {
       token: createSessionToken(created.id),
     }
   },
+
+  /**
+   * Full user row for settings views (password stripped). Uses GET /users/:id.
+   */
+  async getProfileById(userId) {
+    if (!userId) return null
+    try {
+      const { data } = await apiClient.get(`/users/${encodeURIComponent(userId)}`)
+      if (!data || typeof data !== 'object') return null
+      // eslint-disable-next-line no-unused-vars -- strip secret
+      const { password, ...rest } = data
+      return rest
+    } catch {
+      return null
+    }
+  },
 }
