@@ -9,6 +9,8 @@ import AppFinanceView from '@/shell/presentation/views/AppFinanceView.vue'
 import AppGenerationView from '@/shell/presentation/views/AppGenerationView.vue'
 import AppIncidentsView from '@/shell/presentation/views/AppIncidentsView.vue'
 import AppInformationView from '@/shell/presentation/views/AppInformationView.vue'
+import AppCollectionsManagementExpensesView from '@/shell/presentation/views/AppCollectionsManagementExpensesView.vue'
+import AppTeamView from '@/shell/presentation/views/AppTeamView.vue'
 import AppProjectsView from '@/shell/presentation/views/AppProjectsView.vue'
 import AppSettingsView from '@/shell/presentation/views/AppSettingsView.vue'
 import AppResidentDashboardView from '@/shell/presentation/views/AppResidentDashboardView.vue'
@@ -39,6 +41,12 @@ export default createRouter({
         { path: 'generation', name: AppRouteNames.APP_GENERATION, component: AppGenerationView },
         { path: 'incidents', name: AppRouteNames.APP_INCIDENTS, component: AppIncidentsView },
         { path: 'information', name: AppRouteNames.APP_INFORMATION, component: AppInformationView },
+        {
+          path: 'collections-management-expenses',
+          name: AppRouteNames.APP_COLLECTIONS_MANAGEMENT_EXPENSES,
+          component: AppCollectionsManagementExpensesView,
+        },
+        { path: 'team', name: AppRouteNames.APP_TEAM, component: AppTeamView },
         { path: 'projects', name: AppRouteNames.APP_PROJECTS, component: AppProjectsView },
         { path: 'settings', name: AppRouteNames.APP_SETTINGS, component: AppSettingsView },
         {
