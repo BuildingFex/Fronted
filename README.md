@@ -1,4 +1,4 @@
-# BuildingFex — Landing
+git cho# BuildingFex — Landing
 
 Sitio estático de marketing para BuildingFex, construido con Vue 3 y Vite.
 
