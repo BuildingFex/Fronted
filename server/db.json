@@ -111,7 +111,7 @@
       "residentId": "resident-1778137645757",
       "residentName": "Sebastian Martin Beingolea Montalvo",
       "description": "Fuga de agua en el baño del piso 3",
-      "status": "in-progress",
+      "status": "open",
       "createdAt": "2026-05-09T15:00:00Z",
       "provider": ""
     },
@@ -145,7 +145,7 @@
       "residentName": "Sebastian Martin Beingolea Montalvo",
       "description": "Falla de luz",
       "status": "open",
-      "createdAt": "2026-05-09T20:29:54.153Z",
+      "createdAt": "2026-05-09T22:48:04.905Z",
       "provider": ""
     }
   ]
