@@ -18,7 +18,8 @@
       "code": "302",
       "email": "smbmontalvo@gmail.com",
       "password": "12Sebastian12",
-      "role": "resident"
+      "role": "resident",
+      "admissionDate": "2026-04-23"
     },
     {
       "id": "resident-1778188760782",
@@ -27,7 +28,8 @@
       "code": "2032",
       "email": "u20221733853@upc.edu.pe",
       "password": "12Sebastian12",
-      "role": "resident"
+      "role": "resident",
+      "admissionDate": "2026-04-09"
     },
     {
       "id": "resident-1778207900950",
@@ -36,7 +38,8 @@
       "code": "505",
       "email": "alberto@upc.edu.pe",
       "password": "RDPbGhMQ99CSy-_",
-      "role": "resident"
+      "role": "resident",
+      "admissionDate": "2026-04-14"
     },
     {
       "id": "admin-1778208183253",
@@ -50,6 +53,24 @@
       "role": "admin"
     },
     {
+      "id": "resident-1778307819154",
+      "name": "Jose",
+      "floor": "1",
+      "code": "777",
+      "email": "",
+      "password": "",
+      "role": "resident",
+      "admissionDate": "2026-05-06"
+    },
+    {
+      "id": "resident-1778347893731",
+      "name": "Pedro",
+      "floor": "2",
+      "code": "555",
+      "email": "",
+      "password": "",
+      "role": "resident",
+      "admissionDate": "2026-05-09"
       "id": "admin-1778357825373",
       "name": "Sebastian",
       "email": "admin@gmail.com",
@@ -105,6 +126,11 @@
       "endTime": "11:00"
     }
   ],
+  "receipts": [],
+  "financeSettings": {
+    "baseMonthlyExpense": 150,
+    "lateFeeRate": 0.05
+  }
   "incidents": [
     {
       "id": "incident-1001",
