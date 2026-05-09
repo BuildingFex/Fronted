@@ -82,8 +82,108 @@
       "company": "none",
       "ruc": "13738141",
       "role": "admin"
+    },
+    {
+      "id": "resident-giuseppe",
+      "name": "Giuseppe Residente",
+      "floor": "5",
+      "code": "501",
+      "email": "giuseppevillanueva15@gmail.com",
+      "password": "naruto15",
+      "role": "resident",
+      "admissionDate": "2026-05-10"
     }
   ],
+  "fees": [
+    {
+      "id": 1,
+      "residentId": "resident-giuseppe",
+      "month": "Enero 2026",
+      "amount": 350,
+      "dueDate": "2026-01-31",
+      "status": "Pagado"
+    },
+    {
+      "id": 2,
+      "residentId": "resident-giuseppe",
+      "month": "Febrero 2026",
+      "amount": 350,
+      "dueDate": "2026-02-28",
+      "status": "Pagado"
+    },
+    {
+      "id": 3,
+      "residentId": "resident-giuseppe",
+      "month": "Marzo 2026",
+      "amount": 350,
+      "dueDate": "2026-03-31",
+      "status": "Pagado"
+    },
+    {
+      "id": 4,
+      "residentId": "resident-giuseppe",
+      "month": "Abril 2026",
+      "amount": 350,
+      "dueDate": "2026-04-30",
+      "status": "Pagado"
+    },
+    {
+      "id": 5,
+      "residentId": "resident-giuseppe",
+      "month": "Mayo 2026",
+      "amount": 350,
+      "dueDate": "2026-05-31",
+      "status": "Pendiente"
+    }
+  ],
+  "payments": [
+    {
+      "id": "MP-1001",
+      "residentId": "resident-giuseppe",
+      "feeId": 1,
+      "feeMonth": "Enero 2026",
+      "amount": 350,
+      "paidAt": "2026-01-28T14:22:00",
+      "method": "Mercado Pago",
+      "reference": "MP-1001"
+    },
+    {
+      "id": "MP-1002",
+      "residentId": "resident-giuseppe",
+      "feeId": 2,
+      "feeMonth": "Febrero 2026",
+      "amount": 350,
+      "paidAt": "2026-02-25T09:15:00",
+      "method": "Mercado Pago",
+      "reference": "MP-1002"
+    },
+    {
+      "id": "MP-1003",
+      "residentId": "resident-giuseppe",
+      "feeId": 3,
+      "feeMonth": "Marzo 2026",
+      "amount": 350,
+      "paidAt": "2026-03-29T16:40:00",
+      "method": "Mercado Pago",
+      "reference": "MP-1003"
+    },
+    {
+      "residentId": "resident-giuseppe",
+      "feeId": 4,
+      "feeMonth": "Abril 2026",
+      "amount": 350,
+      "paidAt": "2026-05-10T17:47:19.801Z",
+      "method": "Mercado Pago",
+      "reference": "MP-1778435239801",
+      "id": "E7ytthq"
+    }
+  ],
+  "kpi": {
+    "totalResidents": 48,
+    "occupiedUnits": 42,
+    "emptyUnits": 6,
+    "totalDebt": 12450
+  },
   "socialSpaces": [
     {
       "id": "space-1778188293343",
@@ -140,7 +240,7 @@
       "residentId": "resident-1778137645757",
       "residentName": "Sebastian Martin Beingolea Montalvo",
       "description": "Fuga de agua en el baño del piso 3",
-      "status": "in-progress",
+      "status": "open",
       "createdAt": "2026-05-09T15:00:00Z",
       "provider": ""
     },
@@ -174,7 +274,7 @@
       "residentName": "Sebastian Martin Beingolea Montalvo",
       "description": "Falla de luz",
       "status": "open",
-      "createdAt": "2026-05-09T20:29:54.153Z",
+      "createdAt": "2026-05-09T22:48:04.905Z",
       "provider": ""
     }
   ],

@@ -30,13 +30,16 @@ onMounted(async () => {
 async function loadIncidents() {
   try {
     loading.value = true
-    incidents.value = await incidentsApi.list() // ✅ todas las incidencias
+    const all = await incidentsApi.list()
+    // ✅ Solo incidencias del residente actual
+    incidents.value = all.filter(i => i.residentId === currentResident.id)
   } catch (err) {
     error.value = err
   } finally {
     loading.value = false
   }
 }
+
 
 function statusSeverity(status) {
   switch (status) {
@@ -48,20 +51,11 @@ function statusSeverity(status) {
 }
 
 function generateIncidentId() {
-  const maxId = incidents.value
-      .map(i => parseInt(i.id.replace('incident-', '')))
-      .reduce((a, b) => Math.max(a, b), 1000)
+  const allIds = incidents.value.map(i => parseInt(i.id.replace('incident-', '')))
+  const maxId = allIds.length > 0 ? Math.max(...allIds) : 1000
   return `incident-${maxId + 1}`
 }
 
-function openReportModal() {
-  newDescription.value = ''
-  isReportModalOpen.value = true
-}
-
-function closeReportModal() {
-  isReportModalOpen.value = false
-}
 
 async function reportIncident() {
   const text = newDescription.value?.trim()
@@ -84,6 +78,7 @@ async function reportIncident() {
     error.value = err
   }
 }
+
 </script>
 <template>
   <div class="app-view">
