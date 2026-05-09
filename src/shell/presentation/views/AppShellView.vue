@@ -63,12 +63,6 @@ const adminNavAdministrative = computed(() => [
     icon: 'pi pi-chart-line',
     routeName: AppRouteNames.APP_COLLECTIONS_MANAGEMENT_EXPENSES,
   },
-  {
-    key: 'team',
-    label: t('app.team'),
-    icon: 'pi pi-users',
-    routeName: AppRouteNames.APP_TEAM,
-  },
 ])
 
 const residentNavItems = computed(() => [

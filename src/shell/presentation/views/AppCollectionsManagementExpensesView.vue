@@ -7,6 +7,12 @@ import DataTable from 'primevue/datatable'
 import Dialog from 'primevue/dialog'
 import InputNumber from 'primevue/inputnumber'
 import InputText from 'primevue/inputtext'
+import {
+  fixedPayoutRecipientsApi,
+  addDaysYMD,
+  compareYMD,
+  formatLocalYYYYMMDD,
+} from '@/finances/infrastructure/fixedPayoutRecipientsApi.js'
 import { adminManagementExpensesApi } from '@/finances/infrastructure/adminManagementExpensesApi.js'
 import { useFinancesStore } from '@/finances/application/financesStore.js'
 
@@ -17,16 +23,34 @@ const expenses = ref([])
 const costsLoading = ref(false)
 const costsLoadError = ref('')
 
+const fixedRecipients = ref([])
+const fixedLoading = ref(false)
+const fixedLoadError = ref('')
+
 const modalOpen = ref(false)
 const saving = ref(false)
 const submitError = ref('')
 const processingPhoto = ref(false)
+
+const fixedModalOpen = ref(false)
+const fixedSaving = ref(false)
+const fixedSubmitError = ref('')
+const fixedProcessingPhoto = ref(false)
 
 const form = reactive({
   name: '',
   amount: null,
   purchaseDate: '',
   invoicePhotoUrl: '',
+})
+
+const fixedForm = reactive({
+  name: '',
+  dni: '',
+  phone: '',
+  salary: null,
+  intervalDays: 30,
+  photoUrl: '',
 })
 
 const MAX_IMAGE_DIMENSION = 1024
@@ -48,7 +72,44 @@ const totalCosts = computed(() =>
   expenses.value.reduce((sum, e) => sum + (Number(e.amount) || 0), 0),
 )
 
-const balanceAfterCosts = computed(() => grossCollected.value - totalCosts.value)
+const totalFixedPaid = computed(() =>
+  fixedRecipients.value.reduce((sum, r) => {
+    const hist = Array.isArray(r.paymentHistory) ? r.paymentHistory : []
+    return sum + hist.reduce((s, h) => s + (Number(h.amount) || 0), 0)
+  }, 0),
+)
+
+const balanceAfterAll = computed(
+  () => grossCollected.value - totalCosts.value - totalFixedPaid.value,
+)
+
+const fixedHistoryRows = computed(() => {
+  const rows = []
+  for (const r of fixedRecipients.value) {
+    for (const h of r.paymentHistory || []) {
+      rows.push({
+        rowKey: `${r.id}_${h.id}`,
+        paidOn: h.paidOn,
+        amount: Number(h.amount) || 0,
+        recipientName: r.name,
+      })
+    }
+  }
+  rows.sort((a, b) => compareYMD(String(b.paidOn), String(a.paidOn)))
+  return rows
+})
+
+const previewFirstFixedDue = computed(() => {
+  const n =
+    fixedForm.intervalDays === null ||
+    fixedForm.intervalDays === undefined ||
+    fixedForm.intervalDays === ''
+      ? Number.NaN
+      : Number(fixedForm.intervalDays)
+  if (!Number.isFinite(n)) return ''
+  const days = Math.max(1, Math.floor(n))
+  return addDaysYMD(formatLocalYYYYMMDD(), days)
+})
 
 const nfCurrency = computed(
   () => (value) =>
@@ -126,6 +187,19 @@ async function loadCosts() {
   }
 }
 
+async function loadFixedRecipients() {
+  fixedLoading.value = true
+  fixedLoadError.value = ''
+  try {
+    fixedRecipients.value = await fixedPayoutRecipientsApi.listWithDueApplied()
+  } catch {
+    fixedLoadError.value = t('fixedPay.loadError')
+    fixedRecipients.value = []
+  } finally {
+    fixedLoading.value = false
+  }
+}
+
 function resetForm() {
   form.name = ''
   form.amount = null
@@ -143,6 +217,25 @@ function closeModal() {
   modalOpen.value = false
 }
 
+function resetFixedForm() {
+  fixedForm.name = ''
+  fixedForm.dni = ''
+  fixedForm.phone = ''
+  fixedForm.salary = null
+  fixedForm.intervalDays = 30
+  fixedForm.photoUrl = ''
+  fixedSubmitError.value = ''
+}
+
+function openFixedModal() {
+  resetFixedForm()
+  fixedModalOpen.value = true
+}
+
+function closeFixedModal() {
+  fixedModalOpen.value = false
+}
+
 async function onInvoiceChange(event) {
   const input = event.target
   const file = input.files?.[0]
@@ -158,6 +251,24 @@ async function onInvoiceChange(event) {
     form.invoicePhotoUrl = ''
   } finally {
     processingPhoto.value = false
+  }
+}
+
+async function onFixedPhotoChange(event) {
+  const input = event.target
+  const file = input.files?.[0]
+  input.value = ''
+  if (!file) return
+
+  fixedProcessingPhoto.value = true
+  fixedSubmitError.value = ''
+  try {
+    fixedForm.photoUrl = await processImageFile(file)
+  } catch {
+    fixedSubmitError.value = t('fixedPay.photoInvalid')
+    fixedForm.photoUrl = ''
+  } finally {
+    fixedProcessingPhoto.value = false
   }
 }
 
@@ -196,9 +307,58 @@ async function submitCost() {
   }
 }
 
+async function submitFixedRecipient() {
+  if (fixedSaving.value) return
+  fixedSubmitError.value = ''
+
+  const salaryNum =
+    fixedForm.salary === null || fixedForm.salary === undefined || fixedForm.salary === ''
+      ? Number.NaN
+      : Number(fixedForm.salary)
+
+  const intervalRaw = Number(fixedForm.intervalDays)
+  const interval = Number.isFinite(intervalRaw) ? Math.floor(intervalRaw) : Number.NaN
+
+  if (
+    !fixedForm.name.trim() ||
+    !fixedForm.dni.trim() ||
+    !fixedForm.phone.trim() ||
+    !Number.isFinite(salaryNum) ||
+    salaryNum < 0 ||
+    !Number.isFinite(interval) ||
+    interval < 1
+  ) {
+    fixedSubmitError.value = t('fixedPay.requiredFields')
+    return
+  }
+
+  fixedSaving.value = true
+  try {
+    await fixedPayoutRecipientsApi.add({
+      name: fixedForm.name,
+      dni: fixedForm.dni,
+      phone: fixedForm.phone,
+      salary: salaryNum,
+      intervalDays: interval,
+      photoUrl: fixedForm.photoUrl,
+    })
+    closeFixedModal()
+    await loadFixedRecipients()
+  } catch (err) {
+    if (err?.code === 'FIXED_PAYOUT_FIELDS_REQUIRED') {
+      fixedSubmitError.value = t('fixedPay.requiredFields')
+    } else {
+      fixedSubmitError.value = t('fixedPay.saveError')
+    }
+  } finally {
+    fixedSaving.value = false
+  }
+}
+
 onMounted(() => {
   loadData()
   loadCosts()
+  loadFixedRecipients()
 })
 </script>
 
@@ -216,12 +376,12 @@ onMounted(() => {
         <h2 id="collections-balance-heading" class="collections-total__label">
           {{ t('collectionsMgmt.netAfterExpenses') }}
         </h2>
-        <p class="collections-total__amount">{{ nfCurrency(balanceAfterCosts) }}</p>
+        <p class="collections-total__amount">{{ nfCurrency(balanceAfterAll) }}</p>
         <p class="collections-total__breakdown">
           {{ t('collectionsMgmt.grossCollectedShort') }}:
           {{ nfCurrency(grossCollected) }}
-          ·
-          {{ t('collectionsMgmt.expensesTotalShort') }}: {{ nfCurrency(totalCosts) }}
+          · {{ t('collectionsMgmt.expensesTotalShort') }}: {{ nfCurrency(totalCosts) }}
+          · {{ t('collectionsMgmt.fixedPaidShort') }}: {{ nfCurrency(totalFixedPaid) }}
         </p>
         <p class="collections-total__hint">{{ t('collectionsMgmt.amountHint') }}</p>
       </section>
@@ -370,6 +530,192 @@ onMounted(() => {
 
         <p v-if="costsLoadError" class="app-view__error" role="alert">{{ costsLoadError }}</p>
       </section>
+
+      <section class="collections-fixed" aria-labelledby="collections-fixed-heading">
+        <div class="collections-costs__head collections-fixed__head">
+          <h2 id="collections-fixed-heading" class="collections-costs__title">
+            {{ t('fixedPay.sectionTitle') }}
+          </h2>
+          <Button
+            type="button"
+            outlined
+            :label="t('fixedPay.openButton')"
+            icon="pi pi-wallet"
+            severity="secondary"
+            @click="openFixedModal"
+          />
+        </div>
+
+        <Dialog
+          v-model:visible="fixedModalOpen"
+          modal
+          :header="t('fixedPay.modalTitle')"
+          class="collections-fixed-dialog"
+          :style="{ width: 'min(26rem, 92vw)' }"
+          :draggable="false"
+        >
+          <div class="collections-form">
+            <div class="collections-form__field">
+              <label for="fixed-pay-name">{{ t('fixedPay.nameLabel') }}</label>
+              <InputText
+                id="fixed-pay-name"
+                v-model="fixedForm.name"
+                class="collections-form__input"
+                autocomplete="name"
+                fluid
+              />
+            </div>
+            <div class="collections-form__field">
+              <label for="fixed-pay-dni">{{ t('fixedPay.dniLabel') }}</label>
+              <InputText id="fixed-pay-dni" v-model="fixedForm.dni" class="collections-form__input" fluid />
+            </div>
+            <div class="collections-form__field">
+              <label for="fixed-pay-phone">{{ t('fixedPay.phoneLabel') }}</label>
+              <InputText
+                id="fixed-pay-phone"
+                v-model="fixedForm.phone"
+                class="collections-form__input"
+                inputmode="tel"
+                autocomplete="tel"
+                fluid
+              />
+            </div>
+            <div class="collections-form__field">
+              <label for="fixed-pay-salary">{{ t('fixedPay.salaryLabel') }}</label>
+              <InputNumber
+                id="fixed-pay-salary"
+                v-model="fixedForm.salary"
+                class="collections-form__input-num w-full"
+                :min="0"
+                mode="decimal"
+                :maxFractionDigits="2"
+                fluid
+              />
+            </div>
+            <div class="collections-form__field">
+              <label for="fixed-pay-interval">{{ t('fixedPay.intervalDaysLabel') }}</label>
+              <InputNumber
+                id="fixed-pay-interval"
+                v-model="fixedForm.intervalDays"
+                class="collections-form__input-num w-full"
+                :min="1"
+                :max="365"
+                fluid
+              />
+              <p v-if="previewFirstFixedDue" class="collections-form__hint collections-form__hint--strong">
+                {{ t('fixedPay.firstDueHint', { date: nfDate(previewFirstFixedDue) }) }}
+              </p>
+            </div>
+            <div class="collections-form__field collections-form__field--photo">
+              <span class="collections-form__photo-label">{{ t('fixedPay.photoLabel') }}</span>
+              <p class="collections-form__hint">{{ t('fixedPay.photoHint') }}</p>
+              <label class="collections-form__file">
+                <input
+                  type="file"
+                  accept="image/jpeg,image/png,image/webp,.jpg,.jpeg,.png,.webp"
+                  class="collections-form__file-input"
+                  :disabled="fixedProcessingPhoto || fixedSaving"
+                  @change="onFixedPhotoChange"
+                />
+                <span class="collections-form__file-trigger">{{
+                  fixedProcessingPhoto
+                    ? t('fixedPay.processingPhoto')
+                    : t('fixedPay.photoChoose')
+                }}</span>
+              </label>
+              <div v-if="fixedForm.photoUrl" class="collections-form__preview-row">
+                <img
+                  :src="fixedForm.photoUrl"
+                  :alt="fixedForm.name.trim() ? fixedForm.name.trim() : t('fixedPay.photoLabel')"
+                  class="collections-form__preview"
+                  width="80"
+                  height="80"
+                />
+                <Button
+                  type="button"
+                  :label="t('fixedPay.removePhoto')"
+                  variant="text"
+                  text
+                  @click="fixedForm.photoUrl = ''"
+                />
+              </div>
+            </div>
+            <p v-if="fixedSubmitError" class="collections-form__error" role="alert">
+              {{ fixedSubmitError }}
+            </p>
+          </div>
+          <template #footer>
+            <Button
+              type="button"
+              outlined
+              :label="t('app.cancelAction')"
+              icon="pi pi-times"
+              @click="closeFixedModal"
+            />
+            <Button
+              type="button"
+              :label="t('fixedPay.save')"
+              icon="pi pi-check"
+              :loading="fixedSaving"
+              @click="submitFixedRecipient"
+            />
+          </template>
+        </Dialog>
+
+        <p v-if="fixedLoading && !fixedLoadError" class="collections-costs__loading">
+          {{ t('collectionsMgmt.loading') }}
+        </p>
+
+        <h3 class="collections-subheading">{{ t('fixedPay.recipientsHeading') }}</h3>
+        <DataTable :value="fixedRecipients" striped-rows class="collections-table">
+          <template #empty>
+            <p class="collections-table__empty">{{ t('fixedPay.emptyRecipients') }}</p>
+          </template>
+          <Column :header="t('fixedPay.tablePhoto')" class="collections-col-photo">
+            <template #body="{ data }">
+              <img
+                v-if="data.photoUrl"
+                :src="data.photoUrl"
+                :alt="data.name"
+                class="collections-thumb"
+                width="44"
+                height="44"
+              />
+              <span v-else class="collections-thumb-placeholder">—</span>
+            </template>
+          </Column>
+          <Column field="name" :header="t('collectionsMgmt.tableName')" />
+          <Column field="dni" :header="t('fixedPay.dniLabel')" />
+          <Column field="phone" :header="t('fixedPay.phoneLabel')" />
+          <Column :header="t('collectionsMgmt.tableAmount')">
+            <template #body="{ data }">
+              {{ nfCurrency(Number(data.salary) || 0) }}
+            </template>
+          </Column>
+          <Column :header="t('fixedPay.tableInterval')">
+            <template #body="{ data }">{{ Math.max(1, Math.floor(Number(data.intervalDays) || 0)) }}</template>
+          </Column>
+          <Column :header="t('fixedPay.tableNext')">
+            <template #body="{ data }">{{ nfDate(data.nextPaymentDate) }}</template>
+          </Column>
+        </DataTable>
+
+        <h3 class="collections-subheading collections-subheading--history">{{ t('fixedPay.historyHeading') }}</h3>
+        <DataTable :value="fixedHistoryRows" striped-rows class="collections-table collections-table--history">
+          <template #empty>
+            <p class="collections-table__empty">{{ t('fixedPay.emptyHistory') }}</p>
+          </template>
+          <Column field="paidOn" :header="t('collectionsMgmt.tableDate')">
+            <template #body="{ data }">{{ nfDate(data.paidOn) }}</template>
+          </Column>
+          <Column field="recipientName" :header="t('collectionsMgmt.tableName')" />
+          <Column :header="t('collectionsMgmt.tableAmount')">
+            <template #body="{ data }">{{ nfCurrency(data.amount) }}</template>
+          </Column>
+        </DataTable>
+
+        <p v-if="fixedLoadError" class="app-view__error" role="alert">{{ fixedLoadError }}</p>
+      </section>
     </template>
   </div>
 </template>
@@ -402,7 +748,7 @@ onMounted(() => {
 
 .collections-total {
   margin-top: 1.25rem;
-  max-width: 28rem;
+  max-width: 32rem;
   padding: 1.25rem 1.35rem;
   border-radius: 14px;
   border: 1px solid #e8e8ed;
@@ -429,7 +775,7 @@ onMounted(() => {
 .collections-total__breakdown {
   margin: 0.55rem 0 0;
   font-size: 0.8125rem;
-  line-height: 1.4;
+  line-height: 1.5;
   color: var(--apple-text-secondary, #6e6e73);
 }
 
@@ -440,8 +786,13 @@ onMounted(() => {
   color: var(--apple-text-secondary, #6e6e73);
 }
 
-.collections-costs {
+.collections-costs,
+.collections-fixed {
   margin-top: 2rem;
+}
+
+.collections-fixed__head {
+  margin-bottom: 1rem;
 }
 
 .collections-costs__head {
@@ -466,8 +817,27 @@ onMounted(() => {
   color: var(--apple-text-secondary, #6e6e73);
 }
 
+.collections-subheading {
+  margin: 1.35rem 0 0.5rem;
+  font-size: 0.9375rem;
+  font-weight: 600;
+  color: var(--apple-text, #1d1d1f);
+}
+
+.collections-subheading:first-of-type {
+  margin-top: 0.25rem;
+}
+
+.collections-subheading--history {
+  margin-top: 1.75rem;
+}
+
 .collections-table {
   margin-top: 0.25rem;
+}
+
+.collections-table--history {
+  margin-bottom: 0.5rem;
 }
 
 .collections-form {
@@ -493,6 +863,11 @@ onMounted(() => {
   margin: 0;
   font-size: 0.75rem;
   color: var(--apple-text-secondary, #6e6e73);
+}
+
+.collections-form__hint--strong {
+  font-weight: 600;
+  color: var(--apple-text, #1d1d1f);
 }
 
 .collections-form__input,
@@ -572,11 +947,13 @@ onMounted(() => {
   font-size: 0.875rem;
 }
 
-.collections-cost-dialog :deep(.p-dialog-footer) {
+.collections-cost-dialog :deep(.p-dialog-footer),
+.collections-fixed-dialog :deep(.p-dialog-footer) {
   gap: 0.5rem;
 }
 
-.collections-cost-dialog :deep(.p-inputnumber) {
+.collections-cost-dialog :deep(.p-inputnumber),
+.collections-fixed-dialog :deep(.p-inputnumber) {
   width: 100%;
 }
 </style>
