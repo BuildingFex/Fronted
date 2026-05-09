@@ -190,5 +190,39 @@
     "inviteCredentialsSubmit": "Acceder",
     "inviteLoading": "Cargando invitación…",
     "inviteNotFound": "Esta invitación ya no es válida o el residente no existe."
+  },
+  "financeAdmin": {
+    "title": "Residents Finances",
+    "generateReceipts": "Generate Monthly Receipts",
+    "simulateCron": "Simulate EOD Processing",
+    "tableResident": "Resident",
+    "tableFloor": "Floor",
+    "tableAdmission": "Admission Date",
+    "tableNextPayment": "Next Payment",
+    "tableCountdown": "Days Left",
+    "tableStatus": "Status",
+    "paymentHistory": "Section Payment History",
+    "calendarTitle": "Payment Calendar",
+    "statusPending": "Pending",
+    "statusPaid": "Paid",
+    "statusOverdue": "Overdue"
+  },
+  "supportResident": {
+    "title": "How can we help you?",
+    "searchPlaceholder": "Search",
+    "faqTitle": "Frequently asked questions",
+    "faqDescription": "Didn't find what you need? Submit a ticket and we'll reply there.",
+    "startChatBtn": "Start Asynchronous Chat",
+    "chatTitle": "Support Chat",
+    "chatGreeting": "Hello! How can we help you today?",
+    "chatSubmitting": "Opening ticket...",
+    "faq1Question": "What is BuildingFex?",
+    "faq1Answer": "A platform to run condominiums and residential buildings—common areas, collections, maintenance, and resident communications—with the same experience on this site and in the web app.",
+    "faq2Question": "How do I pick a subscription plan?",
+    "faq2Answer": "Choose based on how many apartments your building has. Amounts are in Peruvian soles (PEN) and billing is monthly. If you're unsure at a range boundary, contact us via Support.",
+    "faq3Question": "How do I contact the team?",
+    "faq3Answer": "Email hola@ejemplo.com or open a ticket from Support in your profile once you have access to the application.",
+    "faq4Question": "Is my data protected?",
+    "faq4Answer": "We follow solid security practices and clear terms. Legal details are in the terms of service linked in the footer."
   }
 }

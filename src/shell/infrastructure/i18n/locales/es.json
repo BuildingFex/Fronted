@@ -190,5 +190,39 @@
     "inviteCredentialsSubmit": "Acceder",
     "inviteLoading": "Cargando invitación…",
     "inviteNotFound": "Esta invitación ya no es válida o el residente no existe."
+  },
+  "financeAdmin": {
+    "title": "Finanzas de Residentes",
+    "generateReceipts": "Generar Recibos Mensuales",
+    "simulateCron": "Simular Cierre Diario",
+    "tableResident": "Residente",
+    "tableFloor": "Piso",
+    "tableAdmission": "Fecha Admisión",
+    "tableNextPayment": "Próximo Pago",
+    "tableCountdown": "Días Restantes",
+    "tableStatus": "Estado",
+    "paymentHistory": "Historial de Pagos por Sección",
+    "calendarTitle": "Calendario de Pagos",
+    "statusPending": "Pendiente",
+    "statusPaid": "Pagado",
+    "statusOverdue": "En Mora"
+  },
+  "supportResident": {
+    "title": "¿Cómo te podemos ayudar?",
+    "searchPlaceholder": "Buscar",
+    "faqTitle": "Preguntas frecuentes",
+    "faqDescription": "¿No encuentras lo que buscas? Envía un ticket para que te respondamos desde ahí.",
+    "startChatBtn": "Iniciar Chat Asíncrono",
+    "chatTitle": "Chat de Soporte",
+    "chatGreeting": "¡Hola! ¿En qué te podemos ayudar hoy?",
+    "chatSubmitting": "Abriendo ticket...",
+    "faq1Question": "¿Qué es BuildingFex?",
+    "faq1Answer": "Una plataforma para administrar condominios y edificios residenciales (áreas comunes, cobranzas, mantenimiento y comunicaciones de residentes) ofreciendo la misma experiencia en este sitio y en la aplicación web.",
+    "faq2Question": "¿Cómo elijo un plan de suscripción?",
+    "faq2Answer": "Elige según la cantidad de apartamentos que tenga tu edificio. Los montos están en soles (PEN) y la facturación es mensual. Si tienes dudas respecto a los rangos, contáctanos mediante Soporte.",
+    "faq3Question": "¿Cómo me pongo en contacto con el equipo?",
+    "faq3Answer": "Envía un correo a hola@ejemplo.com o abre un ticket de Soporte desde tu perfil una vez que tengas acceso a la aplicación.",
+    "faq4Question": "¿Están protegidos mis datos?",
+    "faq4Answer": "Seguimos prácticas de seguridad sólidas y términos claros. Los detalles legales se encuentran en las condiciones de servicio al final de la página."
   }
 }
