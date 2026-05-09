@@ -11,7 +11,7 @@ const route = useRoute()
 const router = useRouter()
 const { isResident, clearSession } = useSession()
 
-const adminNavItems = computed(() => [
+const adminNavPrimary = computed(() => [
   {
     key: 'dashboard',
     label: t('app.dashboard'),
@@ -45,14 +45,23 @@ const adminNavItems = computed(() => [
   {
     key: 'incidents',
     label: t('app.incidents'),
-    icon: 'pi pi-exclamation-circle',
+    icon: 'pi pi-flag',
     routeName: AppRouteNames.APP_INCIDENTS,
   },
   {
     key: 'information',
     label: t('app.information'),
-    icon: 'pi pi-info-circle',
+    icon: 'pi pi-book',
     routeName: AppRouteNames.APP_INFORMATION,
+  },
+])
+
+const adminNavAdministrative = computed(() => [
+  {
+    key: 'collectionsManagementExpenses',
+    label: t('app.collectionsManagementExpenses'),
+    icon: 'pi pi-chart-line',
+    routeName: AppRouteNames.APP_COLLECTIONS_MANAGEMENT_EXPENSES,
   },
 ])
 
@@ -84,7 +93,7 @@ const residentNavItems = computed(() => [
   {
     key: 'residentIncidents',
     label: t('resident.navIncidents'),
-    icon: 'pi pi-exclamation-circle',
+    icon: 'pi pi-flag',
     routeName: AppRouteNames.APP_RESIDENT_INCIDENTS,
   },
   {
@@ -95,13 +104,19 @@ const residentNavItems = computed(() => [
   },
 ])
 
-const appNavItems = computed(() =>
-  isResident.value ? residentNavItems.value : adminNavItems.value,
+const appNavPrimaryItems = computed(() =>
+  isResident.value ? residentNavItems.value : adminNavPrimary.value,
 )
-const activeAppNavIndex = computed(() =>
-  appNavItems.value.findIndex((item) => item.routeName === route.name),
+
+const appNavAdministrativeItems = computed(() =>
+  isResident.value ? [] : adminNavAdministrative.value,
 )
-const isAppNavPillVisible = computed(() => activeAppNavIndex.value >= 0)
+
+const activeAppNavPrimaryIndex = computed(() =>
+  appNavPrimaryItems.value.findIndex((item) => item.routeName === route.name),
+)
+
+const isAppNavPrimaryPillVisible = computed(() => activeAppNavPrimaryIndex.value >= 0)
 
 function onLogout() {
   clearSession()
@@ -160,23 +175,46 @@ function toggleAppLocale() {
       <div class="app-shell__divider" role="presentation" />
 
       <nav class="app-shell__nav" :aria-label="t('app.sidebarNav')">
-        <div class="app-shell__nav-track" :style="{ '--nav-pill-index': activeAppNavIndex }">
-          <span
-            class="app-shell__nav-pill"
-            :class="{ 'app-shell__nav-pill--hidden': !isAppNavPillVisible }"
-            aria-hidden="true"
-          />
-          <RouterLink
-            v-for="item in appNavItems"
-            :key="item.key"
-            class="app-shell__nav-link"
-            active-class="app-shell__nav-link--active"
-            exact-active-class="app-shell__nav-link--active"
-            :to="{ name: item.routeName }"
+        <div class="app-shell__nav-cluster">
+          <div
+            class="app-shell__nav-track"
+            :style="{ '--nav-pill-index': activeAppNavPrimaryIndex }"
           >
-            <i :class="[item.icon, 'app-shell__nav-link-icon']" aria-hidden="true" />
-            <span>{{ item.label }}</span>
-          </RouterLink>
+            <span
+              class="app-shell__nav-pill"
+              :class="{ 'app-shell__nav-pill--hidden': !isAppNavPrimaryPillVisible }"
+              aria-hidden="true"
+            />
+            <RouterLink
+              v-for="item in appNavPrimaryItems"
+              :key="item.key"
+              class="app-shell__nav-link"
+              active-class="app-shell__nav-link--active"
+              exact-active-class="app-shell__nav-link--active"
+              :to="{ name: item.routeName }"
+            >
+              <i :class="[item.icon, 'app-shell__nav-link-icon']" aria-hidden="true" />
+              <span>{{ item.label }}</span>
+            </RouterLink>
+          </div>
+
+          <template v-if="appNavAdministrativeItems.length">
+            <div class="app-shell__nav-split" role="presentation" />
+            <p class="app-shell__nav-group-label">{{ t('app.sidebarAdministrative') }}</p>
+            <div class="app-shell__nav-track app-shell__nav-track--simple">
+              <RouterLink
+                v-for="item in appNavAdministrativeItems"
+                :key="item.key"
+                class="app-shell__nav-link"
+                active-class="app-shell__nav-link--active"
+                exact-active-class="app-shell__nav-link--active"
+                :to="{ name: item.routeName }"
+              >
+                <i :class="[item.icon, 'app-shell__nav-link-icon']" aria-hidden="true" />
+                <span>{{ item.label }}</span>
+              </RouterLink>
+            </div>
+          </template>
         </div>
       </nav>
 
@@ -204,6 +242,7 @@ function toggleAppLocale() {
 
 <style scoped>
 .app-shell {
+  --shell-sidebar-width: 13rem;
   --shell-sidebar-bg: #ffffff;
   --shell-border: #e8e8ed;
   --shell-text: #1d1d1f;
@@ -213,7 +252,6 @@ function toggleAppLocale() {
   --shell-danger-text: #b42318;
   --shell-pill-radius: 980px;
 
-  display: flex;
   min-height: 100vh;
   min-height: 100dvh;
   font-family: var(--apple-font, -apple-system, system-ui, sans-serif);
@@ -221,17 +259,39 @@ function toggleAppLocale() {
   background: var(--apple-bg-secondary, #f5f5f7);
 }
 
+/* Escritorio: sidebar fijo a la vista (ancho/posición estables; el main scrollea solo) */
 .app-shell__sidebar {
+  position: fixed;
+  top: 0;
+  left: 0;
+  z-index: 50;
+  height: 100vh;
+  height: 100dvh;
+  width: var(--shell-sidebar-width);
+  min-width: var(--shell-sidebar-width);
+  max-width: var(--shell-sidebar-width);
+  box-sizing: border-box;
   display: flex;
   flex-direction: column;
-  width: 13rem;
-  flex-shrink: 0;
+  overflow-x: hidden;
+  overflow-y: auto;
+  overscroll-behavior: contain;
+  -webkit-overflow-scrolling: touch;
   background: var(--shell-sidebar-bg);
   border-right: 1px solid var(--shell-border);
   padding: 1rem 0.55rem 1rem;
-  box-sizing: border-box;
   align-items: center;
   text-align: center;
+}
+
+.app-shell__main {
+  margin-left: var(--shell-sidebar-width);
+  min-height: 100vh;
+  min-height: 100dvh;
+  min-width: 0;
+  max-width: 100%;
+  overflow-x: auto;
+  background: var(--apple-bg, #ffffff);
 }
 
 .app-shell__top {
@@ -472,6 +532,37 @@ function toggleAppLocale() {
   justify-content: center;
 }
 
+.app-shell__nav-cluster {
+  display: flex;
+  flex-direction: column;
+  align-items: center;
+  gap: 0.5rem;
+  width: 100%;
+}
+
+.app-shell__nav-split {
+  height: 1px;
+  background: var(--shell-border);
+  width: 100%;
+  max-width: 11.25rem;
+  margin: 0.15rem 0 0;
+  flex-shrink: 0;
+}
+
+.app-shell__nav-group-label {
+  margin: 0;
+  align-self: stretch;
+  max-width: 11.25rem;
+  padding: 0 0.35rem;
+  box-sizing: border-box;
+  font-size: 0.5625rem;
+  font-weight: 700;
+  letter-spacing: 0.07em;
+  text-transform: uppercase;
+  color: var(--shell-muted);
+  text-align: left;
+}
+
 .app-shell__nav-track {
   --nav-p: 0.21rem;
   --nav-gap: 0.21rem;
@@ -598,13 +689,6 @@ function toggleAppLocale() {
   border-radius: 12px;
 }
 
-.app-shell__main {
-  flex: 1;
-  min-width: 0;
-  min-height: inherit;
-  background: var(--apple-bg, #ffffff);
-}
-
 @media (prefers-reduced-motion: reduce) {
   .app-shell__segment-pill,
   .app-shell__nav-pill {
@@ -615,17 +699,36 @@ function toggleAppLocale() {
 
 @media (max-width: 720px) {
   .app-shell {
+    display: flex;
     flex-direction: column;
   }
 
   .app-shell__sidebar {
+    position: relative;
+    top: auto;
+    left: auto;
+    z-index: auto;
     width: 100%;
+    min-width: 0;
+    max-width: none;
+    height: auto;
+    min-height: 0;
+    flex: 0 0 auto;
+    overflow-x: visible;
+    overflow-y: visible;
     border-right: none;
     border-bottom: 1px solid var(--shell-border);
-    max-height: none;
+  }
+
+  .app-shell__main {
+    margin-left: 0;
+    flex: 1;
+    min-width: 0;
+    min-height: 0;
   }
 
   .app-shell__divider,
+  .app-shell__nav-cluster,
   .app-shell__nav-track,
   .app-shell__footer {
     max-width: min(16rem, 100%);

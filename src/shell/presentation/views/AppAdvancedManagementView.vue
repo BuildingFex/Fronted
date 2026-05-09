@@ -4,8 +4,10 @@ import { useI18n } from 'vue-i18n'
 import { residentsApi } from '@/residents/infrastructure/residentsApi.js'
 import { spacesApi } from '@/socialSpaces/infrastructure/spacesApi.js'
 import { reservationsApi } from '@/socialSpaces/infrastructure/reservationsApi.js'
+import { useFinancesStore } from '@/finances/application/financesStore.js'
 
 const { t } = useI18n()
+const financesStore = useFinancesStore()
 
 const residents = ref([])
 const accessLinks = reactive({})
@@ -99,6 +101,7 @@ async function onAddResidentSubmit() {
   modalError.value = ''
   try {
     const newResident = await residentsApi.add({ name, floor, code })
+    await financesStore.generateInitialReceipt(newResident)
     residents.value = [newResident, ...residents.value]
     isAddResidentModalOpen.value = false
   } catch (error) {
@@ -234,6 +237,7 @@ async function onBulkResidentsSubmit() {
 
     try {
       const newResident = await residentsApi.add(parsed)
+      await financesStore.generateInitialReceipt(newResident)
       created.push(newResident)
       results.push({
         line: i + 1,

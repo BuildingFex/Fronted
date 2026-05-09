@@ -6,7 +6,8 @@ import DataTable from 'primevue/datatable'
 import Column from 'primevue/column'
 import Tag from 'primevue/tag'
 import Button from 'primevue/button'
-import InputText from 'primevue/inputtext'
+import Textarea from 'primevue/textarea'
+import Dialog from 'primevue/dialog'
 
 const { t } = useI18n()
 
@@ -14,6 +15,7 @@ const incidents = ref([])
 const loading = ref(false)
 const error = ref(null)
 const newDescription = ref('')
+const isReportModalOpen = ref(false)
 
 // Simulación: residente actual (en tu proyecto vendrá de auth)
 const currentResident = {
@@ -56,12 +58,13 @@ function generateIncidentId() {
 
 
 async function reportIncident() {
-  if (!newDescription.value) return
+  const text = newDescription.value?.trim()
+  if (!text) return
   const incident = {
     id: generateIncidentId(),
     residentId: currentResident.id,
     residentName: currentResident.name,
-    description: newDescription.value,
+    description: text,
     status: 'open',
     createdAt: new Date().toISOString(),
     provider: ''
@@ -69,6 +72,7 @@ async function reportIncident() {
   try {
     await incidentsApi.add(incident)
     newDescription.value = ''
+    isReportModalOpen.value = false
     await loadIncidents()
   } catch (err) {
     error.value = err
@@ -79,23 +83,53 @@ async function reportIncident() {
 <template>
   <div class="app-view">
     <h1 class="app-view__title">{{ t('app.incidentsTitle') }}</h1>
-    <p>{{ t('app.incidentsSubtitle', { name: currentResident.name }) }}</p>
+    <p class="app-view__subtitle">
+      {{ t('app.incidentsSubtitle', { name: currentResident.name }) }}
+    </p>
 
-    <!-- Formulario -->
-    <div class="incident-form">
-      <label for="description">{{ t('app.incidentDescription') }}</label>
-      <InputText
-          id="description"
-          v-model="newDescription"
-          :placeholder="t('app.residentIncidentsDescriptionPlaceholder')"
-      />
+    <div class="resident-incidents__toolbar">
       <Button
-          :label="t('app.residentIncidentsSubmit')"
-          icon="pi pi-plus"
-          class="p-button-success"
-          @click="reportIncident"
+        :label="t('app.residentIncidentsSubmit')"
+        icon="pi pi-plus"
+        class="p-button-success resident-incidents__open-btn"
+        @click="openReportModal"
       />
     </div>
+
+    <Dialog
+      v-model:visible="isReportModalOpen"
+      modal
+      :header="t('app.residentIncidentsFormTitle')"
+      :style="{ width: 'min(32rem, 92vw)' }"
+      class="resident-incidents-dialog"
+      :draggable="false"
+    >
+      <div class="resident-incidents-dialog__field">
+        <label for="resident-incident-description">{{ t('app.incidentDescription') }}</label>
+        <Textarea
+          id="resident-incident-description"
+          v-model="newDescription"
+          :placeholder="t('app.residentIncidentsDescriptionPlaceholder')"
+          class="resident-incidents-dialog__textarea"
+          rows="5"
+          auto-resize
+        />
+      </div>
+      <template #footer>
+        <Button
+          :label="t('app.cancelAction')"
+          icon="pi pi-times"
+          class="p-button-text"
+          @click="closeReportModal"
+        />
+        <Button
+          :label="t('app.residentIncidentsSubmit')"
+          icon="pi pi-send"
+          class="p-button-success"
+          @click="reportIncident"
+        />
+      </template>
+    </Dialog>
 
     <!-- Lista -->
     <DataTable :value="incidents" :loading="loading" responsiveLayout="scroll" class="p-datatable-sm">
@@ -133,14 +167,33 @@ async function reportIncident() {
 }
 
 .app-view__subtitle {
-  margin: 0.35rem 0 0;
+  margin: 0.35rem 0 1rem;
   color: var(--apple-text-secondary, #6e6e73);
 }
-.incident-form {
-  margin-bottom: 1.5rem;
+
+.resident-incidents__toolbar {
+  margin-bottom: 1.25rem;
+}
+
+.resident-incidents-dialog__field {
   display: flex;
-  gap: 1rem;
-  align-items: center;
+  flex-direction: column;
+  gap: 0.5rem;
+}
+
+.resident-incidents-dialog__field label {
+  font-weight: 600;
+  font-size: 0.875rem;
+  color: var(--apple-text, #1d1d1f);
+}
+
+.resident-incidents-dialog__textarea {
+  width: 100%;
+  min-height: 8rem;
+}
+
+.resident-incidents-dialog :deep(.p-dialog-content) {
+  padding-top: 0.5rem;
 }
 .error {
   color: #b42318;
