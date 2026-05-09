@@ -71,6 +71,8 @@
       "password": "",
       "role": "resident",
       "admissionDate": "2026-05-09"
+    },
+    {
       "id": "admin-1778357825373",
       "name": "Sebastian",
       "email": "admin@gmail.com",
@@ -130,7 +132,7 @@
   "financeSettings": {
     "baseMonthlyExpense": 150,
     "lateFeeRate": 0.05
-  }
+  },
   "incidents": [
     {
       "id": "incident-1001",
