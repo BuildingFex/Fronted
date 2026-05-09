@@ -39,6 +39,7 @@ export const residentsApi = {
       throw apiError('RESIDENT_CODE_ALREADY_EXISTS')
     }
 
+    const todayStr = new Date().toLocaleDateString('en-CA'); // Gets YYYY-MM-DD local format
     const newResident = {
       id: `resident-${Date.now()}`,
       name: cleanName,
@@ -47,6 +48,7 @@ export const residentsApi = {
       email: '',
       password: '',
       role: 'resident',
+      admissionDate: todayStr
     }
 
     const { data: created } = await apiClient.post('/users', newResident)

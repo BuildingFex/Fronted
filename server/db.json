@@ -19,7 +19,7 @@
       "email": "smbmontalvo@gmail.com",
       "password": "12Sebastian12",
       "role": "resident",
-      "admissionDate": "2025-07-23"
+      "admissionDate": "2026-04-23"
     },
     {
       "id": "resident-1778188760782",
@@ -29,7 +29,7 @@
       "email": "u20221733853@upc.edu.pe",
       "password": "12Sebastian12",
       "role": "resident",
-      "admissionDate": "2024-05-04"
+      "admissionDate": "2026-04-09"
     },
     {
       "id": "resident-1778207900950",
@@ -39,7 +39,7 @@
       "email": "alberto@upc.edu.pe",
       "password": "RDPbGhMQ99CSy-_",
       "role": "resident",
-      "admissionDate": "2024-10-06"
+      "admissionDate": "2026-04-14"
     },
     {
       "id": "admin-1778208183253",
@@ -61,6 +61,16 @@
       "password": "",
       "role": "resident",
       "admissionDate": "2026-05-06"
+    },
+    {
+      "id": "resident-1778347893731",
+      "name": "Pedro",
+      "floor": "2",
+      "code": "555",
+      "email": "",
+      "password": "",
+      "role": "resident",
+      "admissionDate": "2026-05-09"
     }
   ],
   "socialSpaces": [
@@ -98,53 +108,7 @@
       "endTime": "11:00"
     }
   ],
-  "receipts": [
-    {
-      "residentId": "resident-1778137645757",
-      "issueDate": "2026-05-09",
-      "dueDate": "2026-05-22",
-      "amount": 150,
-      "status": "Pending",
-      "lateFee": 7.5,
-      "id": 1
-    },
-    {
-      "residentId": "resident-1778188760782",
-      "issueDate": "2026-05-09",
-      "dueDate": "2026-05-09",
-      "amount": 150,
-      "status": "Overdue",
-      "lateFee": 7.5,
-      "id": 2
-    },
-    {
-      "residentId": "resident-1778207900950",
-      "issueDate": "2026-05-09",
-      "dueDate": "2026-05-05",
-      "amount": 150,
-      "status": "Overdue",
-      "lateFee": 7.5,
-      "id": 3
-    },
-    {
-      "residentId": "resident-1778307819154",
-      "issueDate": "2026-05-09",
-      "dueDate": "2026-05-10",
-      "amount": 150,
-      "status": "Paid",
-      "lateFee": 7.5,
-      "id": 4
-    },
-    {
-      "residentId": "resident-1778307819154",
-      "issueDate": "2026-05-09",
-      "dueDate": "2026-06-09",
-      "amount": 150,
-      "status": "Pending",
-      "lateFee": 0,
-      "id": 5
-    }
-  ],
+  "receipts": [],
   "financeSettings": {
     "baseMonthlyExpense": 150,
     "lateFeeRate": 0.05
