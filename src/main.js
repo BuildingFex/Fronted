@@ -1,6 +1,7 @@
 import { createApp, watch } from 'vue'
 import PrimeVue from 'primevue/config'
 import Aura from '@primevue/themes/aura'
+import ToastService from 'primevue/toastservice'
 import App from '@/shell/presentation/App.vue'
 import i18n from '@/shell/infrastructure/i18n'
 import router from '@/shell/presentation/router'
@@ -17,6 +18,7 @@ app.use(PrimeVue, {
     preset: Aura,
   },
 })
+app.use(ToastService)
 
 app.mount('#app')
 

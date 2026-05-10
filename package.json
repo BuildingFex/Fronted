@@ -11,8 +11,10 @@
     "dev:all": "npm-run-all --parallel server dev"
   },
   "dependencies": {
+    "@mercadopago/sdk-js": "^0.0.3",
     "@primevue/themes": "^4.2.5",
     "axios": "^1.16.0",
+    "chart.js": "^4.5.1",
     "primeicons": "^7.0.0",
     "primevue": "^4.2.5",
     "vue": "^3.5.13",
