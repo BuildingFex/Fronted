@@ -1,15 +1,14 @@
 <script setup>
-import { ref, onMounted } from 'vue'
+import { computed, ref, onMounted } from 'vue'
 import { useI18n } from 'vue-i18n'
 import DataTable from 'primevue/datatable'
 import Column from 'primevue/column'
 import Tag from 'primevue/tag'
 import Chart from 'primevue/chart'
-import Card from 'primevue/card'
 import { financesApi } from '@/finances/infrastructure/financesApi.js'
 import { incidentsApi } from '@/incidents/infrastructure/incidentsApi.js'
 
-const { t } = useI18n()
+const { t, locale } = useI18n()
 
 const kpi = ref({
   totalResidents: 0,
@@ -21,14 +20,23 @@ const kpi = ref({
 const recentIncidents = ref([])
 const isLoading = ref(true)
 
+const nfPen = computed(
+  () => (value) =>
+    new Intl.NumberFormat(locale.value === 'es' ? 'es-PE' : 'en-US', {
+      style: 'currency',
+      currency: 'PEN',
+      minimumFractionDigits: 2,
+      maximumFractionDigits: 2,
+    }).format(Number.isFinite(Number(value)) ? Number(value) : 0),
+)
+
 onMounted(async () => {
   try {
     const [kpiData, incidentsData] = await Promise.all([
       financesApi.getDashboardKpis(),
-      incidentsApi.list()
+      incidentsApi.list(),
     ])
-    
-    // Si la API devuelve arreglo o objeto
+
     if (kpiData && (Array.isArray(kpiData) ? kpiData[0] : kpiData)) {
       const data = Array.isArray(kpiData) ? kpiData[0] : kpiData
       kpi.value = {
@@ -38,9 +46,9 @@ onMounted(async () => {
         totalDebt: data.totalDebt || 0,
       }
     }
-    
+
     if (Array.isArray(incidentsData)) {
-      recentIncidents.value = incidentsData.slice(0, 5) // Last 5
+      recentIncidents.value = incidentsData.slice(0, 5)
     }
   } catch (error) {
     console.error('Error loading dashboard data:', error)
@@ -51,29 +59,47 @@ onMounted(async () => {
 
 function incidentSeverity(status) {
   switch (status) {
-    case 'open': return 'danger'
-    case 'in-progress': return 'warn'
-    case 'resolved': return 'success'
-    default: return 'info'
+    case 'open':
+      return 'danger'
+    case 'in-progress':
+      return 'warning'
+    case 'resolved':
+      return 'success'
+    default:
+      return 'info'
   }
 }
 
 function incidentStatusLabel(status) {
   switch (status) {
-    case 'open': return t('incidentStatusOpen')
-    case 'in-progress': return t('incidentStatusInProgress')
-    case 'resolved': return t('incidentStatusResolved')
-    default: return status
+    case 'open':
+      return t('incidentStatusOpen')
+    case 'in-progress':
+      return t('incidentStatusInProgress')
+    case 'resolved':
+      return t('incidentStatusResolved')
+    default:
+      return String(status ?? '—')
   }
 }
 
+const nfDate = computed(
+  () => (iso) => {
+    const s = String(iso ?? '').trim()
+    if (!s) return ''
+    const d = new Date(s)
+    if (!Number.isFinite(d.getTime())) return s
+    const loc = locale.value === 'es' ? 'es-PE' : 'en-US'
+    return new Intl.DateTimeFormat(loc, { dateStyle: 'medium' }).format(d)
+  },
+)
 
 const chartData = ref({
   labels: ['Dic', 'Ene', 'Feb', 'Mar', 'Abr', 'May'],
   datasets: [
     {
       label: t('dashboard.income'),
-      backgroundColor: 'rgba(52, 199, 89, 0.72)',
+      backgroundColor: 'rgba(52, 199, 89, 0.45)',
       borderColor: '#34c759',
       borderWidth: 1,
       borderRadius: 6,
@@ -81,7 +107,7 @@ const chartData = ref({
     },
     {
       label: t('dashboard.expenses'),
-      backgroundColor: 'rgba(255, 59, 48, 0.62)',
+      backgroundColor: 'rgba(255, 59, 48, 0.4)',
       borderColor: '#ff3b30',
       borderWidth: 1,
       borderRadius: 6,
@@ -100,8 +126,9 @@ const chartOptions = ref({
       labels: {
         usePointStyle: true,
         pointStyle: 'circle',
-        padding: 20,
-        font: { size: 12, weight: '500' },
+        padding: 16,
+        font: { size: 11, weight: '500' },
+        color: '#6e6e73',
       },
     },
   },
@@ -112,7 +139,7 @@ const chartOptions = ref({
     },
     y: {
       beginAtZero: true,
-      grid: { color: 'rgba(0,0,0,0.04)' },
+      grid: { color: 'rgba(0,0,0,0.05)' },
       ticks: {
         font: { size: 11 },
         color: '#86868b',
@@ -124,172 +151,301 @@ const chartOptions = ref({
 </script>
 
 <template>
-  <div class="view-container">
-    <div class="view-header">
-      <h1 class="text-2xl font-bold m-0">{{ t('dashboard.title') }}</h1>
-      <p class="text-color-secondary mt-2 mb-4">{{ t('dashboard.subtitle') }}</p>
-    </div>
+  <div class="app-view">
+    <h1 class="app-view__title">{{ t('dashboard.title') }}</h1>
+    <p class="app-view__subtitle">{{ t('dashboard.subtitle') }}</p>
 
-    <!-- KPI Cards -->
-    <div class="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-4 gap-4 mb-4 kpi-grid">
-      <!-- Occupancy card -->
-      <Card class="kpi-card">
-        <template #content>
-          <div class="flex align-items-center gap-3">
-            <div class="kpi-icon text-blue-500 bg-blue-100">
-              <i class="pi pi-users text-xl" aria-hidden="true"></i>
-            </div>
-            <div>
-              <span class="text-color-secondary text-sm font-medium block">{{ t('dashboard.totalResidents') }}</span>
-              <strong class="text-2xl">{{ isLoading ? '...' : kpi.totalResidents }}</strong>
-            </div>
+    <div class="finance-page">
+      <section class="finance-panel" aria-labelledby="dashboard-kpi-heading">
+        <h2 id="dashboard-kpi-heading" class="finance-panel__section-title">
+          {{ t('dashboard.financialOverview') }}
+        </h2>
+        <div class="dashboard-kpi-grid">
+          <div class="dashboard-kpi">
+            <span class="dashboard-kpi__label">{{ t('dashboard.totalResidents') }}</span>
+            <strong class="dashboard-kpi__value">{{ isLoading ? '…' : kpi.totalResidents }}</strong>
           </div>
-        </template>
-      </Card>
-
-      <Card class="kpi-card">
-        <template #content>
-          <div class="flex align-items-center gap-3">
-            <div class="kpi-icon text-green-600 bg-green-100">
-              <i class="pi pi-check-circle text-xl" aria-hidden="true"></i>
-            </div>
-            <div>
-              <span class="text-color-secondary text-sm font-medium block">{{ t('dashboard.occupiedUnits') }}</span>
-              <strong class="text-2xl">{{ isLoading ? '...' : kpi.occupiedUnits }}</strong>
-            </div>
+          <div class="dashboard-kpi">
+            <span class="dashboard-kpi__label">{{ t('dashboard.occupiedUnits') }}</span>
+            <strong class="dashboard-kpi__value">{{ isLoading ? '…' : kpi.occupiedUnits }}</strong>
           </div>
-        </template>
-      </Card>
-
-      <Card class="kpi-card">
-        <template #content>
-          <div class="flex align-items-center gap-3">
-            <div class="kpi-icon text-orange-500 bg-orange-100">
-              <i class="pi pi-building text-xl" aria-hidden="true"></i>
-            </div>
-            <div>
-              <span class="text-color-secondary text-sm font-medium block">{{ t('dashboard.emptyUnits') }}</span>
-              <strong class="text-2xl">{{ isLoading ? '...' : kpi.emptyUnits }}</strong>
-            </div>
+          <div class="dashboard-kpi">
+            <span class="dashboard-kpi__label">{{ t('dashboard.emptyUnits') }}</span>
+            <strong class="dashboard-kpi__value">{{ isLoading ? '…' : kpi.emptyUnits }}</strong>
           </div>
-        </template>
-      </Card>
-
-      <!-- Critical delinquency -->
-      <Card class="kpi-card border-red-200" style="background-color: rgba(255, 59, 48, 0.02)">
-        <template #content>
-          <div class="flex align-items-center gap-3">
-            <div class="kpi-icon text-red-500 bg-red-100">
-              <i class="pi pi-exclamation-triangle text-xl" aria-hidden="true"></i>
-            </div>
-            <div>
-              <span class="text-color-secondary text-sm font-medium block">{{ t('dashboard.criticalDelinquency') }}</span>
-              <strong class="text-2xl text-red-500">
-                S/ {{ isLoading ? '...' : kpi.totalDebt.toLocaleString('es-PE', { minimumFractionDigits: 2 }) }}
-              </strong>
-            </div>
+          <div class="dashboard-kpi dashboard-kpi--debt">
+            <span class="dashboard-kpi__label">{{ t('dashboard.criticalDelinquency') }}</span>
+            <strong class="dashboard-kpi__value dashboard-kpi__value--debt">{{
+              isLoading ? '…' : nfPen(kpi.totalDebt)
+            }}</strong>
           </div>
-        </template>
-      </Card>
-    </div>
+        </div>
+      </section>
 
-    <!-- Main row: incidents table + chart -->
-    <div class="grid grid-cols-1 lg:grid-cols-12 gap-4">
-      <!-- Recent Incidents Table -->
-      <div class="lg:col-span-7 col-span-12 w-full">
-        <Card class="h-full">
-          <template #title>
-            <div class="flex align-items-center gap-2 text-lg">
-              <i class="pi pi-flag text-color-secondary" aria-hidden="true"></i>
-              {{ t('dashboard.recentIncidents') }}
-            </div>
-          </template>
-          <template #content>
-            <DataTable
-              :value="recentIncidents"
-              responsiveLayout="scroll"
-              :loading="isLoading"
-              class="p-datatable-sm"
-            >
-              <Column field="description" :header="t('app.incidentDescription')" />
-              <Column field="residentName" :header="t('app.incidentResidentName')" />
-              <Column :header="t('app.incidentDate')">
-                <template #body="{ data }">
-                  {{ data.createdAt ? new Date(data.createdAt).toLocaleDateString() : '' }}
-                </template>
-              </Column>
-              <Column :header="t('dashboard.incidentStatus')">
-                <template #body="{ data }">
-                  <Tag
-                    :value="incidentStatusLabel(data.status)"
-                    :severity="incidentSeverity(data.status)"
-                    rounded
-                  />
-                </template>
-              </Column>
-            </DataTable>
-          </template>
-        </Card>
-      </div>
+      <div class="finance-main-row">
+        <section
+          class="finance-panel finance-panel--table table-panel"
+          aria-labelledby="dashboard-incidents-heading"
+        >
+          <h2 id="dashboard-incidents-heading" class="finance-panel__section-title">
+            {{ t('dashboard.recentIncidents') }}
+          </h2>
+          <DataTable
+            :value="recentIncidents"
+            responsiveLayout="scroll"
+            :loading="isLoading"
+            class="finance-data finance-table"
+          >
+            <Column field="description" :header="t('app.incidentDescription')" />
+            <Column field="residentName" :header="t('app.incidentResidentName')" />
+            <Column :header="t('app.incidentDate')">
+              <template #body="{ data }">
+                <span class="finance-date-cell">{{ nfDate(data.createdAt) }}</span>
+              </template>
+            </Column>
+            <Column :header="t('dashboard.incidentStatus')">
+              <template #body="{ data }">
+                <Tag
+                  class="dashboard-status-tag"
+                  :value="incidentStatusLabel(data.status)"
+                  :severity="incidentSeverity(data.status)"
+                  rounded
+                />
+              </template>
+            </Column>
+          </DataTable>
+        </section>
 
-      <!-- Bar Chart -->
-      <div class="lg:col-span-5 col-span-12 w-full">
-        <Card class="h-full">
-          <template #title>
-            <div class="flex align-items-center gap-2 text-lg">
-              <i class="pi pi-chart-bar text-color-secondary" aria-hidden="true"></i>
-              {{ t('dashboard.financialOverview') }}
-            </div>
-          </template>
-          <template #content>
-            <div style="height: 300px; position: relative;">
-              <Chart type="bar" :data="chartData" :options="chartOptions" style="height: 100%;" />
-            </div>
-          </template>
-        </Card>
+        <section
+          class="finance-panel finance-panel--calendar chart-panel"
+          aria-labelledby="dashboard-chart-heading"
+        >
+          <h2 id="dashboard-chart-heading" class="finance-panel__calendar-title">
+            {{ t('dashboard.income') }} / {{ t('dashboard.expenses') }}
+          </h2>
+          <div class="dashboard-chart-wrap">
+            <Chart type="bar" :data="chartData" :options="chartOptions" class="dashboard-chart" />
+          </div>
+        </section>
       </div>
     </div>
   </div>
 </template>
 
 <style scoped>
-.view-container {
-  padding: 1.5rem;
-  max-width: 1200px;
-  margin: 0 auto;
+.app-view {
+  padding: 1.75rem 1.5rem 2.5rem;
+  max-width: 72rem;
 }
 
-.kpi-grid {
-  display: grid;
-  grid-template-columns: repeat(auto-fit, minmax(240px, 1fr));
-  gap: 1rem;
+.app-view__title {
+  margin: 0;
+  font-size: 1.75rem;
+  font-weight: 600;
+  letter-spacing: -0.035em;
+  line-height: 1.15;
+  color: var(--apple-text, #1d1d1f);
 }
 
-.kpi-icon {
-  width: 48px;
-  height: 48px;
-  border-radius: 12px;
+.app-view__subtitle {
+  margin: 0.5rem 0 0;
+  max-width: 36rem;
+  font-size: 0.875rem;
+  font-weight: 400;
+  line-height: 1.45;
+  letter-spacing: -0.015em;
+  color: var(--apple-text-secondary, #6e6e73);
+}
+
+.finance-page {
+  margin-top: 1.5rem;
   display: flex;
-  align-items: center;
-  justify-content: center;
-  flex-shrink: 0;
+  flex-direction: column;
+  gap: 1.25rem;
 }
 
-/* Ensure grid classes map to standard flex / grid properties if PrimeFlex handles it or we use raw CSS */
-.grid-cols-1 { grid-template-columns: repeat(1, minmax(0, 1fr)); }
-.lg\:grid-cols-4 { @media (min-width: 1024px) { grid-template-columns: repeat(4, minmax(0, 1fr)); } }
-.lg\:grid-cols-12 { @media (min-width: 1024px) { grid-template-columns: repeat(12, minmax(0, 1fr)); } }
-.lg\:col-span-7 { @media (min-width: 1024px) { grid-column: span 7 / span 7; } }
-.lg\:col-span-5 { @media (min-width: 1024px) { grid-column: span 5 / span 5; } }
-.col-span-12 { grid-column: span 12 / span 12; }
-.w-full { width: 100%; }
-.h-full { height: 100%; }
-
-:deep(.p-card-body) {
-  padding: 1.25rem;
+.finance-panel {
+  padding: 1.2rem 1.25rem 1.35rem;
+  border-radius: 16px;
+  background: #fff;
+  border: 1px solid rgba(0, 0, 0, 0.06);
+  box-shadow: 0 1px 3px rgba(0, 0, 0, 0.03);
 }
 
-:deep(.p-card-content) {
+.finance-panel__section-title {
+  margin: 0 0 0.85rem;
+  font-size: 1.0625rem;
+  font-weight: 600;
+  letter-spacing: -0.02em;
+  line-height: 1.25;
+  color: var(--apple-text, #1d1d1f);
+}
+
+.finance-panel__calendar-title {
+  margin: 0 0 1rem;
+  font-size: 1.0625rem;
+  font-weight: 600;
+  letter-spacing: -0.02em;
+  line-height: 1.3;
+  color: var(--apple-text, #1d1d1f);
+}
+
+.finance-panel--calendar {
+  background: #fafafa;
+}
+
+.finance-panel--table {
+  padding: 1.2rem 1.25rem 1.35rem;
+  overflow: hidden;
+}
+
+.dashboard-kpi-grid {
+  display: grid;
+  grid-template-columns: repeat(auto-fill, minmax(10.5rem, 1fr));
+  gap: 0.75rem;
+}
+
+.dashboard-kpi {
+  padding: 0.95rem 1.05rem;
+  border-radius: 12px;
+  background: #fafafa;
+  border: 1px solid rgba(0, 0, 0, 0.06);
+}
+
+.dashboard-kpi--debt {
+  background: #fff5f5;
+  border-color: rgba(255, 59, 48, 0.18);
+}
+
+.dashboard-kpi__label {
+  display: block;
+  font-size: 0.6875rem;
+  font-weight: 600;
+  letter-spacing: 0.055em;
+  text-transform: uppercase;
+  color: #86868b;
+}
+
+.dashboard-kpi__value {
+  display: block;
+  margin-top: 0.35rem;
+  font-size: 1.375rem;
+  font-weight: 600;
+  letter-spacing: -0.03em;
+  font-variant-numeric: tabular-nums;
+  color: var(--apple-text, #1d1d1f);
+}
+
+.dashboard-kpi__value--debt {
+  color: #d70015;
+}
+
+.finance-main-row {
+  display: flex;
+  flex-direction: row;
+  align-items: stretch;
+  gap: 1.25rem;
+}
+
+.table-panel {
+  flex: 1 1 58%;
+  min-width: 0;
+}
+
+.chart-panel {
+  flex: 0 1 22rem;
+  min-width: 17rem;
+}
+
+@media (max-width: 1024px) {
+  .finance-main-row {
+    flex-direction: column;
+  }
+
+  .chart-panel {
+    flex: 1 1 auto;
+    min-width: 0;
+    max-width: none;
+  }
+}
+
+.finance-table {
+  margin-top: 0.15rem;
+}
+
+.finance-data :deep(.p-datatable) {
+  font-size: 0.875rem;
+  border: none;
+  border-radius: 12px;
+  overflow: hidden;
+}
+
+.finance-data :deep(.p-datatable-wrapper) {
+  border-radius: 12px;
+}
+
+.finance-data :deep(.p-datatable-header) {
+  background: transparent;
+  border: none;
   padding: 0;
+}
+
+.finance-data :deep(.p-datatable-loading-overlay) {
+  background: rgba(255, 255, 255, 0.75);
+}
+
+.finance-data :deep(.p-datatable-thead > tr > th) {
+  background: rgba(0, 0, 0, 0.02);
+  color: #86868b;
+  font-weight: 600;
+  font-size: 0.6875rem;
+  text-transform: uppercase;
+  letter-spacing: 0.055em;
+  border: none;
+  border-bottom: 1px solid rgba(0, 0, 0, 0.06);
+  padding: 0.6rem 0.75rem;
+}
+
+.finance-data :deep(.p-datatable-tbody > tr) {
+  background: transparent;
+  transition: background 0.12s ease;
+}
+
+.finance-data :deep(.p-datatable-tbody > tr:hover) {
+  background: rgba(0, 0, 0, 0.02);
+}
+
+.finance-data :deep(.p-datatable-tbody > tr > td) {
+  border: none;
+  border-bottom: 1px solid rgba(0, 0, 0, 0.05);
+  padding: 0.7rem 0.75rem;
+  vertical-align: middle;
+  color: var(--apple-text, #1d1d1f);
+}
+
+.finance-data :deep(.p-datatable-tbody > tr:last-child > td) {
+  border-bottom: none;
+}
+
+.finance-date-cell {
+  font-weight: 500;
+  color: var(--apple-text, #1d1d1f);
+}
+
+.dashboard-status-tag :deep(.p-tag) {
+  border-radius: 980px;
+  font-size: 0.6875rem;
+  font-weight: 600;
+  letter-spacing: 0.03em;
+  padding: 0.3rem 0.65rem;
+}
+
+.dashboard-chart-wrap {
+  height: 280px;
+  position: relative;
+}
+
+.dashboard-chart {
+  height: 100%;
 }
 </style>
