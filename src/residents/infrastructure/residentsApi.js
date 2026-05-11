@@ -142,7 +142,7 @@ export const residentsApi = {
     const cleanEmail = normalizeEmail(email)
     const cleanPassword = String(password ?? '')
 
-    const resident = await findResidentByCode(code)
+    const resident = await findResidentByCode(code, { globalScope: true })
     if (!resident) {
       throw apiError('RESIDENT_NOT_FOUND')
     }

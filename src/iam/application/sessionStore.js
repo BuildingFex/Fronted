@@ -1,9 +1,5 @@
 import { reactive, computed, readonly } from 'vue'
 import { SessionRoles } from '@/iam/domain/sessionRoles.js'
-import {
-  clearActiveDataOwnerId,
-  setActiveDataOwnerId,
-} from '@/shell/infrastructure/api/ownerTenant.js'
 
 export { SessionRoles }
 
@@ -11,11 +7,26 @@ const STORAGE_KEY = 'buildingfex.session'
 
 const state = reactive(loadInitialSession())
 
+/**
+ * json-server "tenant": admin id or (for resident login) the building admin id.
+ * Always derived from session state so it cannot drift from persisted profile.
+ */
+export function getActiveDataOwnerId() {
+  if (state.role === SessionRoles.ADMIN) {
+    const id = state.profile?.id
+    return id != null && String(id).length ? String(id) : null
+  }
+  if (state.role === SessionRoles.RESIDENT) {
+    const oid = state.profile?.ownerAdminId
+    return oid != null && String(oid).length ? String(oid) : null
+  }
+  return null
+}
+
 function loadInitialSession() {
   if (typeof window === 'undefined') {
     return { role: null, profile: null }
   }
-  clearActiveDataOwnerId()
   try {
     const raw = window.localStorage.getItem(STORAGE_KEY)
     if (!raw) return { role: null, profile: null }
@@ -23,11 +34,6 @@ function loadInitialSession() {
     if (parsed && typeof parsed === 'object') {
       const role = parsed.role ?? null
       const profile = parsed.profile ?? null
-      if (role === SessionRoles.ADMIN && profile?.id) {
-        setActiveDataOwnerId(profile.id)
-      } else if (role === SessionRoles.RESIDENT && profile?.ownerAdminId) {
-        setActiveDataOwnerId(profile.ownerAdminId)
-      }
       return { role, profile }
     }
   } catch {
@@ -55,21 +61,18 @@ export function useSession() {
   function setAdminSession(profile = {}) {
     state.role = SessionRoles.ADMIN
     state.profile = profile
-    setActiveDataOwnerId(profile.id ?? null)
     persist()
   }
 
   function setResidentSession(profile = {}) {
     state.role = SessionRoles.RESIDENT
     state.profile = profile
-    setActiveDataOwnerId(profile.ownerAdminId ?? null)
     persist()
   }
 
   function clearSession() {
     state.role = null
     state.profile = null
-    clearActiveDataOwnerId()
     persist()
   }
 

@@ -120,6 +120,83 @@
       "role": "resident",
       "admissionDate": "2026-05-11",
       "ownerAdminId": "admin-seed-1"
+    },
+    {
+      "id": "resident-1778536650032",
+      "name": "ewew",
+      "floor": "ew2",
+      "code": "32",
+      "email": "smbmontalvo33@gmail.com",
+      "password": "RDPbGhMQ99CSy-_",
+      "role": "resident",
+      "admissionDate": "2026-05-11",
+      "ownerAdminId": "admin-seed-1"
+    },
+    {
+      "id": "admin-1778536801178",
+      "name": "Sebastian Martin Beingolea Montalvo",
+      "email": "u2022rrrr17853@upc.edu.pe",
+      "password": "rr",
+      "dni": "rrr",
+      "address": "Calle San Martin, Apu Mountain Lodge Cuzco",
+      "company": "rr",
+      "ruc": "rrr",
+      "role": "admin"
+    },
+    {
+      "id": "resident-1778536809707",
+      "name": "erere",
+      "floor": "rer",
+      "code": "rere",
+      "email": "",
+      "password": "",
+      "role": "resident",
+      "admissionDate": "2026-05-11",
+      "ownerAdminId": "admin-1778536801178"
+    },
+    {
+      "id": "admin-1778537320235",
+      "name": "Sebastian Martin Beingolea Montalvo",
+      "email": "u2022178ewew53@upc.edu.pe",
+      "password": "wdw",
+      "dni": "wewe",
+      "address": "Calle San Martin, Apu Mountain Lodge Cuzco",
+      "company": "ewew",
+      "ruc": "ewew",
+      "role": "admin"
+    },
+    {
+      "id": "resident-1778537327167",
+      "name": "ew",
+      "floor": "ew",
+      "code": "ew",
+      "email": "",
+      "password": "",
+      "role": "resident",
+      "admissionDate": "2026-05-11",
+      "ownerAdminId": "admin-1778537320235"
+    },
+    {
+      "id": "admin-1778537421417",
+      "name": "ewew",
+      "email": "smbmontaewlvo@gmail.com",
+      "password": "12Sebastian12",
+      "dni": "ewewew",
+      "address": "Calle San Martin, Apu Mountain Lodge Cuzco",
+      "company": "dsafsfsdf",
+      "ruc": "ewewew",
+      "role": "admin"
+    },
+    {
+      "id": "resident-1778537431026",
+      "name": "ewewewe2we2d",
+      "floor": "ewew",
+      "code": "ewew",
+      "email": "u202217854433433@upc.edu.pe",
+      "password": "RDPbGhMQ99CSy-_",
+      "role": "resident",
+      "admissionDate": "2026-05-11",
+      "ownerAdminId": "admin-1778537421417"
     }
   ],
   "fees": [
@@ -247,6 +324,30 @@
       "occupiedUnits": 0,
       "emptyUnits": 0,
       "totalDebt": 0
+    },
+    {
+      "ownerAdminId": "admin-1778536801178",
+      "totalResidents": 0,
+      "occupiedUnits": 0,
+      "emptyUnits": 0,
+      "totalDebt": 0,
+      "id": "a-zOEia"
+    },
+    {
+      "ownerAdminId": "admin-1778537320235",
+      "totalResidents": 0,
+      "occupiedUnits": 0,
+      "emptyUnits": 0,
+      "totalDebt": 0,
+      "id": "I2CRoVA"
+    },
+    {
+      "ownerAdminId": "admin-1778537421417",
+      "totalResidents": 0,
+      "occupiedUnits": 0,
+      "emptyUnits": 0,
+      "totalDebt": 0,
+      "id": "g51DlbS"
     }
   ],
   "socialSpaces": [
@@ -308,6 +409,46 @@
       "status": "Pending",
       "lateFee": 0,
       "ownerAdminId": "admin-seed-1"
+    },
+    {
+      "id": 1778536650063,
+      "residentId": "resident-1778536650032",
+      "issueDate": "2026-05-11",
+      "dueDate": "2026-06-09",
+      "amount": 150,
+      "status": "Pending",
+      "lateFee": 0,
+      "ownerAdminId": "admin-seed-1"
+    },
+    {
+      "id": 1778536809723,
+      "residentId": "resident-1778536809707",
+      "issueDate": "2026-05-11",
+      "dueDate": "2026-06-09",
+      "amount": 150,
+      "status": "Pending",
+      "lateFee": 0,
+      "ownerAdminId": "admin-1778536801178"
+    },
+    {
+      "id": 1778537327191,
+      "residentId": "resident-1778537327167",
+      "issueDate": "2026-05-11",
+      "dueDate": "2026-06-09",
+      "amount": 150,
+      "status": "Pending",
+      "lateFee": 0,
+      "ownerAdminId": "admin-1778537320235"
+    },
+    {
+      "id": 1778537431084,
+      "residentId": "resident-1778537431026",
+      "issueDate": "2026-05-11",
+      "dueDate": "2026-06-09",
+      "amount": 150,
+      "status": "Pending",
+      "lateFee": 0,
+      "ownerAdminId": "admin-1778537421417"
     }
   ],
   "financeSettings": [
@@ -334,6 +475,18 @@
       "ownerAdminId": "admin-1778522505362",
       "baseMonthlyExpense": 150,
       "lateFeeRate": 0.05
+    },
+    {
+      "ownerAdminId": "admin-1778536801178",
+      "baseMonthlyExpense": 150,
+      "lateFeeRate": 0.05,
+      "id": "0oiNYBf"
+    },
+    {
+      "ownerAdminId": "admin-1778537421417",
+      "baseMonthlyExpense": 150,
+      "lateFeeRate": 0.05,
+      "id": "rKabXWn"
     }
   ],
   "incidents": [
@@ -464,48 +617,28 @@
   ],
   "announcements": [
     {
-      "title": "Mensaje de prueba para lista 1",
-      "body": "Mensaje de prueba para lista 1",
-      "priority": "normal",
-      "duration": 15,
-      "authorId": "admin-1778357825373",
-      "authorName": "Sebastian",
-      "id": "ann-1778522175227",
-      "createdAt": "2026-05-11T17:56:15.227Z",
-      "expiresAt": "2026-05-26T17:56:15.227Z"
-    },
-    {
-      "title": "Mensaje de prueba para lista 2",
-      "body": "Mensaje de prueba para lista 2",
-      "priority": "important",
+      "title": "Prueba 1",
+      "body": "wqwq",
+      "priority": "urgent",
       "duration": 30,
-      "authorId": "admin-1778357825373",
-      "authorName": "Sebastian",
-      "id": "ann-1778522189386",
-      "createdAt": "2026-05-11T17:56:29.386Z",
-      "expiresAt": "2026-06-10T17:56:29.386Z"
+      "authorId": "admin-seed-1",
+      "authorName": "Admin Demo",
+      "id": "ann-1778536634747",
+      "createdAt": "2026-05-11T21:57:14.745Z",
+      "expiresAt": "2026-06-10T21:57:14.745Z",
+      "ownerAdminId": "admin-seed-1"
     },
     {
-      "title": "Mensaje de prueba para lista 3",
-      "body": "Mensaje de prueba para lista 3",
-      "priority": "normal",
-      "duration": 15,
-      "authorId": "admin-1778357825373",
-      "authorName": "Sebastian",
-      "id": "ann-1778522310251",
-      "createdAt": "2026-05-11T17:58:30.251Z",
-      "expiresAt": "2026-05-26T17:58:30.251Z"
-    },
-    {
-      "title": "Nuevo anuncio 4",
-      "body": "Nuevo anuncio 4",
+      "title": "t",
+      "body": "t",
       "priority": "important",
-      "duration": 15,
-      "authorId": "admin-1778357825373",
-      "authorName": "Sebastian",
-      "id": "ann-1778530556870",
-      "createdAt": "2026-05-11T20:15:56.870Z",
-      "expiresAt": "2026-05-26T20:15:56.870Z"
+      "duration": 7,
+      "authorId": "admin-seed-1",
+      "authorName": "Admin Demo",
+      "id": "ann-1778536686798",
+      "createdAt": "2026-05-11T21:58:06.798Z",
+      "expiresAt": "2026-05-18T21:58:06.798Z",
+      "ownerAdminId": "admin-seed-1"
     }
   ]
 }

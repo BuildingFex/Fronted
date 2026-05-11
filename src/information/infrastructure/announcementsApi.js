@@ -1,20 +1,23 @@
 import { apiClient } from '@/shell/infrastructure/api/apiClient.js'
+import { withOwnerParams } from '@/shell/infrastructure/api/ownerQuery.js'
+import { getActiveDataOwnerId } from '@/shell/infrastructure/api/ownerTenant.js'
 
 /**
  * Information bounded-context API.
  *
  * Owns: announcements CRUD (comunicados oficiales).
- * Only admins should create / delete; reading is open to all roles.
+ * Scoped by ownerAdminId: each admin only sees/edits their building's posts;
+ * residents see their building admin's announcements.
  */
 export const announcementsApi = {
   /**
-   * Fetch all announcements, newest first.
+   * Fetch announcements for the active data owner, newest first.
    */
   async list() {
     const { data } = await apiClient.get('/announcements', {
-      params: { _sort: 'createdAt', _order: 'desc' },
+      params: withOwnerParams({ _sort: 'createdAt', _order: 'desc' }),
     })
-    return data
+    return Array.isArray(data) ? data : []
   },
 
   /**
@@ -23,16 +26,18 @@ export const announcementsApi = {
    */
   async add(announcement) {
     const createdAt = new Date().toISOString()
-    const duration  = announcement.duration ?? 7
-    const expires   = new Date(createdAt)
+    const duration = announcement.duration ?? 7
+    const expires = new Date(createdAt)
     expires.setDate(expires.getDate() + duration)
 
+    const ownerAdminId = getActiveDataOwnerId()
     const payload = {
       ...announcement,
-      id:        `ann-${Date.now()}`,
+      id: `ann-${Date.now()}`,
       createdAt,
       duration,
       expiresAt: expires.toISOString(),
+      ...(ownerAdminId ? { ownerAdminId } : {}),
     }
     const { data } = await apiClient.post('/announcements', payload)
     return data
@@ -43,6 +48,6 @@ export const announcementsApi = {
    * @param {string} id
    */
   async remove(id) {
-    await apiClient.delete(`/announcements/${id}`)
+    await apiClient.delete(`/announcements/${encodeURIComponent(id)}`)
   },
 }

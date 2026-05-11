@@ -6,13 +6,25 @@
  * expiresAt – ISO date-string computed from createdAt + duration days
  */
 export class Announcement {
-  constructor({ id, title, body, priority, authorId, authorName, createdAt, duration, expiresAt }) {
-    this.id         = id
-    this.title      = title
-    this.body       = body
-    this.priority   = priority   ?? 'normal'
-    this.authorId   = authorId
+  constructor({
+    id,
+    title,
+    body,
+    priority,
+    authorId,
+    authorName,
+    createdAt,
+    duration,
+    expiresAt,
+    ownerAdminId,
+  }) {
+    this.id = id
+    this.title = title
+    this.body = body
+    this.priority = priority ?? 'normal'
+    this.authorId = authorId
     this.authorName = authorName ?? ''
+    this.ownerAdminId = ownerAdminId ?? null
     this.createdAt  = createdAt  ?? new Date().toISOString()
     this.duration   = duration   ?? 7  // days
 

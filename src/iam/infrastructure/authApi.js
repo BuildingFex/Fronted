@@ -54,7 +54,9 @@ export const authApi = {
     }
 
     const { data: created } = await apiClient.post('/users', newUser)
-    const ownerId = created.id
+    const merged =
+      created && typeof created === 'object' ? { ...newUser, ...created } : { ...newUser }
+    const ownerId = merged.id
 
     try {
       await apiClient.post('/financeSettings', {
@@ -78,8 +80,8 @@ export const authApi = {
     }
 
     return {
-      user: publicUser(created),
-      token: createSessionToken(created.id),
+      user: publicUser(merged),
+      token: createSessionToken(ownerId),
     }
   },
 

@@ -1,18 +1,5 @@
 /**
  * Active "data owner" for json-server queries (admin account id).
- * For residents, this is their building admin's id so fees/receipts stay scoped.
- * Set from session on login; cleared on logout.
+ * Re-exported from IAM session so owner scope always matches logged-in profile.
  */
-let activeDataOwnerId = null
-
-export function setActiveDataOwnerId(id) {
-  activeDataOwnerId = id ? String(id) : null
-}
-
-export function clearActiveDataOwnerId() {
-  activeDataOwnerId = null
-}
-
-export function getActiveDataOwnerId() {
-  return activeDataOwnerId
-}
+export { getActiveDataOwnerId } from '@/iam/application/sessionStore.js'
