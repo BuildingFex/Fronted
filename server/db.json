@@ -461,5 +461,51 @@
       "createdAt": "2026-05-09T22:45:50.737Z",
       "ownerAdminId": "admin-seed-1"
     }
+  ],
+  "announcements": [
+    {
+      "title": "Mensaje de prueba para lista 1",
+      "body": "Mensaje de prueba para lista 1",
+      "priority": "normal",
+      "duration": 15,
+      "authorId": "admin-1778357825373",
+      "authorName": "Sebastian",
+      "id": "ann-1778522175227",
+      "createdAt": "2026-05-11T17:56:15.227Z",
+      "expiresAt": "2026-05-26T17:56:15.227Z"
+    },
+    {
+      "title": "Mensaje de prueba para lista 2",
+      "body": "Mensaje de prueba para lista 2",
+      "priority": "important",
+      "duration": 30,
+      "authorId": "admin-1778357825373",
+      "authorName": "Sebastian",
+      "id": "ann-1778522189386",
+      "createdAt": "2026-05-11T17:56:29.386Z",
+      "expiresAt": "2026-06-10T17:56:29.386Z"
+    },
+    {
+      "title": "Mensaje de prueba para lista 3",
+      "body": "Mensaje de prueba para lista 3",
+      "priority": "normal",
+      "duration": 15,
+      "authorId": "admin-1778357825373",
+      "authorName": "Sebastian",
+      "id": "ann-1778522310251",
+      "createdAt": "2026-05-11T17:58:30.251Z",
+      "expiresAt": "2026-05-26T17:58:30.251Z"
+    },
+    {
+      "title": "Nuevo anuncio 4",
+      "body": "Nuevo anuncio 4",
+      "priority": "important",
+      "duration": 15,
+      "authorId": "admin-1778357825373",
+      "authorName": "Sebastian",
+      "id": "ann-1778530556870",
+      "createdAt": "2026-05-11T20:15:56.870Z",
+      "expiresAt": "2026-05-26T20:15:56.870Z"
+    }
   ]
 }
