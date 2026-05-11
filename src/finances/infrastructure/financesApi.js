@@ -1,62 +1,86 @@
-import axios from 'axios';
-import { Receipt } from '../domain/receipt.js';
-import { apiClient } from '@/shell/infrastructure/api/apiClient.js';
-
-const API_BASE_URL = 'http://localhost:3001';
+import { apiClient } from '@/shell/infrastructure/api/apiClient.js'
+import { withOwnerParams } from '@/shell/infrastructure/api/ownerQuery.js'
+import { getActiveDataOwnerId } from '@/shell/infrastructure/api/ownerTenant.js'
+import { Receipt } from '../domain/receipt.js'
 
 export const financesApi = {
   async getSettings() {
-    const response = await axios.get(`${API_BASE_URL}/financeSettings`);
-    return response.data;
+    const { data } = await apiClient.get('/financeSettings', { params: withOwnerParams() })
+    const row = Array.isArray(data) ? data[0] : data
+    if (row && typeof row === 'object') {
+      return {
+        baseMonthlyExpense: row.baseMonthlyExpense ?? 150,
+        lateFeeRate: row.lateFeeRate ?? 0.05,
+      }
+    }
+    return { baseMonthlyExpense: 150, lateFeeRate: 0.05 }
   },
 
   async getResidents() {
-    const response = await axios.get(`${API_BASE_URL}/users?role=resident`);
-    return response.data;
+    const { data } = await apiClient.get('/users', {
+      params: withOwnerParams({ role: 'resident' }),
+    })
+    return Array.isArray(data) ? data : []
   },
 
   async getReceipts() {
-    const response = await axios.get(`${API_BASE_URL}/receipts`);
-    return response.data.map(data => new Receipt(data));
+    const { data } = await apiClient.get('/receipts', { params: withOwnerParams() })
+    return (Array.isArray(data) ? data : []).map((d) => new Receipt(d))
   },
 
   async getReceiptsByResident(residentId) {
-    const response = await axios.get(`${API_BASE_URL}/receipts?residentId=${residentId}`);
-    return response.data.map(data => new Receipt(data));
+    const { data } = await apiClient.get('/receipts', {
+      params: withOwnerParams({ residentId }),
+    })
+    return (Array.isArray(data) ? data : []).map((d) => new Receipt(d))
   },
 
   async createReceipt(receiptData) {
-    const response = await axios.post(`${API_BASE_URL}/receipts`, receiptData);
-    return new Receipt(response.data);
+    const ownerId = getActiveDataOwnerId()
+    const payload = {
+      ...receiptData,
+      ...(ownerId ? { ownerAdminId: ownerId } : {}),
+    }
+    const { data } = await apiClient.post('/receipts', payload)
+    return new Receipt(data)
   },
 
   async updateReceipt(receiptId, updateData) {
-    const response = await axios.patch(`${API_BASE_URL}/receipts/${receiptId}`, updateData);
-    return new Receipt(response.data);
+    const { data } = await apiClient.patch(`/receipts/${receiptId}`, updateData)
+    return new Receipt(data)
   },
 
   async getFees(residentId) {
-    const { data } = await apiClient.get('/fees', { params: { residentId } });
-    return data;
+    const { data } = await apiClient.get('/fees', {
+      params: withOwnerParams({ residentId }),
+    })
+    return data
   },
 
   async getPayments(residentId) {
-    const { data } = await apiClient.get('/payments', { params: { residentId } });
-    return data;
+    const { data } = await apiClient.get('/payments', {
+      params: withOwnerParams({ residentId }),
+    })
+    return data
   },
 
   async addPayment(paymentData) {
-    const { data } = await apiClient.post('/payments', paymentData);
-    return data;
+    const ownerId = getActiveDataOwnerId()
+    const payload = {
+      ...paymentData,
+      ...(ownerId ? { ownerAdminId: ownerId } : {}),
+    }
+    const { data } = await apiClient.post('/payments', payload)
+    return data
   },
 
   async updateFeeStatus(feeId, status) {
-    const { data } = await apiClient.patch(`/fees/${feeId}`, { status });
-    return data;
+    const { data } = await apiClient.patch(`/fees/${feeId}`, { status })
+    return data
   },
-  
+
   async getDashboardKpis() {
-    const { data } = await apiClient.get('/kpi');
-    return data;
-  }
-};
+    const { data } = await apiClient.get('/kpi', { params: withOwnerParams() })
+    return data
+  },
+}

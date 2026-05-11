@@ -89,6 +89,7 @@ async function onResidentCredentialsSubmit() {
       floor: user.floor,
       code: user.code,
       email: user.email,
+      ownerAdminId: user.ownerAdminId ?? null,
     })
     router.push({ name: AppRouteNames.APP_RESIDENT_DASHBOARD })
   } catch (error) {
@@ -167,6 +168,7 @@ async function onLoginSubmit() {
         floor: user.floor,
         code: user.code,
         email: user.email,
+        ownerAdminId: user.ownerAdminId ?? null,
       })
       router.push({ name: AppRouteNames.APP_RESIDENT_DASHBOARD })
     } else {

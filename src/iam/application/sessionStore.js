@@ -1,5 +1,9 @@
 import { reactive, computed, readonly } from 'vue'
 import { SessionRoles } from '@/iam/domain/sessionRoles.js'
+import {
+  clearActiveDataOwnerId,
+  setActiveDataOwnerId,
+} from '@/shell/infrastructure/api/ownerTenant.js'
 
 export { SessionRoles }
 
@@ -11,15 +15,20 @@ function loadInitialSession() {
   if (typeof window === 'undefined') {
     return { role: null, profile: null }
   }
+  clearActiveDataOwnerId()
   try {
     const raw = window.localStorage.getItem(STORAGE_KEY)
     if (!raw) return { role: null, profile: null }
     const parsed = JSON.parse(raw)
     if (parsed && typeof parsed === 'object') {
-      return {
-        role: parsed.role ?? null,
-        profile: parsed.profile ?? null,
+      const role = parsed.role ?? null
+      const profile = parsed.profile ?? null
+      if (role === SessionRoles.ADMIN && profile?.id) {
+        setActiveDataOwnerId(profile.id)
+      } else if (role === SessionRoles.RESIDENT && profile?.ownerAdminId) {
+        setActiveDataOwnerId(profile.ownerAdminId)
       }
+      return { role, profile }
     }
   } catch {
     // ignore parse errors
@@ -46,18 +55,21 @@ export function useSession() {
   function setAdminSession(profile = {}) {
     state.role = SessionRoles.ADMIN
     state.profile = profile
+    setActiveDataOwnerId(profile.id ?? null)
     persist()
   }
 
   function setResidentSession(profile = {}) {
     state.role = SessionRoles.RESIDENT
     state.profile = profile
+    setActiveDataOwnerId(profile.ownerAdminId ?? null)
     persist()
   }
 
   function clearSession() {
     state.role = null
     state.profile = null
+    clearActiveDataOwnerId()
     persist()
   }
 

@@ -1,4 +1,6 @@
 import { apiClient } from '@/shell/infrastructure/api/apiClient.js'
+import { withOwnerParams } from '@/shell/infrastructure/api/ownerQuery.js'
+import { getActiveDataOwnerId } from '@/shell/infrastructure/api/ownerTenant.js'
 import { apiError } from '@/shell/infrastructure/api/utils.js'
 
 /**
@@ -8,7 +10,7 @@ import { apiError } from '@/shell/infrastructure/api/utils.js'
  */
 export const teamWorkersApi = {
   async list() {
-    const { data } = await apiClient.get('/teamWorkers')
+    const { data } = await apiClient.get('/teamWorkers', { params: withOwnerParams() })
     return Array.isArray(data) ? data : []
   },
 
@@ -26,6 +28,7 @@ export const teamWorkersApi = {
       )
     }
 
+    const ownerId = getActiveDataOwnerId()
     const newWorker = {
       id: `worker-${Date.now()}`,
       name: cleanName,
@@ -33,6 +36,7 @@ export const teamWorkersApi = {
       dni: cleanDni,
       salary: parsedSalary,
       photoUrl: String(photoUrl ?? '').trim(),
+      ...(ownerId ? { ownerAdminId: ownerId } : {}),
     }
 
     const { data: created } = await apiClient.post('/teamWorkers', newWorker)

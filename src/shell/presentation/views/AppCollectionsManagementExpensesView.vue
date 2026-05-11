@@ -372,34 +372,52 @@ onMounted(() => {
     </p>
 
     <template v-else>
-      <section class="collections-total" aria-labelledby="collections-balance-heading">
-        <h2 id="collections-balance-heading" class="collections-total__label">
-          {{ t('collectionsMgmt.netAfterExpenses') }}
-        </h2>
-        <p class="collections-total__amount">{{ nfCurrency(balanceAfterAll) }}</p>
-        <p class="collections-total__breakdown">
-          {{ t('collectionsMgmt.grossCollectedShort') }}:
-          {{ nfCurrency(grossCollected) }}
-          · {{ t('collectionsMgmt.expensesTotalShort') }}: {{ nfCurrency(totalCosts) }}
-          · {{ t('collectionsMgmt.fixedPaidShort') }}: {{ nfCurrency(totalFixedPaid) }}
-        </p>
-        <p class="collections-total__hint">{{ t('collectionsMgmt.amountHint') }}</p>
-      </section>
-
-      <section class="collections-costs" aria-labelledby="collections-costs-heading">
-        <div class="collections-costs__head">
-          <h2 id="collections-costs-heading" class="collections-costs__title">
-            {{ t('collectionsMgmt.expensesSectionTitle') }}
+      <div class="collections-page">
+        <section
+          class="collections-hero"
+          aria-labelledby="collections-balance-heading"
+        >
+          <h2 id="collections-balance-heading" class="collections-hero__title">
+            {{ t('collectionsMgmt.netAfterExpenses') }}
           </h2>
-          <Button
-            type="button"
-            outlined
-            :label="t('collectionsMgmt.addCost')"
-            icon="pi pi-plus"
-            severity="success"
-            @click="openModal"
-          />
-        </div>
+          <p class="collections-hero__amount">{{ nfCurrency(balanceAfterAll) }}</p>
+          <ul class="collections-hero__rows" aria-describedby="collections-balance-heading">
+            <li class="collections-hero__row">
+              <span class="collections-hero__row-label">{{
+                t('collectionsMgmt.grossCollectedShort')
+              }}</span>
+              <span class="collections-hero__row-value">{{ nfCurrency(grossCollected) }}</span>
+            </li>
+            <li class="collections-hero__row">
+              <span class="collections-hero__row-label">{{
+                t('collectionsMgmt.expensesTotalShort')
+              }}</span>
+              <span class="collections-hero__row-value">{{ nfCurrency(totalCosts) }}</span>
+            </li>
+            <li class="collections-hero__row">
+              <span class="collections-hero__row-label">{{
+                t('collectionsMgmt.fixedPaidShort')
+              }}</span>
+              <span class="collections-hero__row-value">{{ nfCurrency(totalFixedPaid) }}</span>
+            </li>
+          </ul>
+          <p class="collections-hero__hint">{{ t('collectionsMgmt.amountHint') }}</p>
+        </section>
+
+        <section class="collections-panel" aria-labelledby="collections-costs-heading">
+          <header class="collections-panel__head">
+            <h2 id="collections-costs-heading" class="collections-panel__title">
+              {{ t('collectionsMgmt.expensesSectionTitle') }}
+            </h2>
+            <Button
+              type="button"
+              rounded
+              :label="t('collectionsMgmt.addCost')"
+              severity="secondary"
+              class="collections-panel__btn"
+              @click="openModal"
+            />
+          </header>
 
         <Dialog
           v-model:visible="modalOpen"
@@ -481,24 +499,26 @@ onMounted(() => {
           <template #footer>
             <Button
               type="button"
-              outlined
+              text
+              rounded
               :label="t('app.cancelAction')"
-              icon="pi pi-times"
               @click="closeModal"
             />
             <Button
               type="button"
+              rounded
               :label="t('collectionsMgmt.accept')"
-              icon="pi pi-check"
               :loading="saving"
               @click="submitCost"
             />
           </template>
         </Dialog>
 
-        <p v-if="costsLoading && !costsLoadError" class="collections-costs__loading">{{ t('collectionsMgmt.loading') }}</p>
+        <p v-if="costsLoading && !costsLoadError" class="collections-panel__loading">
+          {{ t('collectionsMgmt.loading') }}
+        </p>
 
-        <DataTable :value="expenses" striped-rows class="collections-table">
+        <DataTable :value="expenses" class="collections-data collections-table">
           <template #empty>
             <p class="collections-table__empty">{{ t('collectionsMgmt.emptyCosts') }}</p>
           </template>
@@ -528,23 +548,25 @@ onMounted(() => {
           </Column>
         </DataTable>
 
-        <p v-if="costsLoadError" class="app-view__error" role="alert">{{ costsLoadError }}</p>
-      </section>
+        <p v-if="costsLoadError" class="collections-panel__error" role="alert">
+          {{ costsLoadError }}
+        </p>
+        </section>
 
-      <section class="collections-fixed" aria-labelledby="collections-fixed-heading">
-        <div class="collections-costs__head collections-fixed__head">
-          <h2 id="collections-fixed-heading" class="collections-costs__title">
-            {{ t('fixedPay.sectionTitle') }}
-          </h2>
-          <Button
-            type="button"
-            outlined
-            :label="t('fixedPay.openButton')"
-            icon="pi pi-wallet"
-            severity="secondary"
-            @click="openFixedModal"
-          />
-        </div>
+        <section class="collections-panel" aria-labelledby="collections-fixed-heading">
+          <header class="collections-panel__head">
+            <h2 id="collections-fixed-heading" class="collections-panel__title">
+              {{ t('fixedPay.sectionTitle') }}
+            </h2>
+            <Button
+              type="button"
+              rounded
+              :label="t('fixedPay.openButton')"
+              severity="secondary"
+              class="collections-panel__btn"
+              @click="openFixedModal"
+            />
+          </header>
 
         <Dialog
           v-model:visible="fixedModalOpen"
@@ -647,27 +669,27 @@ onMounted(() => {
           <template #footer>
             <Button
               type="button"
-              outlined
+              text
+              rounded
               :label="t('app.cancelAction')"
-              icon="pi pi-times"
               @click="closeFixedModal"
             />
             <Button
               type="button"
+              rounded
               :label="t('fixedPay.save')"
-              icon="pi pi-check"
               :loading="fixedSaving"
               @click="submitFixedRecipient"
             />
           </template>
         </Dialog>
 
-        <p v-if="fixedLoading && !fixedLoadError" class="collections-costs__loading">
+        <p v-if="fixedLoading && !fixedLoadError" class="collections-panel__loading">
           {{ t('collectionsMgmt.loading') }}
         </p>
 
-        <h3 class="collections-subheading">{{ t('fixedPay.recipientsHeading') }}</h3>
-        <DataTable :value="fixedRecipients" striped-rows class="collections-table">
+        <h3 class="collections-panel__sub">{{ t('fixedPay.recipientsHeading') }}</h3>
+        <DataTable :value="fixedRecipients" class="collections-data collections-table">
           <template #empty>
             <p class="collections-table__empty">{{ t('fixedPay.emptyRecipients') }}</p>
           </template>
@@ -700,8 +722,13 @@ onMounted(() => {
           </Column>
         </DataTable>
 
-        <h3 class="collections-subheading collections-subheading--history">{{ t('fixedPay.historyHeading') }}</h3>
-        <DataTable :value="fixedHistoryRows" striped-rows class="collections-table collections-table--history">
+        <h3 class="collections-panel__sub collections-panel__sub--divider">
+          {{ t('fixedPay.historyHeading') }}
+        </h3>
+        <DataTable
+          :value="fixedHistoryRows"
+          class="collections-data collections-table collections-table--history"
+        >
           <template #empty>
             <p class="collections-table__empty">{{ t('fixedPay.emptyHistory') }}</p>
           </template>
@@ -714,23 +741,27 @@ onMounted(() => {
           </Column>
         </DataTable>
 
-        <p v-if="fixedLoadError" class="app-view__error" role="alert">{{ fixedLoadError }}</p>
-      </section>
+        <p v-if="fixedLoadError" class="collections-panel__error" role="alert">
+          {{ fixedLoadError }}
+        </p>
+        </section>
+      </div>
     </template>
   </div>
 </template>
 
 <style scoped>
 .app-view {
-  padding: 1.75rem 1.5rem;
+  padding: 1.75rem 1.5rem 2.5rem;
   max-width: 72rem;
 }
 
 .app-view__title {
   margin: 0;
-  font-size: 1.5rem;
+  font-size: 1.75rem;
   font-weight: 600;
-  letter-spacing: -0.03em;
+  letter-spacing: -0.035em;
+  line-height: 1.15;
   color: var(--apple-text, #1d1d1f);
 }
 
@@ -746,98 +777,205 @@ onMounted(() => {
   color: #b42318;
 }
 
-.collections-total {
-  margin-top: 1.25rem;
-  max-width: 32rem;
-  padding: 1.25rem 1.35rem;
-  border-radius: 14px;
-  border: 1px solid #e8e8ed;
-  background: #fff;
+.collections-page {
+  margin-top: 1.5rem;
+  display: flex;
+  flex-direction: column;
+  gap: 1.25rem;
 }
 
-.collections-total__label {
+.collections-hero {
+  max-width: 26rem;
+  padding: 1.35rem 1.4rem 1.3rem;
+  border-radius: 16px;
+  background: #f5f5f7;
+  border: 1px solid rgba(0, 0, 0, 0.06);
+  box-shadow:
+    0 1px 2px rgba(0, 0, 0, 0.04),
+    0 4px 16px rgba(0, 0, 0, 0.03);
+}
+
+.collections-hero__title {
   margin: 0;
+  max-width: 22rem;
+  font-size: 0.875rem;
+  font-weight: 500;
+  line-height: 1.4;
+  letter-spacing: -0.015em;
+  color: var(--apple-text-secondary, #6e6e73);
+}
+
+.collections-hero__amount {
+  margin: 0.65rem 0 0;
+  font-size: 2rem;
+  font-weight: 600;
+  letter-spacing: -0.045em;
+  font-variant-numeric: tabular-nums;
+  color: var(--apple-text, #1d1d1f);
+}
+
+.collections-hero__rows {
+  list-style: none;
+  margin: 1.1rem 0 0;
+  padding: 0;
+  border-top: 1px solid rgba(0, 0, 0, 0.07);
+}
+
+.collections-hero__row {
+  display: flex;
+  justify-content: space-between;
+  align-items: baseline;
+  gap: 1rem;
+  padding: 0.62rem 0;
+  border-bottom: 1px solid rgba(0, 0, 0, 0.05);
   font-size: 0.8125rem;
+  line-height: 1.35;
+}
+
+.collections-hero__row:last-child {
+  border-bottom: none;
+  padding-bottom: 0;
+}
+
+.collections-hero__row-label {
+  flex: 1;
+  min-width: 0;
+  color: #86868b;
+}
+
+.collections-hero__row-value {
+  flex-shrink: 0;
+  font-variant-numeric: tabular-nums;
+  font-weight: 500;
+  color: var(--apple-text, #1d1d1f);
+}
+
+.collections-hero__hint {
+  margin: 1rem 0 0;
+  font-size: 0.75rem;
+  line-height: 1.45;
+  color: #aeaeb2;
+}
+
+.collections-panel {
+  padding: 1.2rem 1.25rem 1.35rem;
+  border-radius: 16px;
+  background: #fff;
+  border: 1px solid rgba(0, 0, 0, 0.06);
+  box-shadow: 0 1px 3px rgba(0, 0, 0, 0.03);
+}
+
+.collections-panel__head {
+  display: flex;
+  flex-wrap: wrap;
+  align-items: flex-start;
+  justify-content: space-between;
+  gap: 0.85rem 1rem;
+  margin-bottom: 0.85rem;
+}
+
+.collections-panel__title {
+  margin: 0;
+  font-size: 1.0625rem;
+  font-weight: 600;
+  letter-spacing: -0.02em;
+  line-height: 1.25;
+  color: var(--apple-text, #1d1d1f);
+  max-width: min(100%, 18rem);
+}
+
+.collections-panel__btn {
+  flex-shrink: 0;
+}
+
+.collections-panel__btn :deep(.p-button) {
+  font-weight: 500;
+  font-size: 0.8125rem;
+  padding-block: 0.5rem;
+  padding-inline: 1rem;
+}
+
+.collections-panel__loading {
+  margin: 0 0 0.65rem;
+  font-size: 0.8125rem;
+  color: var(--apple-text-secondary, #6e6e73);
+}
+
+.collections-panel__error {
+  margin: 0.75rem 0 0;
+  font-size: 0.8125rem;
+  color: #b42318;
+}
+
+.collections-panel__sub {
+  margin: 1.35rem 0 0.55rem;
+  font-size: 0.75rem;
   font-weight: 600;
   letter-spacing: 0.04em;
   text-transform: uppercase;
-  color: var(--apple-text-secondary, #6e6e73);
+  color: #86868b;
 }
 
-.collections-total__amount {
-  margin: 0.5rem 0 0;
-  font-size: 1.75rem;
-  font-weight: 700;
-  letter-spacing: -0.03em;
-  color: var(--apple-text, #1d1d1f);
+.collections-panel__sub:first-of-type {
+  margin-top: 0.35rem;
 }
 
-.collections-total__breakdown {
-  margin: 0.55rem 0 0;
-  font-size: 0.8125rem;
-  line-height: 1.5;
-  color: var(--apple-text-secondary, #6e6e73);
-}
-
-.collections-total__hint {
-  margin: 0.35rem 0 0;
-  font-size: 0.75rem;
-  line-height: 1.35;
-  color: var(--apple-text-secondary, #6e6e73);
-}
-
-.collections-costs,
-.collections-fixed {
-  margin-top: 2rem;
-}
-
-.collections-fixed__head {
-  margin-bottom: 1rem;
-}
-
-.collections-costs__head {
-  display: flex;
-  flex-wrap: wrap;
-  align-items: center;
-  justify-content: space-between;
-  gap: 1rem;
-  margin-bottom: 1rem;
-}
-
-.collections-costs__title {
-  margin: 0;
-  font-size: 1.125rem;
-  font-weight: 600;
-  color: var(--apple-text, #1d1d1f);
-}
-
-.collections-costs__loading {
-  margin: 0 0 0.5rem;
-  font-size: 0.875rem;
-  color: var(--apple-text-secondary, #6e6e73);
-}
-
-.collections-subheading {
-  margin: 1.35rem 0 0.5rem;
-  font-size: 0.9375rem;
-  font-weight: 600;
-  color: var(--apple-text, #1d1d1f);
-}
-
-.collections-subheading:first-of-type {
-  margin-top: 0.25rem;
-}
-
-.collections-subheading--history {
-  margin-top: 1.75rem;
+.collections-panel__sub--divider {
+  margin-top: 1.5rem;
+  padding-top: 1.15rem;
+  border-top: 1px solid rgba(0, 0, 0, 0.06);
 }
 
 .collections-table {
-  margin-top: 0.25rem;
+  margin-top: 0.15rem;
 }
 
 .collections-table--history {
-  margin-bottom: 0.5rem;
+  margin-bottom: 0.15rem;
+}
+
+.collections-data :deep(.p-datatable) {
+  font-size: 0.875rem;
+  border: none;
+  border-radius: 12px;
+  overflow: hidden;
+}
+
+.collections-data :deep(.p-datatable-wrapper) {
+  border-radius: 12px;
+}
+
+.collections-data :deep(.p-datatable-thead > tr > th) {
+  background: rgba(0, 0, 0, 0.02);
+  color: #86868b;
+  font-weight: 600;
+  font-size: 0.6875rem;
+  text-transform: uppercase;
+  letter-spacing: 0.055em;
+  border: none;
+  border-bottom: 1px solid rgba(0, 0, 0, 0.06);
+  padding: 0.6rem 0.75rem;
+}
+
+.collections-data :deep(.p-datatable-tbody > tr) {
+  background: transparent;
+  transition: background 0.12s ease;
+}
+
+.collections-data :deep(.p-datatable-tbody > tr:hover) {
+  background: rgba(0, 0, 0, 0.02);
+}
+
+.collections-data :deep(.p-datatable-tbody > tr > td) {
+  border: none;
+  border-bottom: 1px solid rgba(0, 0, 0, 0.05);
+  padding: 0.7rem 0.75rem;
+  vertical-align: middle;
+  color: var(--apple-text, #1d1d1f);
+}
+
+.collections-data :deep(.p-datatable-tbody > tr:last-child > td) {
+  border-bottom: none;
 }
 
 .collections-form {

@@ -101,27 +101,32 @@
 </script>
 
 <template>
-  <div class="incidents-view">
-    <div class="incidents-header">
-      <div>
-        <h1 class="incidents-title">{{ t('app.pageIncidents') }}</h1>
-        <p class="incidents-subtitle">{{ t('app.incidentsAdminSubtitle') }}</p>
-      </div>
-      <Button
-        :label="t('app.newIncident')"
-        icon="pi pi-plus"
-        class="p-button-outlined incidents-toolbar__btn incidents-toolbar__btn--primary"
-        @click="newIncident"
-      />
-    </div>
+  <div class="app-view">
+    <h1 class="app-view__title">{{ t('app.pageIncidents') }}</h1>
+    <p class="app-view__subtitle">{{ t('app.incidentsAdminSubtitle') }}</p>
 
-    <div class="incidents-panel">
-      <DataTable
-        :value="incidents"
-        :loading="loading"
-        responsiveLayout="scroll"
-        class="incidents-table"
-      >
+    <div class="incidents-page">
+      <section class="incidents-panel" aria-labelledby="incidents-list-heading">
+        <header class="incidents-panel__head">
+          <h2 id="incidents-list-heading" class="incidents-panel__title">
+            {{ t('app.incidentsAdminListTitle') }}
+          </h2>
+          <Button
+            type="button"
+            rounded
+            severity="secondary"
+            :label="t('app.newIncident')"
+            class="incidents-panel__btn"
+            @click="newIncident"
+          />
+        </header>
+
+        <DataTable
+          :value="incidents"
+          :loading="loading"
+          responsiveLayout="scroll"
+          class="incidents-data incidents-table"
+        >
         <Column field="id" header="ID" />
         <Column field="residentName" :header="t('app.incidentResidentName')" />
         <Column field="description" :header="t('app.incidentDescription')" />
@@ -144,14 +149,16 @@
           <template #body="{ data }">
             <div class="incidents-row-actions">
               <Button
-                icon="pi pi-pencil"
-                class="p-button-text incidents-row-actions__btn"
+                text
+                rounded
+                class="incidents-row-actions__btn"
                 :label="t('app.editAction')"
                 @click="openEditDialog(data)"
               />
               <Button
-                icon="pi pi-trash"
-                class="p-button-text incidents-row-actions__btn incidents-row-actions__btn--danger"
+                text
+                rounded
+                class="incidents-row-actions__btn incidents-row-actions__btn--danger"
                 :label="t('app.deleteAction')"
                 @click="deleteIncident(data.id)"
               />
@@ -159,9 +166,12 @@
           </template>
         </Column>
       </DataTable>
-    </div>
+      </section>
 
-    <p v-if="error" class="incidents-error" role="alert">{{ t('app.residentsLoadError') }}</p>
+      <p v-if="error" class="app-view__error incidents-page__error" role="alert">
+        {{ t('app.residentsLoadError') }}
+      </p>
+    </div>
 
     <Dialog
       v-model:visible="isDialogOpen"
@@ -194,15 +204,16 @@
       </div>
       <template #footer>
         <Button
+          type="button"
+          text
+          rounded
           :label="t('app.cancelAction')"
-          icon="pi pi-times"
-          class="p-button-outlined incidents-dialog__btn incidents-dialog__btn--secondary"
           @click="isDialogOpen = false"
         />
         <Button
-          :label="t('app.saveResidentAction')"
-          icon="pi pi-check"
-          class="p-button-outlined incidents-dialog__btn incidents-dialog__btn--primary"
+          type="button"
+          rounded
+          :label="t('app.saveSpaceUpdateAction')"
           autofocus
           @click="saveIncident"
         />
@@ -212,128 +223,145 @@
 </template>
 
 <style scoped>
-.incidents-view {
+.app-view {
   padding: 1.75rem 1.5rem 2.5rem;
   max-width: 72rem;
-  margin: 0 auto;
-  font-family: inherit;
-  color: var(--text);
+}
+
+.app-view__title {
+  margin: 0;
+  font-size: 1.75rem;
+  font-weight: 600;
+  letter-spacing: -0.035em;
+  line-height: 1.15;
+  color: var(--apple-text, #1d1d1f);
+}
+
+.app-view__subtitle {
+  margin: 0.5rem 0 0;
+  max-width: 36rem;
+  font-size: 0.875rem;
+  font-weight: 400;
+  line-height: 1.45;
+  letter-spacing: -0.015em;
+  color: var(--apple-text-secondary, #6e6e73);
+}
+
+.app-view__error {
+  margin: 0;
+  font-size: 0.8125rem;
+  color: #b42318;
+}
+
+.incidents-page {
+  margin-top: 1.5rem;
   display: flex;
   flex-direction: column;
-  gap: 1.5rem;
-  letter-spacing: -0.022em;
-  line-height: 1.47;
-  -webkit-font-smoothing: antialiased;
+  gap: 1.25rem;
 }
 
-.incidents-header {
-  display: flex;
-  justify-content: space-between;
-  align-items: flex-end;
-  flex-wrap: wrap;
-  gap: 1rem 1.5rem;
-  padding-bottom: 1.25rem;
-  border-bottom: 1px solid var(--border);
-}
-
-.incidents-title {
+.incidents-page__error {
   margin: 0;
-  font-size: 1.5rem;
-  font-weight: 600;
-  letter-spacing: -0.03em;
-  color: var(--text);
-}
-
-.incidents-subtitle {
-  margin: 0.35rem 0 0;
-  font-size: 0.9375rem;
-  font-weight: 400;
-  color: var(--muted);
-  max-width: 36rem;
-  line-height: 1.45;
-}
-
-.incidents-toolbar__btn.p-button.p-button-outlined {
-  border-radius: 980px;
-  font-weight: 600;
-  font-size: 0.8125rem;
-  padding: 0.5rem 1rem;
-  border: 1px solid #d2d2d7;
-  background: var(--bg);
-  color: var(--text);
-  transition: background 0.15s ease, border-color 0.15s ease, opacity 0.15s ease;
-  box-shadow: none;
-}
-
-.incidents-toolbar__btn--primary.p-button.p-button-outlined {
-  color: #0a84ff;
-  border-color: rgba(10, 132, 255, 0.35);
-  background: rgba(10, 132, 255, 0.06);
-}
-
-.incidents-toolbar__btn--primary.p-button.p-button-outlined:not(:disabled):hover {
-  background: rgba(10, 132, 255, 0.1);
-  border-color: rgba(10, 132, 255, 0.45);
-}
-
-.incidents-toolbar__btn.p-button .p-button-icon {
-  color: inherit;
 }
 
 .incidents-panel {
-  padding: 0.35rem;
-  border-radius: var(--radius);
-  border: 1px solid var(--border);
-  background: var(--bg);
-  box-shadow: var(--shadow);
+  padding: 1.2rem 1.25rem 1.35rem;
+  border-radius: 16px;
+  background: #fff;
+  border: 1px solid rgba(0, 0, 0, 0.06);
+  box-shadow: 0 1px 3px rgba(0, 0, 0, 0.03);
+}
+
+.incidents-panel__head {
+  display: flex;
+  flex-wrap: wrap;
+  align-items: flex-start;
+  justify-content: space-between;
+  gap: 0.85rem 1rem;
+  margin-bottom: 0.85rem;
+}
+
+.incidents-panel__title {
+  margin: 0;
+  font-size: 1.0625rem;
+  font-weight: 600;
+  letter-spacing: -0.02em;
+  line-height: 1.25;
+  color: var(--apple-text, #1d1d1f);
+  max-width: min(100%, 18rem);
+}
+
+.incidents-panel__btn {
+  flex-shrink: 0;
+}
+
+.incidents-panel__btn :deep(.p-button) {
+  font-weight: 500;
+  font-size: 0.8125rem;
+  padding-block: 0.5rem;
+  padding-inline: 1rem;
+}
+
+.incidents-table {
+  margin-top: 0.15rem;
+}
+
+.incidents-data :deep(.p-datatable) {
+  font-size: 0.875rem;
+  border: none;
+  border-radius: 12px;
   overflow: hidden;
 }
 
-.incidents-table :deep(.p-datatable) {
-  font-size: 0.875rem;
+.incidents-data :deep(.p-datatable-wrapper) {
+  border-radius: 12px;
 }
 
-.incidents-table :deep(.p-datatable-header) {
+.incidents-data :deep(.p-datatable-header) {
   background: transparent;
   border: none;
-  padding: 0.35rem 0.5rem;
+  padding: 0;
 }
 
-.incidents-table :deep(.p-datatable-loading-overlay) {
+.incidents-data :deep(.p-datatable-loading-overlay) {
   background: rgba(255, 255, 255, 0.75);
 }
 
-.incidents-table :deep(.p-datatable-thead > tr > th) {
-  background: var(--bg-elevated);
-  color: var(--muted);
+.incidents-data :deep(.p-datatable-thead > tr > th) {
+  background: rgba(0, 0, 0, 0.02);
+  color: #86868b;
   font-weight: 600;
   font-size: 0.6875rem;
   text-transform: uppercase;
-  letter-spacing: 0.05em;
+  letter-spacing: 0.055em;
   border: none;
-  border-bottom: 1px solid var(--border);
-  padding: 0.65rem 0.75rem;
+  border-bottom: 1px solid rgba(0, 0, 0, 0.06);
+  padding: 0.6rem 0.75rem;
 }
 
-.incidents-table :deep(.p-datatable-tbody > tr) {
-  background: var(--bg);
+.incidents-data :deep(.p-datatable-tbody > tr) {
+  background: transparent;
   transition: background 0.12s ease;
 }
 
-.incidents-table :deep(.p-datatable-tbody > tr:hover) {
-  background: var(--bg-elevated);
+.incidents-data :deep(.p-datatable-tbody > tr:hover) {
+  background: rgba(0, 0, 0, 0.02);
 }
 
-.incidents-table :deep(.p-datatable-tbody > tr > td) {
+.incidents-data :deep(.p-datatable-tbody > tr > td) {
   border: none;
-  border-bottom: 1px solid rgba(0, 0, 0, 0.06);
-  padding: 0.75rem;
+  border-bottom: 1px solid rgba(0, 0, 0, 0.05);
+  padding: 0.7rem 0.75rem;
   vertical-align: middle;
-  color: var(--text);
+  color: var(--apple-text, #1d1d1f);
+}
+
+.incidents-data :deep(.p-datatable-tbody > tr:last-child > td) {
+  border-bottom: none;
 }
 
 .incidents-provider-cell {
-  color: var(--muted);
+  color: var(--apple-text-secondary, #6e6e73);
   font-size: 0.8125rem;
 }
 
@@ -348,46 +376,29 @@
 .incidents-row-actions {
   display: flex;
   flex-wrap: wrap;
-  gap: 0.25rem;
+  gap: 0.15rem 0.35rem;
   align-items: center;
 }
 
-.incidents-row-actions__btn.p-button.p-button-text {
+.incidents-row-actions__btn :deep(.p-button) {
   font-size: 0.8125rem;
-  font-weight: 600;
-  color: #0a84ff;
-  padding: 0.35rem 0.5rem;
-}
-
-.incidents-row-actions__btn.p-button.p-button-text .p-button-icon {
-  color: inherit;
-}
-
-.incidents-row-actions__btn--danger.p-button.p-button-text {
-  color: #ff3b30;
-}
-
-.incidents-row-actions__btn.p-button.p-button-text:not(:disabled):hover {
-  background: rgba(10, 132, 255, 0.08);
-}
-
-.incidents-row-actions__btn--danger.p-button.p-button-text:not(:disabled):hover {
-  background: rgba(255, 59, 48, 0.08);
-}
-
-.incidents-error {
-  margin: 0;
-  color: #ff3b30;
-  font-size: 0.875rem;
   font-weight: 500;
+  padding: 0.35rem 0.55rem;
 }
 
-/* Dialog */
+.incidents-row-actions__btn:not(.incidents-row-actions__btn--danger) :deep(.p-button) {
+  color: #0a84ff;
+}
+
+.incidents-row-actions__btn--danger :deep(.p-button) {
+  color: #ff3b30;
+}
+
 .incidents-dialog :deep(.p-dialog-header) {
   font-weight: 600;
   letter-spacing: -0.02em;
-  color: var(--text);
-  border-bottom: 1px solid var(--border);
+  color: var(--apple-text, #1d1d1f);
+  border-bottom: 1px solid rgba(0, 0, 0, 0.06);
   padding: 1rem 1.25rem;
 }
 
@@ -396,9 +407,9 @@
 }
 
 .incidents-dialog :deep(.p-dialog-footer) {
-  border-top: 1px solid var(--border);
-  padding: 0.85rem 1.25rem;
   gap: 0.5rem;
+  border-top: 1px solid rgba(0, 0, 0, 0.06);
+  padding: 0.85rem 1.25rem;
   display: flex;
   justify-content: flex-end;
   flex-wrap: wrap;
@@ -419,7 +430,7 @@
 .incidents-dialog__field label {
   font-size: 0.8125rem;
   font-weight: 600;
-  color: var(--muted);
+  color: var(--apple-text, #1d1d1f);
 }
 
 .incidents-dialog__input,
@@ -432,7 +443,7 @@
   border-radius: 10px;
   border: 1px solid #d2d2d7;
   font-size: 0.9375rem;
-  color: var(--text);
+  color: var(--apple-text, #1d1d1f);
 }
 
 .incidents-dialog :deep(.p-inputtext:enabled:focus),
@@ -440,38 +451,5 @@
   outline: none;
   border-color: #0a84ff;
   box-shadow: 0 0 0 3px rgba(10, 132, 255, 0.18);
-}
-
-.incidents-dialog__btn.p-button.p-button-outlined {
-  border-radius: 980px;
-  font-weight: 600;
-  font-size: 0.8125rem;
-  padding: 0.5rem 1rem;
-  box-shadow: none;
-}
-
-.incidents-dialog__btn--secondary.p-button.p-button-outlined {
-  border-color: #d2d2d7;
-  background: var(--bg);
-  color: var(--text);
-}
-
-.incidents-dialog__btn--secondary.p-button.p-button-outlined:not(:disabled):hover {
-  background: var(--bg-elevated);
-}
-
-.incidents-dialog__btn--primary.p-button.p-button-outlined {
-  color: #0a84ff;
-  border-color: rgba(10, 132, 255, 0.35);
-  background: rgba(10, 132, 255, 0.06);
-}
-
-.incidents-dialog__btn--primary.p-button.p-button-outlined:not(:disabled):hover {
-  background: rgba(10, 132, 255, 0.12);
-  border-color: rgba(10, 132, 255, 0.45);
-}
-
-.incidents-dialog__btn.p-button .p-button-icon {
-  color: inherit;
 }
 </style>

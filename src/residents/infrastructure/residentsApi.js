@@ -1,5 +1,7 @@
 import { apiClient } from '@/shell/infrastructure/api/apiClient.js'
 import { reservationsApi } from '@/socialSpaces/infrastructure/reservationsApi.js'
+import { withOwnerParams } from '@/shell/infrastructure/api/ownerQuery.js'
+import { getActiveDataOwnerId } from '@/shell/infrastructure/api/ownerTenant.js'
 import {
   apiError,
   createSessionToken,
@@ -21,7 +23,9 @@ import {
  */
 export const residentsApi = {
   async list() {
-    const { data } = await apiClient.get('/users', { params: { role: 'resident' } })
+    const { data } = await apiClient.get('/users', {
+      params: withOwnerParams({ role: 'resident' }),
+    })
     return Array.isArray(data) ? data.map(publicResident) : []
   },
 
@@ -39,6 +43,11 @@ export const residentsApi = {
       throw apiError('RESIDENT_CODE_ALREADY_EXISTS')
     }
 
+    const ownerAdminId = getActiveDataOwnerId()
+    if (!ownerAdminId) {
+      throw apiError('RESIDENT_OWNER_REQUIRED')
+    }
+
     const todayStr = new Date().toLocaleDateString('en-CA'); // Gets YYYY-MM-DD local format
     const newResident = {
       id: `resident-${Date.now()}`,
@@ -48,7 +57,8 @@ export const residentsApi = {
       email: '',
       password: '',
       role: 'resident',
-      admissionDate: todayStr
+      admissionDate: todayStr,
+      ownerAdminId,
     }
 
     const { data: created } = await apiClient.post('/users', newResident)
@@ -56,7 +66,7 @@ export const residentsApi = {
   },
 
   async findByCode(code) {
-    const resident = await findResidentByCode(code)
+    const resident = await findResidentByCode(code, { globalScope: true })
     if (!resident) {
       throw apiError('RESIDENT_NOT_FOUND')
     }

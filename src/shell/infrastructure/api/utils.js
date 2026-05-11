@@ -1,4 +1,5 @@
 import { apiClient } from './apiClient.js'
+import { getActiveDataOwnerId } from './ownerTenant.js'
 
 /**
  * Cross-context HTTP/data utilities used by bounded-context APIs.
@@ -35,6 +36,7 @@ export function publicUser(user) {
     role: user.role,
     floor: user.floor ?? null,
     code: user.code ?? null,
+    ownerAdminId: user.ownerAdminId ?? null,
   }
 }
 
@@ -96,11 +98,18 @@ export async function findUserByEmail(email) {
   return Array.isArray(data) && data.length ? data[0] : null
 }
 
-export async function findResidentByCode(code) {
+/**
+ * @param {string} code
+ * @param {{ globalScope?: boolean }} [options] If globalScope, ignore active admin (invite flow).
+ */
+export async function findResidentByCode(code, options = {}) {
   const normalized = normalizeCode(code)
   if (!normalized) return null
-  const { data } = await apiClient.get('/users', {
-    params: { role: 'resident', code: normalized },
-  })
+  const params = { role: 'resident', code: normalized }
+  if (!options.globalScope) {
+    const ownerId = getActiveDataOwnerId()
+    if (ownerId) params.ownerAdminId = ownerId
+  }
+  const { data } = await apiClient.get('/users', { params })
   return Array.isArray(data) && data.length ? data[0] : null
 }

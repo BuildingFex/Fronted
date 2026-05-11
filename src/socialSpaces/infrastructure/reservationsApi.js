@@ -1,4 +1,6 @@
 import { apiClient } from '@/shell/infrastructure/api/apiClient.js'
+import { withOwnerParams } from '@/shell/infrastructure/api/ownerQuery.js'
+import { getActiveDataOwnerId } from '@/shell/infrastructure/api/ownerTenant.js'
 import {
   apiError,
   publicReservation,
@@ -15,12 +17,16 @@ import {
  */
 export const reservationsApi = {
   async listBySpace(spaceId) {
-    const { data } = await apiClient.get('/reservations', { params: { spaceId } })
+    const { data } = await apiClient.get('/reservations', {
+      params: withOwnerParams({ spaceId }),
+    })
     return Array.isArray(data) ? data.map(publicReservation) : []
   },
 
   async listByResident(residentId) {
-    const { data } = await apiClient.get('/reservations', { params: { residentId } })
+    const { data } = await apiClient.get('/reservations', {
+      params: withOwnerParams({ residentId }),
+    })
     return Array.isArray(data) ? data.map(publicReservation) : []
   },
 
@@ -28,7 +34,7 @@ export const reservationsApi = {
     const cleanSpaceId = String(spaceId ?? '').trim()
     if (!cleanSpaceId) return { removed: 0 }
     const { data } = await apiClient.get('/reservations', {
-      params: { spaceId: cleanSpaceId },
+      params: withOwnerParams({ spaceId: cleanSpaceId }),
     })
     const items = Array.isArray(data) ? data : []
     await Promise.all(
@@ -43,7 +49,7 @@ export const reservationsApi = {
     const cleanResidentId = String(residentId ?? '').trim()
     if (!cleanResidentId) return { removed: 0 }
     const { data } = await apiClient.get('/reservations', {
-      params: { residentId: cleanResidentId },
+      params: withOwnerParams({ residentId: cleanResidentId }),
     })
     const items = Array.isArray(data) ? data : []
     await Promise.all(
@@ -72,7 +78,7 @@ export const reservationsApi = {
     }
 
     const { data: existing } = await apiClient.get('/reservations', {
-      params: { spaceId: cleanSpaceId, date: cleanDate },
+      params: withOwnerParams({ spaceId: cleanSpaceId, date: cleanDate }),
     })
 
     const candidate = { date: cleanDate, startTime: cleanStart, endTime: cleanEnd }
@@ -84,6 +90,7 @@ export const reservationsApi = {
       throw apiError('RESERVATION_OVERLAP')
     }
 
+    const ownerId = getActiveDataOwnerId()
     const newReservation = {
       id: `reservation-${Date.now()}`,
       spaceId: cleanSpaceId,
@@ -93,6 +100,7 @@ export const reservationsApi = {
       date: cleanDate,
       startTime: cleanStart,
       endTime: cleanEnd,
+      ...(ownerId ? { ownerAdminId: ownerId } : {}),
     }
 
     const { data: created } = await apiClient.post('/reservations', newReservation)

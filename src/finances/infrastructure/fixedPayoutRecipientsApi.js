@@ -1,4 +1,6 @@
 import { apiClient } from '@/shell/infrastructure/api/apiClient.js'
+import { withOwnerParams } from '@/shell/infrastructure/api/ownerQuery.js'
+import { getActiveDataOwnerId } from '@/shell/infrastructure/api/ownerTenant.js'
 import { apiError } from '@/shell/infrastructure/api/utils.js'
 
 /** YYYY-MM-DD in local timezone */
@@ -54,7 +56,9 @@ export function flushDuePaymentsForRow(row, todayStr) {
  */
 export const fixedPayoutRecipientsApi = {
   async list() {
-    const { data } = await apiClient.get('/fixedPayoutRecipients')
+    const { data } = await apiClient.get('/fixedPayoutRecipients', {
+      params: withOwnerParams(),
+    })
     return Array.isArray(data) ? data : []
   },
 
@@ -98,6 +102,7 @@ export const fixedPayoutRecipientsApi = {
     }
 
     const todayStr = formatLocalYYYYMMDD()
+    const ownerId = getActiveDataOwnerId()
     const newRow = {
       id: `fp-${Date.now()}`,
       name: cleanName,
@@ -109,6 +114,7 @@ export const fixedPayoutRecipientsApi = {
       photoUrl: String(photoUrl ?? '').trim(),
       paymentHistory: [],
       createdAt: new Date().toISOString(),
+      ...(ownerId ? { ownerAdminId: ownerId } : {}),
     }
 
     const { data: created } = await apiClient.post('/fixedPayoutRecipients', newRow)

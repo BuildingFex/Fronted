@@ -1,4 +1,6 @@
 import { apiClient } from '@/shell/infrastructure/api/apiClient.js'
+import { withOwnerParams } from '@/shell/infrastructure/api/ownerQuery.js'
+import { getActiveDataOwnerId } from '@/shell/infrastructure/api/ownerTenant.js'
 import { apiError } from '@/shell/infrastructure/api/utils.js'
 
 /**
@@ -6,7 +8,9 @@ import { apiError } from '@/shell/infrastructure/api/utils.js'
  */
 export const adminManagementExpensesApi = {
   async list() {
-    const { data } = await apiClient.get('/adminManagementExpenses')
+    const { data } = await apiClient.get('/adminManagementExpenses', {
+      params: withOwnerParams(),
+    })
     return Array.isArray(data) ? data : []
   },
 
@@ -22,12 +26,14 @@ export const adminManagementExpensesApi = {
       )
     }
 
+    const ownerId = getActiveDataOwnerId()
     const newRow = {
       id: `admin-exp-${Date.now()}`,
       name: cleanName,
       amount: parsedAmount,
       purchaseDate: dateStr,
       invoicePhotoUrl: String(invoicePhotoUrl ?? '').trim(),
+      ...(ownerId ? { ownerAdminId: ownerId } : {}),
     }
 
     const { data: created } = await apiClient.post('/adminManagementExpenses', newRow)

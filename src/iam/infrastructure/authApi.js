@@ -54,6 +54,28 @@ export const authApi = {
     }
 
     const { data: created } = await apiClient.post('/users', newUser)
+    const ownerId = created.id
+
+    try {
+      await apiClient.post('/financeSettings', {
+        ownerAdminId: ownerId,
+        baseMonthlyExpense: 150,
+        lateFeeRate: 0.05,
+      })
+    } catch {
+      // ignore seed failure (e.g. duplicate); admin can still open Finanzas
+    }
+    try {
+      await apiClient.post('/kpi', {
+        ownerAdminId: ownerId,
+        totalResidents: 0,
+        occupiedUnits: 0,
+        emptyUnits: 0,
+        totalDebt: 0,
+      })
+    } catch {
+      // ignore
+    }
 
     return {
       user: publicUser(created),
