@@ -79,12 +79,6 @@ const residentNavItems = computed(() => [
     routeName: AppRouteNames.APP_RESIDENT_FINANCE,
   },
   {
-    key: 'residentPayments',
-    label: t('resident.navPayments'),
-    icon: 'pi pi-credit-card',
-    routeName: AppRouteNames.APP_RESIDENT_PAYMENTS,
-  },
-  {
     key: 'residentServices',
     label: t('resident.navServices'),
     icon: 'pi pi-bolt',

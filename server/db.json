@@ -109,6 +109,17 @@
       "company": "Company",
       "ruc": "32323",
       "role": "admin"
+    },
+    {
+      "id": "resident-1778524574336",
+      "name": "Carlos alvarez",
+      "floor": "4",
+      "code": "401",
+      "email": "u202217853@upc.edu.pe",
+      "password": "123456",
+      "role": "resident",
+      "admissionDate": "2026-05-11",
+      "ownerAdminId": "admin-seed-1"
     }
   ],
   "fees": [
@@ -283,6 +294,16 @@
       "residentId": "resident-1778364148485",
       "issueDate": "2026-05-09",
       "dueDate": "2026-06-07",
+      "amount": 150,
+      "status": "Pending",
+      "lateFee": 0,
+      "ownerAdminId": "admin-seed-1"
+    },
+    {
+      "id": 1778524574367,
+      "residentId": "resident-1778524574336",
+      "issueDate": "2026-05-11",
+      "dueDate": "2026-06-09",
       "amount": 150,
       "status": "Pending",
       "lateFee": 0,

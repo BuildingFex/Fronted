@@ -15,7 +15,6 @@ import AppProjectsView from '@/shell/presentation/views/AppProjectsView.vue'
 import AppSettingsView from '@/shell/presentation/views/AppSettingsView.vue'
 import AppResidentDashboardView from '@/shell/presentation/views/AppResidentDashboardView.vue'
 import AppResidentFinanceView from '@/shell/presentation/views/AppResidentFinanceView.vue'
-import AppResidentPaymentsView from '@/shell/presentation/views/AppResidentPaymentsView.vue'
 import AppResidentServicesView from '@/shell/presentation/views/AppResidentServicesView.vue'
 import AppResidentIncidentsView from '@/shell/presentation/views/AppResidentIncidentsView.vue'
 import AppResidentSupportView from '@/shell/presentation/views/AppResidentSupportView.vue'
@@ -58,11 +57,6 @@ export default createRouter({
           path: 'resident/finance',
           name: AppRouteNames.APP_RESIDENT_FINANCE,
           component: AppResidentFinanceView,
-        },
-        {
-          path: 'resident/payments',
-          name: AppRouteNames.APP_RESIDENT_PAYMENTS,
-          component: AppResidentPaymentsView,
         },
         {
           path: 'resident/services',

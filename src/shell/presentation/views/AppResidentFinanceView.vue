@@ -14,7 +14,6 @@ import TabList from 'primevue/tablist'
 import Tab from 'primevue/tab'
 import TabPanels from 'primevue/tabpanels'
 import TabPanel from 'primevue/tabpanel'
-import Card from 'primevue/card'
 import Message from 'primevue/message'
 import { useToast } from 'primevue/usetoast'
 import {
@@ -194,46 +193,43 @@ const activeTab = ref('0')
 </script>
 
 <template>
-  <div class="view-container">
+  <div class="app-view">
     <Toast position="top-right" />
 
-    <div class="view-header">
-      <h1 class="text-2xl font-bold m-0">{{ t('resident.financeTitle') }}</h1>
-      <p class="text-color-secondary mt-2 mb-4">
-        {{ t('resident.financeSubtitle', { name: profile.name || '' }) }}
-      </p>
-    </div>
+    <h1 class="app-view__title">{{ t('resident.financeTitle') }}</h1>
+    <p class="app-view__subtitle">
+      {{ t('resident.financeSubtitle', { name: profile.name || '' }) }}
+    </p>
 
-    <Message v-if="paymentState.error" severity="error" :closable="false" class="mb-4">
-      {{ paymentState.error }}
-    </Message>
+    <div class="finance-page">
+      <Message v-if="paymentState.error" severity="error" :closable="false" class="finance-page__error">
+        {{ paymentState.error }}
+      </Message>
 
-    <Card class="mb-4">
-      <template #content>
-        <div class="flex flex-wrap align-items-center justify-content-between gap-3">
+      <section class="finance-panel">
+        <div class="finance-summary">
           <div>
-            <span class="text-color-secondary font-medium block mb-1">{{ t('residentFinance.totalDue') }}</span>
-            <strong class="text-4xl block" :class="{ 'text-red-500': hasOverdue }">
+            <span class="finance-summary__label">{{ t('residentFinance.totalDue') }}</span>
+            <strong class="finance-summary__amount" :class="{ 'finance-summary__amount--overdue': hasOverdue }">
               S/ {{ pendingTotal.toLocaleString('es-PE', { minimumFractionDigits: 2 }) }}
             </strong>
-            <span v-if="nextDueFee" class="text-sm font-semibold" :class="hasOverdue ? 'text-red-500' : 'text-primary'">
+            <span v-if="nextDueFee" class="finance-summary__hint" :class="hasOverdue ? 'finance-summary__hint--overdue' : 'finance-summary__hint--primary'">
               {{ nextDueFee.month }}
               <template v-if="hasOverdue"> · {{ t('residentFinance.overdueWarning') }}</template>
             </span>
           </div>
           <Button
+            type="button"
+            rounded
+            :severity="hasOverdue ? 'danger' : 'secondary'"
             :label="t('residentFinance.payNow')"
-            icon="pi pi-credit-card"
-            :severity="hasOverdue ? 'danger' : 'primary'"
             :disabled="pendingTotal === 0 || paymentState.isLoading"
             @click="openPayDialog"
           />
         </div>
-      </template>
-    </Card>
+      </section>
 
-    <Card>
-      <template #content>
+      <section class="finance-panel">
         <Tabs v-model:value="activeTab">
           <TabList>
             <Tab value="0">
@@ -248,31 +244,31 @@ const activeTab = ref('0')
 
           <TabPanels>
             <TabPanel value="0">
-              <DataTable :value="fees" responsiveLayout="scroll" :loading="paymentState.isLoading">
+              <DataTable :value="fees" responsiveLayout="scroll" :loading="paymentState.isLoading" class="incidents-data incidents-table">
                 <Column field="month" :header="t('residentFinance.colMonth')" />
                 <Column :header="t('residentFinance.colAmount')">
                   <template #body="{ data }">
-                    <span class="font-semibold">S/ {{ data.amount.toFixed(2) }}</span>
+                    <span class="finance-amount">S/ {{ data.amount.toFixed(2) }}</span>
                   </template>
                 </Column>
                 <Column field="dueDate" :header="t('residentFinance.colDueDate')" />
                 <Column :header="t('residentFinance.colBillingStatus')">
                   <template #body="{ data }">
-                    <Tag :value="feeStatusLabel(data)" :severity="feeSeverity(data)" rounded />
+                    <Tag class="incidents-status-tag" :value="feeStatusLabel(data)" :severity="feeSeverity(data)" rounded />
                   </template>
                 </Column>
               </DataTable>
             </TabPanel>
 
             <TabPanel value="1">
-              <p v-if="!paymentHistory.length && !paymentState.isLoading" class="text-center text-color-secondary my-4">
+              <p v-if="!paymentHistory.length && !paymentState.isLoading" class="finance-empty">
                 {{ t('residentFinance.noPaymentsYet') }}
               </p>
-              <DataTable v-else :value="paymentHistory" responsiveLayout="scroll" :loading="paymentState.isLoading">
+              <DataTable v-else :value="paymentHistory" responsiveLayout="scroll" :loading="paymentState.isLoading" class="incidents-data incidents-table">
                 <Column field="feeMonth" :header="t('residentFinance.colMonth')" />
                 <Column :header="t('residentFinance.colAmount')">
                   <template #body="{ data }">
-                    <span class="font-semibold">S/ {{ data.amount.toFixed(2) }}</span>
+                    <span class="finance-amount">S/ {{ data.amount.toFixed(2) }}</span>
                   </template>
                 </Column>
                 <Column :header="t('residentFinance.colPaidAt')">
@@ -282,7 +278,7 @@ const activeTab = ref('0')
                 </Column>
                 <Column field="method" :header="t('residentFinance.colMethod')">
                   <template #body="{ data }">
-                    <span class="text-primary font-semibold"><i class="pi pi-wallet mr-1" aria-hidden="true"></i> {{ data.method }}</span>
+                    <span class="finance-method"><i class="pi pi-wallet mr-1" aria-hidden="true"></i> {{ data.method }}</span>
                   </template>
                 </Column>
                 <Column field="reference" :header="t('residentFinance.colReference')" />
@@ -290,59 +286,68 @@ const activeTab = ref('0')
             </TabPanel>
           </TabPanels>
         </Tabs>
-      </template>
-    </Card>
+      </section>
+    </div>
 
     <Dialog
       v-model:visible="isPayDialogOpen"
       modal
       :header="t('residentFinance.payDialogTitle')"
       :style="{ width: 'min(32rem, 94vw)' }"
+      class="finance-dialog"
       :draggable="false"
     >
-      <div class="p-3 border-round bg-gray-100 border-1 border-gray-300 flex justify-content-between align-items-center mb-3">
+      <div class="finance-dialog__summary">
         <span>{{ t('residentFinance.totalDue') }}</span>
-        <strong class="text-xl">S/ {{ (nextDueFee?.amount ?? 0).toFixed(2) }}</strong>
+        <strong>S/ {{ (nextDueFee?.amount ?? 0).toFixed(2) }}</strong>
       </div>
 
       <div ref="mpBrickContainer" v-show="!useFallbackForm" style="min-height: 100px;"></div>
 
-      <div v-if="!bricksLoaded && !useFallbackForm" class="flex flex-column align-items-center gap-3 py-4 text-color-secondary">
-        <i class="pi pi-spin pi-spinner text-2xl text-primary" aria-hidden="true"></i>
+      <div v-if="!bricksLoaded && !useFallbackForm" class="finance-dialog__loading">
+        <i class="pi pi-spin pi-spinner finance-dialog__spinner" aria-hidden="true"></i>
         <span>{{ t('residentFinance.loadingMP') }}</span>
       </div>
 
-      <div v-if="useFallbackForm" class="flex flex-column gap-3">
-        <Message severity="info" :closable="false" class="mb-2">
+      <div v-if="useFallbackForm" class="finance-dialog__fallback">
+        <Message severity="info" :closable="false" class="finance-dialog__demo-msg">
           <i class="pi pi-wallet mr-2" aria-hidden="true"></i> Mercado Pago · {{ t('residentFinance.demoMode') }}
         </Message>
 
-        <div class="flex flex-column gap-1">
-          <label for="rf-card-number" class="text-sm font-semibold text-color-secondary">{{ t('residentFinance.cardNumber') }}</label>
+        <div class="finance-dialog__field">
+          <label for="rf-card-number" class="finance-dialog__label">{{ t('residentFinance.cardNumber') }}</label>
           <InputText id="rf-card-number" v-model="payForm.cardNumber" placeholder="0000 0000 0000 0000" maxlength="19" class="w-full" />
         </div>
-        <div class="flex gap-3">
-          <div class="flex flex-column gap-1 flex-1">
-            <label for="rf-expiry" class="text-sm font-semibold text-color-secondary">{{ t('residentFinance.expiry') }}</label>
+        <div class="finance-dialog__row">
+          <div class="finance-dialog__field">
+            <label for="rf-expiry" class="finance-dialog__label">{{ t('residentFinance.expiry') }}</label>
             <InputText id="rf-expiry" v-model="payForm.expiry" @input="formatExpiryDate" placeholder="MM/YY" maxlength="5" class="w-full" />
           </div>
-          <div class="flex flex-column gap-1 flex-1">
-            <label for="rf-cvv" class="text-sm font-semibold text-color-secondary">{{ t('residentFinance.cvv') }}</label>
+          <div class="finance-dialog__field">
+            <label for="rf-cvv" class="finance-dialog__label">{{ t('residentFinance.cvv') }}</label>
             <InputText id="rf-cvv" v-model="payForm.cvv" placeholder="•••" maxlength="4" class="w-full" />
           </div>
         </div>
-        <div class="flex flex-column gap-1">
-          <label for="rf-holder" class="text-sm font-semibold text-color-secondary">{{ t('residentFinance.cardHolder') }}</label>
+        <div class="finance-dialog__field">
+          <label for="rf-holder" class="finance-dialog__label">{{ t('residentFinance.cardHolder') }}</label>
           <InputText id="rf-holder" v-model="payForm.holder" :placeholder="t('residentFinance.cardHolderPlaceholder')" class="w-full" />
         </div>
       </div>
 
       <template #footer>
-        <Button :label="t('app.cancelAction')" icon="pi pi-times" severity="secondary" outlined @click="isPayDialogOpen = false" :disabled="isProcessing" />
+        <Button
+          type="button"
+          text
+          rounded
+          :label="t('app.cancelAction')"
+          :disabled="isProcessing"
+          @click="isPayDialogOpen = false"
+        />
         <Button
           v-if="useFallbackForm"
+          type="button"
+          rounded
           :label="isProcessing ? t('residentFinance.processing') : t('residentFinance.confirmPay')"
-          icon="pi pi-check"
           :loading="isProcessing"
           @click="confirmFallbackPayment"
         />
@@ -352,10 +357,285 @@ const activeTab = ref('0')
 </template>
 
 <style scoped>
-.view-container {
-  padding: 1.5rem;
-  max-width: 1200px;
-  margin: 0 auto;
+.app-view {
+  padding: 1.75rem 1.5rem 2.5rem;
+  max-width: 72rem;
+}
+
+.app-view__title {
+  margin: 0;
+  font-size: 1.75rem;
+  font-weight: 600;
+  letter-spacing: -0.035em;
+  line-height: 1.15;
+  color: var(--apple-text, #1d1d1f);
+}
+
+.app-view__subtitle {
+  margin: 0.5rem 0 0;
+  max-width: 36rem;
+  font-size: 0.875rem;
+  font-weight: 400;
+  line-height: 1.45;
+  letter-spacing: -0.015em;
+  color: var(--apple-text-secondary, #6e6e73);
+}
+
+.finance-page {
+  margin-top: 1.5rem;
+  display: flex;
+  flex-direction: column;
+  gap: 1.25rem;
+}
+
+.finance-page__error {
+  margin: 0;
+}
+
+/* Panel — mismo borde/sombra que payments */
+.finance-panel {
+  padding: 1.2rem 1.25rem 1.35rem;
+  border-radius: 16px;
+  background: #fff;
+  border: 1px solid rgba(0, 0, 0, 0.06);
+  box-shadow: 0 1px 3px rgba(0, 0, 0, 0.03);
+}
+
+/* Resumen de deuda — mismo patrón que incidents-panel__head de payments */
+.finance-summary {
+  display: flex;
+  flex-wrap: wrap;
+  align-items: flex-start;
+  justify-content: space-between;
+  gap: 0.85rem 1rem;
+}
+
+.finance-summary__label {
+  display: block;
+  font-size: 0.75rem;
+  font-weight: 600;
+  letter-spacing: 0.04em;
+  text-transform: uppercase;
+  color: #86868b;
+}
+
+.finance-summary__amount {
+  display: block;
+  margin-top: 0.2rem;
+  font-size: 1.5rem;
+  font-weight: 600;
+  letter-spacing: -0.03em;
+  font-variant-numeric: tabular-nums;
+  color: var(--apple-text, #1d1d1f);
+}
+
+.finance-summary__amount--overdue {
+  color: #d70015;
+}
+
+.finance-summary__hint {
+  display: block;
+  margin-top: 0.25rem;
+  font-size: 0.8125rem;
+  color: var(--apple-text-secondary, #6e6e73);
+}
+
+.finance-summary__hint--overdue {
+  color: #d70015;
+}
+
+.finance-summary__hint--primary {
+  color: var(--apple-text-secondary, #6e6e73);
+}
+
+/* Montos en tabla */
+.finance-amount {
+  font-weight: 600;
+  font-variant-numeric: tabular-nums;
+}
+
+/* Método de pago en tabla */
+.finance-method {
+  font-weight: 600;
+  color: var(--apple-text, #1d1d1f);
+}
+
+/* Vacío */
+.finance-empty {
+  margin: 0;
+  padding: 0.75rem 0 0.25rem;
+  font-size: 0.875rem;
+  color: var(--apple-text-secondary, #6e6e73);
+}
+
+/* Tabla — exactamente igual que payments */
+.incidents-table {
+  margin-top: 0.15rem;
+}
+
+.incidents-data :deep(.p-datatable) {
+  font-size: 0.875rem;
+  border: none;
+  border-radius: 12px;
+  overflow: hidden;
+}
+
+.incidents-data :deep(.p-datatable-wrapper) {
+  border-radius: 12px;
+}
+
+.incidents-data :deep(.p-datatable-header) {
+  background: transparent;
+  border: none;
+  padding: 0;
+}
+
+.incidents-data :deep(.p-datatable-loading-overlay) {
+  background: rgba(255, 255, 255, 0.75);
+}
+
+.incidents-data :deep(.p-datatable-thead > tr > th) {
+  background: rgba(0, 0, 0, 0.02);
+  color: #86868b;
+  font-weight: 600;
+  font-size: 0.6875rem;
+  text-transform: uppercase;
+  letter-spacing: 0.055em;
+  border: none;
+  border-bottom: 1px solid rgba(0, 0, 0, 0.06);
+  padding: 0.6rem 0.75rem;
+}
+
+.incidents-data :deep(.p-datatable-tbody > tr) {
+  background: transparent;
+  transition: background 0.12s ease;
+}
+
+.incidents-data :deep(.p-datatable-tbody > tr:hover) {
+  background: rgba(0, 0, 0, 0.02);
+}
+
+.incidents-data :deep(.p-datatable-tbody > tr > td) {
+  border: none;
+  border-bottom: 1px solid rgba(0, 0, 0, 0.05);
+  padding: 0.7rem 0.75rem;
+  vertical-align: middle;
+  color: var(--apple-text, #1d1d1f);
+}
+
+.incidents-data :deep(.p-datatable-tbody > tr:last-child > td) {
+  border-bottom: none;
+}
+
+.incidents-status-tag :deep(.p-tag) {
+  border-radius: 980px;
+  font-size: 0.6875rem;
+  font-weight: 600;
+  letter-spacing: 0.03em;
+  padding: 0.3rem 0.65rem;
+}
+
+/* Diálogo — exactamente igual que payments */
+.finance-dialog :deep(.p-dialog-header) {
+  font-weight: 600;
+  letter-spacing: -0.02em;
+  color: var(--apple-text, #1d1d1f);
+  border-bottom: 1px solid rgba(0, 0, 0, 0.06);
+  padding: 1rem 1.25rem;
+}
+
+.finance-dialog :deep(.p-dialog-content) {
+  padding: 1.15rem 1.25rem 1.25rem;
+}
+
+.finance-dialog :deep(.p-dialog-footer) {
+  gap: 0.5rem;
+  border-top: 1px solid rgba(0, 0, 0, 0.06);
+  padding: 0.85rem 1.25rem;
+  display: flex;
+  justify-content: flex-end;
+  flex-wrap: wrap;
+}
+
+.finance-dialog__summary {
+  display: flex;
+  justify-content: space-between;
+  align-items: center;
+  padding: 0.75rem 1rem;
+  margin-bottom: 1rem;
+  border-radius: 12px;
+  background: #f5f5f7;
+  border: 1px solid rgba(0, 0, 0, 0.06);
+  font-size: 0.875rem;
+  color: var(--apple-text-secondary, #6e6e73);
+}
+
+.finance-dialog__summary strong {
+  font-size: 1.125rem;
+  font-weight: 600;
+  color: var(--apple-text, #1d1d1f);
+  font-variant-numeric: tabular-nums;
+}
+
+.finance-dialog__loading {
+  display: flex;
+  flex-direction: column;
+  align-items: center;
+  gap: 0.75rem;
+  padding: 1.5rem 0;
+  color: var(--apple-text-secondary, #6e6e73);
+  font-size: 0.875rem;
+}
+
+.finance-dialog__spinner {
+  font-size: 1.5rem;
+  color: var(--p-primary-color, #0a84ff);
+}
+
+.finance-dialog__fallback {
+  display: flex;
+  flex-direction: column;
+  gap: 0.85rem;
+}
+
+.finance-dialog__demo-msg {
+  margin: 0;
+}
+
+.finance-dialog__field {
+  display: flex;
+  flex-direction: column;
+  gap: 0.35rem;
+}
+
+.finance-dialog__label {
+  font-size: 0.8125rem;
+  font-weight: 600;
+  color: var(--apple-text, #1d1d1f);
+}
+
+.finance-dialog__row {
+  display: flex;
+  gap: 0.75rem;
+  flex-wrap: wrap;
+}
+
+.finance-dialog__row .finance-dialog__field {
+  flex: 1;
+  min-width: 7rem;
+}
+
+.finance-dialog :deep(.p-inputtext) {
+  border-radius: 10px;
+  border: 1px solid #d2d2d7;
+  font-size: 0.9375rem;
+  color: var(--apple-text, #1d1d1f);
+}
+
+.finance-dialog :deep(.p-inputtext:enabled:focus) {
+  outline: none;
+  border-color: #0a84ff;
+  box-shadow: 0 0 0 3px rgba(10, 132, 255, 0.18);
 }
 </style>
 
