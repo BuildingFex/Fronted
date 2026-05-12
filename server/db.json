@@ -692,6 +692,34 @@
       "ownerAdminId": "admin-seed-1"
     }
   ],
+  "supportChats": [
+    {
+      "id": "support-chat-1778558121975",
+      "ownerAdminId": "admin-seed-1",
+      "residentId": "resident-1778137645757",
+      "residentName": "Sebastian Martin Beingolea Montalvo",
+      "topic": "Technical support",
+      "status": "open",
+      "messages": [
+        {
+          "id": "msg-1778558125466-fdefgyh",
+          "authorRole": "resident",
+          "body": "hola",
+          "createdAt": "2026-05-12T03:55:25.466Z",
+          "authorName": "Sebastian Martin Beingolea Montalvo"
+        },
+        {
+          "id": "msg-1778558141594-2y4b0sk",
+          "authorRole": "admin",
+          "body": "buenas en que te puedo ayudar?",
+          "createdAt": "2026-05-12T03:55:41.594Z",
+          "authorName": "Admin Demo"
+        }
+      ],
+      "createdAt": "2026-05-12T03:55:21.975Z",
+      "updatedAt": "2026-05-12T03:55:41.594Z"
+    }
+  ],
   "importUploads": [
     {
       "id": "import-1778544745408",

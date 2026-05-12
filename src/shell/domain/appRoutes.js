@@ -16,6 +16,7 @@ export const AppRouteNames = /** @type {const} */ ({
   APP_PROJECTS: 'app-projects',
   APP_COLLECTIONS_MANAGEMENT_EXPENSES: 'app-collections-management-expenses',
   APP_TEAM: 'app-team',
+  APP_RESIDENT_HELP: 'app-resident-help',
   APP_SETTINGS: 'app-settings',
   APP_RESIDENT_DASHBOARD: 'app-resident-dashboard',
   APP_RESIDENT_FINANCE: 'app-resident-finance',
@@ -42,6 +43,7 @@ export const AppPaths = /** @type {const} */ ({
   APP_COLLECTIONS_MANAGEMENT_EXPENSES:
     '/app/collections-management-expenses',
   APP_TEAM: '/app/team',
+  APP_RESIDENT_HELP: '/app/resident-help',
   APP_SETTINGS: '/app/settings',
   APP_RESIDENT_DASHBOARD: '/app/resident/dashboard',
   APP_RESIDENT_FINANCE: '/app/resident/finance',

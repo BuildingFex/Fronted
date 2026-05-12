@@ -3,6 +3,12 @@ import { computed, onMounted, ref, watch } from 'vue'
 import { useI18n } from 'vue-i18n'
 import { useSession } from '@/iam/application/sessionStore.js'
 import { authApi } from '@/iam/infrastructure/authApi.js'
+import { residentsApi } from '@/residents/infrastructure/residentsApi.js'
+import { SubscriptionPlanId, maxResidentsForSubscriptionPlan } from '@/shell/domain/subscriptionPlans.js'
+import {
+  getSubscriptionPlanIdForOwner,
+  saveSubscriptionPlanForOwner,
+} from '@/shell/infrastructure/subscriptionPlanStorage.js'
 
 const { t } = useI18n()
 const { state, isAdmin, isResident } = useSession()
@@ -37,10 +43,57 @@ async function loadServerProfile() {
   }
 }
 
-onMounted(loadServerProfile)
+const selectedPlanId = ref(SubscriptionPlanId.FREE)
+const residentsCount = ref(0)
+const planSaveNotice = ref('')
+
+const activeResidentLimit = computed(() =>
+  maxResidentsForSubscriptionPlan(selectedPlanId.value),
+)
+
+function syncPlanFromStorage() {
+  const id = sessionProfile.value?.id
+  if (!id) {
+    selectedPlanId.value = SubscriptionPlanId.FREE
+    return
+  }
+  selectedPlanId.value = getSubscriptionPlanIdForOwner(id)
+}
+
+async function refreshResidentCount() {
+  if (!isAdmin) return
+  try {
+    residentsCount.value = (await residentsApi.list()).length
+  } catch {
+    residentsCount.value = 0
+  }
+}
+
+async function initSettings() {
+  await loadServerProfile()
+  syncPlanFromStorage()
+  await refreshResidentCount()
+}
+
+function selectPlan(planId) {
+  const id = sessionProfile.value?.id
+  if (!id) return
+  saveSubscriptionPlanForOwner(id, planId)
+  selectedPlanId.value = planId
+  planSaveNotice.value = t('app.settingsPlanSaved')
+  window.setTimeout(() => {
+    planSaveNotice.value = ''
+  }, 2800)
+}
+
+onMounted(initSettings)
 watch(
   () => sessionProfile.value?.id,
-  () => loadServerProfile(),
+  async () => {
+    await loadServerProfile()
+    syncPlanFromStorage()
+    await refreshResidentCount()
+  },
 )
 </script>
 
@@ -82,13 +135,24 @@ watch(
 
     <!-- Subscriptions — solo visible para admin -->
     <section v-if="isAdmin" class="plans-section" aria-labelledby="settings-plans-heading">
-      <h2 id="settings-plans-heading" class="plans-section__title">Subscriptions</h2>
-      <p class="plans-section__subtitle">Choose the plan that fits your building.</p>
+      <h2 id="settings-plans-heading" class="plans-section__title">
+        {{ t('app.settingsPlansTitle') }}
+      </h2>
+      <p class="plans-section__subtitle">{{ t('app.settingsPlansSubtitle') }}</p>
+      <p class="plans-section__usage">
+        {{ t('app.settingsPlanUsageLine', { current: residentsCount, max: activeResidentLimit }) }}
+      </p>
+      <p v-if="planSaveNotice" class="plans-section__notice" role="status">
+        {{ planSaveNotice }}
+      </p>
 
       <div class="plans-grid">
 
         <!-- Free -->
-        <div class="plan-card plan-card--free">
+        <div
+          class="plan-card plan-card--free"
+          :class="{ 'plan-card--selected': selectedPlanId === SubscriptionPlanId.FREE }"
+        >
           <div class="plan-card__header">
             <span class="plan-card__name">Free</span>
           </div>
@@ -104,11 +168,20 @@ watch(
             <li><i class="pi pi-check" aria-hidden="true"></i> Una cuenta de administrador.</li>
             <li><i class="pi pi-check" aria-hidden="true"></i> Soporte comunitario.</li>
           </ul>
-          <button class="plan-card__btn plan-card__btn--ghost">Comenzar gratis</button>
+          <button
+            type="button"
+            class="plan-card__btn plan-card__btn--ghost"
+            @click="selectPlan(SubscriptionPlanId.FREE)"
+          >
+            {{ t('app.settingsPlanSelectFree') }}
+          </button>
         </div>
 
         <!-- Essential -->
-        <div class="plan-card">
+        <div
+          class="plan-card"
+          :class="{ 'plan-card--selected': selectedPlanId === SubscriptionPlanId.ESSENTIAL }"
+        >
           <div class="plan-card__header">
             <span class="plan-card__name">Essential</span>
           </div>
@@ -125,11 +198,20 @@ watch(
             <li><i class="pi pi-check" aria-hidden="true"></i> Consola web para administradores.</li>
             <li><i class="pi pi-check" aria-hidden="true"></i> Soporte por email en días hábiles.</li>
           </ul>
-          <button class="plan-card__btn plan-card__btn--ghost">Elegir Essential</button>
+          <button
+            type="button"
+            class="plan-card__btn plan-card__btn--ghost"
+            @click="selectPlan(SubscriptionPlanId.ESSENTIAL)"
+          >
+            {{ t('app.settingsPlanSelectEssential') }}
+          </button>
         </div>
 
         <!-- Standard — destacado -->
-        <div class="plan-card plan-card--highlighted">
+        <div
+          class="plan-card plan-card--highlighted"
+          :class="{ 'plan-card--selected': selectedPlanId === SubscriptionPlanId.STANDARD }"
+        >
           <div class="plan-card__header">
             <span class="plan-card__name">Standard</span>
             <span class="plan-card__badge">Más popular</span>
@@ -147,11 +229,20 @@ watch(
             <li><i class="pi pi-check" aria-hidden="true"></i> Difusión a residentes y comités.</li>
             <li><i class="pi pi-check" aria-hidden="true"></i> Soporte operativo prioritario.</li>
           </ul>
-          <button class="plan-card__btn plan-card__btn--primary">Elegir Standard</button>
+          <button
+            type="button"
+            class="plan-card__btn plan-card__btn--primary"
+            @click="selectPlan(SubscriptionPlanId.STANDARD)"
+          >
+            {{ t('app.settingsPlanSelectStandard') }}
+          </button>
         </div>
 
         <!-- Scale -->
-        <div class="plan-card">
+        <div
+          class="plan-card"
+          :class="{ 'plan-card--selected': selectedPlanId === SubscriptionPlanId.SCALE }"
+        >
           <div class="plan-card__header">
             <span class="plan-card__name">Scale</span>
           </div>
@@ -168,7 +259,13 @@ watch(
             <li><i class="pi pi-check" aria-hidden="true"></i> Asistencia en despliegue y onboarding.</li>
             <li><i class="pi pi-check" aria-hidden="true"></i> Canal de soporte con tiempos de respuesta.</li>
           </ul>
-          <button class="plan-card__btn plan-card__btn--ghost">Elegir Scale</button>
+          <button
+            type="button"
+            class="plan-card__btn plan-card__btn--ghost"
+            @click="selectPlan(SubscriptionPlanId.SCALE)"
+          >
+            {{ t('app.settingsPlanSelectScale') }}
+          </button>
         </div>
 
       </div>
@@ -279,9 +376,22 @@ watch(
 }
 
 .plans-section__subtitle {
-  margin: 0 0 1.5rem;
+  margin: 0 0 0.5rem;
   font-size: 0.875rem;
   color: var(--apple-text-secondary, #6e6e73);
+}
+
+.plans-section__usage {
+  margin: 0 0 0.75rem;
+  font-size: 0.875rem;
+  font-weight: 500;
+  color: var(--apple-text, #1d1d1f);
+}
+
+.plans-section__notice {
+  margin: 0 0 1rem;
+  font-size: 0.875rem;
+  color: #248a3d;
 }
 
 /* ── Grid de planes ── */
@@ -322,6 +432,14 @@ watch(
 /* Plan free — borde verde */
 .plan-card--free {
   border-color: rgba(52, 199, 89, 0.4);
+}
+
+.plan-card--selected {
+  box-shadow: 0 0 0 2px #0a84ff, 0 4px 16px rgba(10, 132, 255, 0.12);
+}
+
+.plan-card--highlighted.plan-card--selected {
+  box-shadow: 0 0 0 2px #0a84ff, 0 0 0 1px #0a84ff, 0 8px 24px rgba(10, 132, 255, 0.18);
 }
 
 /* ── Header del plan ── */

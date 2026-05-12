@@ -11,6 +11,7 @@ import AppIncidentsView from '@/shell/presentation/views/AppIncidentsView.vue'
 import AppInformationView from '@/shell/presentation/views/AppInformationView.vue'
 import AppCollectionsManagementExpensesView from '@/shell/presentation/views/AppCollectionsManagementExpensesView.vue'
 import AppTeamView from '@/shell/presentation/views/AppTeamView.vue'
+import AppAdminResidentHelpView from '@/shell/presentation/views/AppAdminResidentHelpView.vue'
 import AppProjectsView from '@/shell/presentation/views/AppProjectsView.vue'
 import AppSettingsView from '@/shell/presentation/views/AppSettingsView.vue'
 import AppResidentDashboardView from '@/shell/presentation/views/AppResidentDashboardView.vue'
@@ -53,6 +54,11 @@ export default createRouter({
           component: AppCollectionsManagementExpensesView,
         },
         { path: 'team', name: AppRouteNames.APP_TEAM, component: AppTeamView },
+        {
+          path: 'resident-help',
+          name: AppRouteNames.APP_RESIDENT_HELP,
+          component: AppAdminResidentHelpView,
+        },
         { path: 'projects', name: AppRouteNames.APP_PROJECTS, component: AppProjectsView },
         { path: 'settings', name: AppRouteNames.APP_SETTINGS, component: AppSettingsView },
         {

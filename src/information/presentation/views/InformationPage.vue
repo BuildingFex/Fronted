@@ -56,7 +56,7 @@ onMounted(fetchAnnouncements)
       </div>
 
       <section
-        class="finance-panel finance-panel--information"
+        class="finance-panel finance-panel--information import-panel"
         :aria-labelledby="isAdmin ? 'info-announcements-heading-admin' : 'info-announcements-heading'"
       >
         <h2
@@ -66,7 +66,7 @@ onMounted(fetchAnnouncements)
           {{ t('information.announcementsPanelTitle') }}
         </h2>
 
-        <p v-if="loadError" class="info-panel-error" role="alert">
+        <p v-if="loadError" class="import-alert import-alert--error" role="alert">
           <i class="pi pi-exclamation-circle" aria-hidden="true" />
           {{ t('information.loadError') }}
         </p>
@@ -101,7 +101,7 @@ onMounted(fetchAnnouncements)
 
 .app-view__subtitle {
   margin: 0.5rem 0 0;
-  max-width: 36rem;
+  max-width: 40rem;
   font-size: 0.875rem;
   font-weight: 400;
   line-height: 1.45;
@@ -124,11 +124,33 @@ onMounted(fetchAnnouncements)
 }
 
 .finance-toolbar-row--information :deep(.ann-form__trigger) {
+  display: inline-flex;
+  align-items: center;
+  gap: 0.45rem;
   font-weight: 500;
   font-size: 0.8125rem;
   padding-block: 0.5rem;
   padding-inline: 1rem;
   border-radius: 980px;
+  border: 1px solid #d2d2d7;
+  background: #fff;
+  color: var(--apple-text, #1d1d1f);
+  cursor: pointer;
+  font-family: inherit;
+  transition:
+    background 0.15s ease,
+    border-color 0.15s ease;
+}
+
+.finance-toolbar-row--information :deep(.ann-form__trigger:hover) {
+  background: #fafafa;
+  border-color: rgba(0, 0, 0, 0.14);
+}
+
+.finance-toolbar-row--information :deep(.ann-form__trigger:focus-visible) {
+  outline: none;
+  border-color: #0a84ff;
+  box-shadow: 0 0 0 3px rgba(10, 132, 255, 0.18);
 }
 
 .finance-panel {
@@ -140,7 +162,7 @@ onMounted(fetchAnnouncements)
 }
 
 .finance-panel__section-title {
-  margin: 0 0 0.85rem;
+  margin: 0 0 0.5rem;
   font-size: 1.0625rem;
   font-weight: 600;
   letter-spacing: -0.02em;
@@ -148,15 +170,18 @@ onMounted(fetchAnnouncements)
   color: var(--apple-text, #1d1d1f);
 }
 
-.info-panel-error {
+.import-alert {
   display: flex;
   align-items: center;
   gap: 0.4rem;
-  margin: 0 0 1rem;
+  margin: 0 0 0.85rem;
   padding: 0.65rem 0.85rem;
   border-radius: 10px;
   font-size: 0.8125rem;
   font-weight: 500;
+}
+
+.import-alert--error {
   color: #b42318;
   background: rgba(180, 35, 24, 0.06);
   border: 1px solid rgba(180, 35, 24, 0.12);

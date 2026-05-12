@@ -105,27 +105,31 @@
     <h1 class="app-view__title">{{ t('app.pageIncidents') }}</h1>
     <p class="app-view__subtitle">{{ t('app.incidentsAdminSubtitle') }}</p>
 
-    <div class="incidents-page">
-      <section class="incidents-panel" aria-labelledby="incidents-list-heading">
-        <header class="incidents-panel__head">
-          <h2 id="incidents-list-heading" class="incidents-panel__title">
+    <div class="finance-page">
+      <section
+        class="finance-panel finance-panel--table import-panel"
+        aria-labelledby="incidents-list-heading"
+      >
+        <div class="mgmt-panel-toolbar">
+          <h2 id="incidents-list-heading" class="finance-panel__section-title">
             {{ t('app.incidentsAdminListTitle') }}
           </h2>
           <Button
             type="button"
             rounded
             severity="secondary"
+            icon="pi pi-plus"
             :label="t('app.newIncident')"
-            class="incidents-panel__btn"
+            class="import-dropzone__btn"
             @click="newIncident"
           />
-        </header>
+        </div>
 
         <DataTable
           :value="incidents"
           :loading="loading"
           responsiveLayout="scroll"
-          class="incidents-data incidents-table"
+          class="finance-data finance-table"
         >
         <Column field="id" header="ID" />
         <Column field="residentName" :header="t('app.incidentResidentName')" />
@@ -168,7 +172,7 @@
       </DataTable>
       </section>
 
-      <p v-if="error" class="app-view__error incidents-page__error" role="alert">
+      <p v-if="error" class="import-alert import-alert--error" role="alert">
         {{ t('app.residentsLoadError') }}
       </p>
     </div>
@@ -205,14 +209,18 @@
       <template #footer>
         <Button
           type="button"
-          text
           rounded
+          severity="secondary"
+          text
+          class="import-dropzone__btn"
           :label="t('app.cancelAction')"
           @click="isDialogOpen = false"
         />
         <Button
           type="button"
           rounded
+          severity="secondary"
+          class="import-dropzone__btn"
           :label="t('app.saveSpaceUpdateAction')"
           autofocus
           @click="saveIncident"
@@ -239,7 +247,7 @@
 
 .app-view__subtitle {
   margin: 0.5rem 0 0;
-  max-width: 36rem;
+  max-width: 40rem;
   font-size: 0.875rem;
   font-weight: 400;
   line-height: 1.45;
@@ -247,24 +255,14 @@
   color: var(--apple-text-secondary, #6e6e73);
 }
 
-.app-view__error {
-  margin: 0;
-  font-size: 0.8125rem;
-  color: #b42318;
-}
-
-.incidents-page {
+.finance-page {
   margin-top: 1.5rem;
   display: flex;
   flex-direction: column;
   gap: 1.25rem;
 }
 
-.incidents-page__error {
-  margin: 0;
-}
-
-.incidents-panel {
+.finance-panel {
   padding: 1.2rem 1.25rem 1.35rem;
   border-radius: 16px;
   background: #fff;
@@ -272,62 +270,76 @@
   box-shadow: 0 1px 3px rgba(0, 0, 0, 0.03);
 }
 
-.incidents-panel__head {
-  display: flex;
-  flex-wrap: wrap;
-  align-items: flex-start;
-  justify-content: space-between;
-  gap: 0.85rem 1rem;
-  margin-bottom: 0.85rem;
+.finance-panel--table {
+  padding: 1.2rem 1.25rem 1.35rem;
+  overflow: hidden;
 }
 
-.incidents-panel__title {
+.finance-panel__section-title {
   margin: 0;
   font-size: 1.0625rem;
   font-weight: 600;
   letter-spacing: -0.02em;
   line-height: 1.25;
   color: var(--apple-text, #1d1d1f);
-  max-width: min(100%, 18rem);
 }
 
-.incidents-panel__btn {
-  flex-shrink: 0;
+.mgmt-panel-toolbar {
+  display: flex;
+  flex-wrap: wrap;
+  align-items: center;
+  justify-content: space-between;
+  gap: 0.5rem;
+  margin-bottom: 0.5rem;
 }
 
-.incidents-panel__btn :deep(.p-button) {
+.import-dropzone__btn :deep(.p-button) {
   font-weight: 500;
   font-size: 0.8125rem;
   padding-block: 0.5rem;
   padding-inline: 1rem;
 }
 
-.incidents-table {
-  margin-top: 0.15rem;
+.import-alert {
+  margin: 0;
+  padding: 0.65rem 0.85rem;
+  border-radius: 10px;
+  font-size: 0.8125rem;
+  font-weight: 500;
 }
 
-.incidents-data :deep(.p-datatable) {
+.import-alert--error {
+  color: #b42318;
+  background: rgba(180, 35, 24, 0.06);
+  border: 1px solid rgba(180, 35, 24, 0.12);
+}
+
+.import-panel .finance-table {
+  margin-top: 0.65rem;
+}
+
+.finance-data :deep(.p-datatable) {
   font-size: 0.875rem;
   border: none;
   border-radius: 12px;
   overflow: hidden;
 }
 
-.incidents-data :deep(.p-datatable-wrapper) {
+.finance-data :deep(.p-datatable-wrapper) {
   border-radius: 12px;
 }
 
-.incidents-data :deep(.p-datatable-header) {
+.finance-data :deep(.p-datatable-header) {
   background: transparent;
   border: none;
   padding: 0;
 }
 
-.incidents-data :deep(.p-datatable-loading-overlay) {
+.finance-data :deep(.p-datatable-loading-overlay) {
   background: rgba(255, 255, 255, 0.75);
 }
 
-.incidents-data :deep(.p-datatable-thead > tr > th) {
+.finance-data :deep(.p-datatable-thead > tr > th) {
   background: rgba(0, 0, 0, 0.02);
   color: #86868b;
   font-weight: 600;
@@ -339,16 +351,16 @@
   padding: 0.6rem 0.75rem;
 }
 
-.incidents-data :deep(.p-datatable-tbody > tr) {
+.finance-data :deep(.p-datatable-tbody > tr) {
   background: transparent;
   transition: background 0.12s ease;
 }
 
-.incidents-data :deep(.p-datatable-tbody > tr:hover) {
+.finance-data :deep(.p-datatable-tbody > tr:hover) {
   background: rgba(0, 0, 0, 0.02);
 }
 
-.incidents-data :deep(.p-datatable-tbody > tr > td) {
+.finance-data :deep(.p-datatable-tbody > tr > td) {
   border: none;
   border-bottom: 1px solid rgba(0, 0, 0, 0.05);
   padding: 0.7rem 0.75rem;
@@ -356,7 +368,7 @@
   color: var(--apple-text, #1d1d1f);
 }
 
-.incidents-data :deep(.p-datatable-tbody > tr:last-child > td) {
+.finance-data :deep(.p-datatable-tbody > tr:last-child > td) {
   border-bottom: none;
 }
 

@@ -184,9 +184,10 @@ const getStatusBadgeClass = (status) => {
         <Button
           type="button"
           rounded
+          severity="secondary"
           :label="t('financeAdmin.generateReceipts')"
           :loading="uiState.isGenerating"
-          class="finance-toolbar-row__btn"
+          class="import-dropzone__btn"
           @click="handleGenerateReceipts"
         />
         <Button
@@ -195,13 +196,16 @@ const getStatusBadgeClass = (status) => {
           severity="secondary"
           :label="t('financeAdmin.simulateCron')"
           :loading="uiState.isCronRunning"
-          class="finance-toolbar-row__btn"
+          class="import-dropzone__btn"
           @click="handleSimulateCron"
         />
       </div>
 
       <div class="finance-main-row">
-        <section class="finance-panel finance-panel--table table-panel" aria-labelledby="finance-residents-heading">
+        <section
+          class="finance-panel finance-panel--table table-panel import-panel"
+          aria-labelledby="finance-residents-heading"
+        >
           <h2 id="finance-residents-heading" class="finance-panel__section-title">
             {{ t('financeAdmin.residentsPanelTitle') }}
           </h2>
@@ -254,8 +258,11 @@ const getStatusBadgeClass = (status) => {
           </DataTable>
         </section>
 
-        <section class="finance-panel finance-panel--calendar calendar-widget" aria-labelledby="finance-calendar-heading">
-          <h2 id="finance-calendar-heading" class="finance-panel__calendar-title">
+        <section
+          class="finance-panel finance-panel--calendar calendar-widget import-panel"
+          aria-labelledby="finance-calendar-heading"
+        >
+          <h2 id="finance-calendar-heading" class="finance-panel__section-title">
             {{ t('financeAdmin.calendarTitle') }}
             <span class="finance-panel__title-month">{{ currentMonthData.monthName }}</span>
           </h2>
@@ -280,9 +287,12 @@ const getStatusBadgeClass = (status) => {
         </section>
       </div>
 
-      <section class="finance-panel finance-panel--history" aria-labelledby="finance-history-heading">
+      <section
+        class="finance-panel finance-panel--history import-panel"
+        aria-labelledby="finance-history-heading"
+      >
         <div class="finance-history__toolbar">
-          <h2 id="finance-history-heading" class="finance-history__heading">
+          <h2 id="finance-history-heading" class="finance-panel__section-title">
             {{ t('financeAdmin.paymentHistory') }}
           </h2>
           <Dropdown
@@ -347,7 +357,7 @@ const getStatusBadgeClass = (status) => {
 
 .app-view__subtitle {
   margin: 0.5rem 0 0;
-  max-width: 36rem;
+  max-width: 40rem;
   font-size: 0.875rem;
   font-weight: 400;
   line-height: 1.45;
@@ -375,7 +385,7 @@ const getStatusBadgeClass = (status) => {
   gap: 0.5rem;
 }
 
-.finance-toolbar-row__btn :deep(.p-button) {
+.import-dropzone__btn :deep(.p-button) {
   font-weight: 500;
   font-size: 0.8125rem;
   padding-block: 0.5rem;
@@ -429,7 +439,7 @@ const getStatusBadgeClass = (status) => {
 }
 
 .finance-panel__section-title {
-  margin: 0 0 0.85rem;
+  margin: 0 0 0.5rem;
   font-size: 1.0625rem;
   font-weight: 600;
   letter-spacing: -0.02em;
@@ -437,13 +447,12 @@ const getStatusBadgeClass = (status) => {
   color: var(--apple-text, #1d1d1f);
 }
 
-.finance-panel__calendar-title {
-  margin: 0 0 1rem;
-  font-size: 1.0625rem;
-  font-weight: 600;
-  letter-spacing: -0.02em;
-  line-height: 1.3;
-  color: var(--apple-text, #1d1d1f);
+.import-panel .finance-table {
+  margin-top: 0.65rem;
+}
+
+.import-panel .calendar-grid {
+  margin-top: 0.65rem;
 }
 
 .finance-panel__title-month {
@@ -664,15 +673,11 @@ const getStatusBadgeClass = (status) => {
   justify-content: space-between;
   gap: 1rem 1.25rem;
   flex-wrap: wrap;
-  margin-bottom: 1.15rem;
+  margin-bottom: 0.65rem;
 }
 
-.finance-history__heading {
-  margin: 0;
-  font-size: 1.0625rem;
-  font-weight: 600;
-  letter-spacing: -0.02em;
-  color: var(--apple-text, #1d1d1f);
+.finance-history__toolbar .finance-panel__section-title {
+  margin-bottom: 0;
 }
 
 .finance-history__floor-filter {
@@ -730,7 +735,7 @@ const getStatusBadgeClass = (status) => {
 
 .finance-card {
   padding: 1.1rem 1.2rem;
-  border-radius: 12px;
+  border-radius: 10px;
   background: #fafafa;
   border: 1px solid rgba(0, 0, 0, 0.06);
   transition: box-shadow 0.15s ease;

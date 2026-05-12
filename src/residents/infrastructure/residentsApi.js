@@ -12,6 +12,7 @@ import {
   publicResident,
   publicUser,
 } from '@/shell/infrastructure/api/utils.js'
+import { getResidentLimitForActiveOwner } from '@/shell/infrastructure/subscriptionPlanStorage.js'
 
 /**
  * Residents bounded-context API.
@@ -19,7 +20,7 @@ import {
  * Owns: lifecycle of resident accounts (creation by admin, invitation lookup,
  * credentials provisioning).
  * Errors expose `error.code`: 'RESIDENT_FIELDS_REQUIRED',
- * 'RESIDENT_CODE_ALREADY_EXISTS', 'RESIDENT_NOT_FOUND', 'EMAIL_ALREADY_EXISTS'.
+ * 'RESIDENT_CODE_ALREADY_EXISTS', 'RESIDENT_PLAN_LIMIT_REACHED', 'RESIDENT_NOT_FOUND', 'EMAIL_ALREADY_EXISTS'.
  */
 export const residentsApi = {
   async list() {
@@ -46,6 +47,12 @@ export const residentsApi = {
     const ownerAdminId = getActiveDataOwnerId()
     if (!ownerAdminId) {
       throw apiError('RESIDENT_OWNER_REQUIRED')
+    }
+
+    const existingResidents = await residentsApi.list()
+    const limit = getResidentLimitForActiveOwner()
+    if (existingResidents.length >= limit) {
+      throw apiError('RESIDENT_PLAN_LIMIT_REACHED')
     }
 
     const todayStr = new Date().toLocaleDateString('en-CA'); // Gets YYYY-MM-DD local format

@@ -156,7 +156,7 @@ const chartOptions = ref({
     <p class="app-view__subtitle">{{ t('dashboard.subtitle') }}</p>
 
     <div class="finance-page">
-      <section class="finance-panel" aria-labelledby="dashboard-kpi-heading">
+      <section class="finance-panel import-panel" aria-labelledby="dashboard-kpi-heading">
         <h2 id="dashboard-kpi-heading" class="finance-panel__section-title">
           {{ t('dashboard.financialOverview') }}
         </h2>
@@ -182,52 +182,50 @@ const chartOptions = ref({
         </div>
       </section>
 
-      <div class="finance-main-row">
-        <section
-          class="finance-panel finance-panel--table table-panel"
-          aria-labelledby="dashboard-incidents-heading"
+      <section
+        class="finance-panel finance-panel--table import-panel"
+        aria-labelledby="dashboard-incidents-heading"
+      >
+        <h2 id="dashboard-incidents-heading" class="finance-panel__section-title">
+          {{ t('dashboard.recentIncidents') }}
+        </h2>
+        <DataTable
+          :value="recentIncidents"
+          responsiveLayout="scroll"
+          :loading="isLoading"
+          class="finance-data finance-table"
         >
-          <h2 id="dashboard-incidents-heading" class="finance-panel__section-title">
-            {{ t('dashboard.recentIncidents') }}
-          </h2>
-          <DataTable
-            :value="recentIncidents"
-            responsiveLayout="scroll"
-            :loading="isLoading"
-            class="finance-data finance-table"
-          >
-            <Column field="description" :header="t('app.incidentDescription')" />
-            <Column field="residentName" :header="t('app.incidentResidentName')" />
-            <Column :header="t('app.incidentDate')">
-              <template #body="{ data }">
-                <span class="finance-date-cell">{{ nfDate(data.createdAt) }}</span>
-              </template>
-            </Column>
-            <Column :header="t('dashboard.incidentStatus')">
-              <template #body="{ data }">
-                <Tag
-                  class="dashboard-status-tag"
-                  :value="incidentStatusLabel(data.status)"
-                  :severity="incidentSeverity(data.status)"
-                  rounded
-                />
-              </template>
-            </Column>
-          </DataTable>
-        </section>
+          <Column field="description" :header="t('app.incidentDescription')" />
+          <Column field="residentName" :header="t('app.incidentResidentName')" />
+          <Column :header="t('app.incidentDate')">
+            <template #body="{ data }">
+              <span class="finance-date-cell">{{ nfDate(data.createdAt) }}</span>
+            </template>
+          </Column>
+          <Column :header="t('dashboard.incidentStatus')">
+            <template #body="{ data }">
+              <Tag
+                class="dashboard-status-tag"
+                :value="incidentStatusLabel(data.status)"
+                :severity="incidentSeverity(data.status)"
+                rounded
+              />
+            </template>
+          </Column>
+        </DataTable>
+      </section>
 
-        <section
-          class="finance-panel finance-panel--calendar chart-panel"
-          aria-labelledby="dashboard-chart-heading"
-        >
-          <h2 id="dashboard-chart-heading" class="finance-panel__calendar-title">
-            {{ t('dashboard.income') }} / {{ t('dashboard.expenses') }}
-          </h2>
-          <div class="dashboard-chart-wrap">
-            <Chart type="bar" :data="chartData" :options="chartOptions" class="dashboard-chart" />
-          </div>
-        </section>
-      </div>
+      <section
+        class="finance-panel finance-panel--calendar import-panel chart-panel"
+        aria-labelledby="dashboard-chart-heading"
+      >
+        <h2 id="dashboard-chart-heading" class="finance-panel__section-title">
+          {{ t('dashboard.income') }} / {{ t('dashboard.expenses') }}
+        </h2>
+        <div class="dashboard-chart-wrap">
+          <Chart type="bar" :data="chartData" :options="chartOptions" class="dashboard-chart" />
+        </div>
+      </section>
     </div>
   </div>
 </template>
@@ -249,7 +247,7 @@ const chartOptions = ref({
 
 .app-view__subtitle {
   margin: 0.5rem 0 0;
-  max-width: 36rem;
+  max-width: 40rem;
   font-size: 0.875rem;
   font-weight: 400;
   line-height: 1.45;
@@ -273,20 +271,11 @@ const chartOptions = ref({
 }
 
 .finance-panel__section-title {
-  margin: 0 0 0.85rem;
+  margin: 0 0 0.5rem;
   font-size: 1.0625rem;
   font-weight: 600;
   letter-spacing: -0.02em;
   line-height: 1.25;
-  color: var(--apple-text, #1d1d1f);
-}
-
-.finance-panel__calendar-title {
-  margin: 0 0 1rem;
-  font-size: 1.0625rem;
-  font-weight: 600;
-  letter-spacing: -0.02em;
-  line-height: 1.3;
   color: var(--apple-text, #1d1d1f);
 }
 
@@ -299,6 +288,14 @@ const chartOptions = ref({
   overflow: hidden;
 }
 
+.import-panel .finance-table {
+  margin-top: 0.65rem;
+}
+
+.chart-panel .dashboard-chart-wrap {
+  margin-top: 0.65rem;
+}
+
 .dashboard-kpi-grid {
   display: grid;
   grid-template-columns: repeat(auto-fill, minmax(10.5rem, 1fr));
@@ -306,8 +303,8 @@ const chartOptions = ref({
 }
 
 .dashboard-kpi {
-  padding: 0.95rem 1.05rem;
-  border-radius: 12px;
+  padding: 0.75rem 0.85rem;
+  border-radius: 10px;
   background: #fafafa;
   border: 1px solid rgba(0, 0, 0, 0.06);
 }
@@ -340,33 +337,8 @@ const chartOptions = ref({
   color: #d70015;
 }
 
-.finance-main-row {
-  display: flex;
-  flex-direction: row;
-  align-items: stretch;
-  gap: 1.25rem;
-}
-
-.table-panel {
-  flex: 1 1 58%;
-  min-width: 0;
-}
-
 .chart-panel {
-  flex: 0 1 22rem;
-  min-width: 17rem;
-}
-
-@media (max-width: 1024px) {
-  .finance-main-row {
-    flex-direction: column;
-  }
-
-  .chart-panel {
-    flex: 1 1 auto;
-    min-width: 0;
-    max-width: none;
-  }
+  width: 100%;
 }
 
 .finance-table {

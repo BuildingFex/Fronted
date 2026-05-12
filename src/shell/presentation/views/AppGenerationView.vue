@@ -84,10 +84,24 @@ onMounted(load)
     <p class="app-view__subtitle">{{ t('app.generationAdminSubtitle') }}</p>
 
     <div class="finance-page">
-      <section class="finance-panel admin-gen-panel" :aria-label="t('app.pageGeneration')">
-        <p v-if="loading" class="admin-gen-status">{{ t('app.generationAdminLoading') }}</p>
-        <p v-else-if="loadError" class="admin-gen-alert" role="alert">{{ t('app.generationAdminLoadError') }}</p>
-        <p v-else-if="!sortedReservations.length" class="admin-gen-empty">{{ t('app.generationAdminEmpty') }}</p>
+      <section
+        class="finance-panel import-panel"
+        aria-labelledby="generation-panel-heading"
+      >
+        <h2 id="generation-panel-heading" class="finance-panel__section-title">
+          {{ t('app.generationAdminSectionTitle') }}
+        </h2>
+
+        <div v-if="loading" class="import-status import-panel-state" role="status">
+          <i class="pi pi-spin pi-spinner" aria-hidden="true" />
+          <span>{{ t('app.generationAdminLoading') }}</span>
+        </div>
+        <p v-else-if="loadError" class="import-alert import-alert--error import-panel-state" role="alert">
+          {{ t('app.generationAdminLoadError') }}
+        </p>
+        <p v-else-if="!sortedReservations.length" class="import-empty import-panel-state">
+          {{ t('app.generationAdminEmpty') }}
+        </p>
 
         <ul v-else class="admin-gen-list">
           <li v-for="r in sortedReservations" :key="r.id" class="admin-gen-card">
@@ -154,15 +168,19 @@ onMounted(load)
 
 .app-view__subtitle {
   margin: 0.5rem 0 0;
-  max-width: 44rem;
+  max-width: 40rem;
   font-size: 0.875rem;
   font-weight: 400;
   line-height: 1.45;
+  letter-spacing: -0.015em;
   color: var(--apple-text-secondary, #6e6e73);
 }
 
 .finance-page {
   margin-top: 1.5rem;
+  display: flex;
+  flex-direction: column;
+  gap: 1.25rem;
 }
 
 .finance-panel {
@@ -173,23 +191,60 @@ onMounted(load)
   box-shadow: 0 1px 3px rgba(0, 0, 0, 0.03);
 }
 
-.admin-gen-status,
-.admin-gen-empty {
-  margin: 0;
-  font-size: 0.875rem;
-  color: #6e6e73;
+.finance-panel__section-title {
+  margin: 0 0 0.5rem;
+  font-size: 1.0625rem;
+  font-weight: 600;
+  letter-spacing: -0.02em;
+  line-height: 1.25;
+  color: var(--apple-text, #1d1d1f);
 }
 
-.admin-gen-alert {
-  margin: 0;
+.import-panel-state {
+  margin-top: 0.65rem;
+}
+
+.import-status {
+  display: flex;
+  flex-direction: column;
+  align-items: center;
+  gap: 0.4rem;
+  padding: 2rem 1rem;
+  color: #86868b;
   font-size: 0.875rem;
+  text-align: center;
+}
+
+.import-status .pi {
+  font-size: 1.5rem;
+  color: #c7c7cc;
+}
+
+.import-alert {
+  margin: 0;
+  padding: 0.65rem 0.85rem;
+  border-radius: 10px;
+  font-size: 0.8125rem;
   font-weight: 500;
+}
+
+.import-alert--error {
   color: #b42318;
+  background: rgba(180, 35, 24, 0.06);
+  border: 1px solid rgba(180, 35, 24, 0.12);
+}
+
+.import-empty {
+  margin: 0;
+  padding: 2rem 1rem;
+  font-size: 0.875rem;
+  color: #86868b;
+  text-align: center;
 }
 
 .admin-gen-list {
   list-style: none;
-  margin: 0;
+  margin: 0.65rem 0 0;
   padding: 0;
   display: flex;
   flex-direction: column;
@@ -197,14 +252,19 @@ onMounted(load)
 }
 
 .admin-gen-card {
-  border-radius: 12px;
+  border-radius: 10px;
   background: #fafafa;
   border: 1px solid rgba(0, 0, 0, 0.06);
   overflow: hidden;
+  transition: box-shadow 0.15s ease;
+}
+
+.admin-gen-card:hover {
+  box-shadow: 0 1px 3px rgba(0, 0, 0, 0.06);
 }
 
 .admin-gen-card__head {
-  padding: 0.85rem 1rem;
+  padding: 0.75rem 0.85rem;
   border-bottom: 1px solid rgba(0, 0, 0, 0.06);
   background: #fff;
 }
@@ -235,7 +295,7 @@ onMounted(load)
 }
 
 .admin-gen-guests {
-  padding: 0.75rem 1rem 0.95rem;
+  padding: 0.75rem 0.85rem 0.95rem;
 }
 
 .admin-gen-guests__title {

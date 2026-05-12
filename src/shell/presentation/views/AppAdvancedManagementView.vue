@@ -1,6 +1,8 @@
 <script setup>
 import { computed, onMounted, reactive, ref } from 'vue'
 import { useI18n } from 'vue-i18n'
+import Button from 'primevue/button'
+import { getResidentLimitForActiveOwner } from '@/shell/infrastructure/subscriptionPlanStorage.js'
 import { residentsApi } from '@/residents/infrastructure/residentsApi.js'
 import { spacesApi } from '@/socialSpaces/infrastructure/spacesApi.js'
 import { reservationsApi } from '@/socialSpaces/infrastructure/reservationsApi.js'
@@ -35,6 +37,7 @@ const deleteResidentSummary = ref(null)
 const deleteResidentHasErrors = ref(false)
 
 const totalResidents = computed(() => residents.value.length)
+const residentPlanLimitCap = computed(() => getResidentLimitForActiveOwner())
 const activeResidents = computed(() =>
   residents.value.filter((r) => r.hasCredentials).length,
 )
@@ -111,6 +114,12 @@ async function onAddResidentSubmit() {
     }
     if (error?.code === 'RESIDENT_FIELDS_REQUIRED') {
       modalError.value = t('app.addResidentRequired')
+      return
+    }
+    if (error?.code === 'RESIDENT_PLAN_LIMIT_REACHED') {
+      modalError.value = t('app.addResidentPlanLimit', {
+        max: getResidentLimitForActiveOwner(),
+      })
       return
     }
     modalError.value = t('auth.genericError')
@@ -251,6 +260,10 @@ async function onBulkResidentsSubmit() {
         message = t('app.addResidentCodeExists')
       } else if (error?.code === 'RESIDENT_FIELDS_REQUIRED') {
         message = t('app.addResidentRequired')
+      } else if (error?.code === 'RESIDENT_PLAN_LIMIT_REACHED') {
+        message = t('app.addResidentPlanLimit', {
+          max: getResidentLimitForActiveOwner(),
+        })
       }
       results.push({ line: i + 1, raw, status: 'error', message })
     }
@@ -561,58 +574,68 @@ const groupedReservations = computed(() => {
 
 <template>
   <div class="app-view">
-    <header class="page-header">
-      <h1 class="page-header__title">{{ t('app.pageAdvancedManagement') }}</h1>
-      <div class="page-header__counters">
-        <span class="page-counter">{{ totalResidents }} {{ t('app.residentsCountLabel') }}</span>
-        <span class="page-counter__sep" aria-hidden="true" />
-        <span class="page-counter">{{ activeResidents }} {{ t('app.residentHasCredentials') }}</span>
-        <span class="page-counter__sep" aria-hidden="true" />
-        <span class="page-counter">{{ totalSpaces }} {{ t('app.spacesColumnTitle') }}</span>
-      </div>
-    </header>
+    <h1 class="app-view__title">{{ t('app.pageAdvancedManagement') }}</h1>
+    <p class="app-view__subtitle app-view__subtitle--metrics">
+      <span>{{ totalResidents }} {{ t('app.residentsCountLabel') }}</span>
+      <span class="adv-metrics__sep" aria-hidden="true">·</span>
+      <span>{{ activeResidents }} {{ t('app.residentHasCredentials') }}</span>
+      <span class="adv-metrics__sep" aria-hidden="true">·</span>
+      <span>{{ totalSpaces }} {{ t('app.spacesColumnTitle') }}</span>
+    </p>
 
-    <section class="mgmt-layout">
-      <article class="mgmt-panel">
-        <div class="mgmt-panel__header">
-          <h2 class="mgmt-panel__title">{{ t('app.residentsColumnTitle') }}</h2>
-          <button type="button" class="mgmt-btn mgmt-btn--blue" @click="openAddResidentModal">
-            <i class="pi pi-plus" aria-hidden="true" />
-            <span>{{ t('app.addResidentAction') }}</span>
-          </button>
-        </div>
+    <div class="finance-page">
+      <div class="finance-main-row">
+        <article class="finance-panel finance-panel--table import-panel mgmt-col" aria-labelledby="residents-col-heading">
+          <div class="mgmt-panel-toolbar">
+            <h2 id="residents-col-heading" class="finance-panel__section-title">
+              {{ t('app.residentsColumnTitle') }}
+            </h2>
+            <Button
+              type="button"
+              rounded
+              severity="secondary"
+              icon="pi pi-plus"
+              class="import-dropzone__btn"
+              :label="t('app.addResidentAction')"
+              @click="openAddResidentModal"
+            />
+          </div>
 
-        <label class="mgmt-search">
-          <i class="pi pi-search mgmt-search__icon" aria-hidden="true" />
-          <input
-            v-model="searchQuery"
-            type="text"
-            class="mgmt-search__input"
-            :placeholder="t('app.searchResidentsPlaceholder')"
-            :aria-label="t('app.searchResidentsPlaceholder')"
-          />
-        </label>
+          <p class="residents-plan-hint" role="note">
+            {{ t('app.residentPlanUsageHint', { current: totalResidents, max: residentPlanLimitCap }) }}
+          </p>
 
-        <p v-if="residentDeleteError" class="mgmt-msg mgmt-msg--error">
-          {{ residentDeleteError }}
-        </p>
+          <label class="mgmt-search">
+            <i class="pi pi-search mgmt-search__icon" aria-hidden="true" />
+            <input
+              v-model="searchQuery"
+              type="text"
+              class="mgmt-search__input"
+              :placeholder="t('app.searchResidentsPlaceholder')"
+              :aria-label="t('app.searchResidentsPlaceholder')"
+            />
+          </label>
 
-        <div v-if="isLoading" class="mgmt-empty">
-          <i class="pi pi-spin pi-spinner" aria-hidden="true" />
-          <span>{{ t('app.residentsLoading') }}</span>
-        </div>
-        <div v-else-if="loadError" class="mgmt-empty mgmt-empty--error">
-          <i class="pi pi-exclamation-circle" aria-hidden="true" />
-          <span>{{ loadError }}</span>
-        </div>
-        <div v-else-if="!residents.length" class="mgmt-empty">
-          <i class="pi pi-inbox" aria-hidden="true" />
-          <span>{{ t('app.emptyResidents') }}</span>
-        </div>
-        <div v-else-if="!filteredResidents.length" class="mgmt-empty">
-          <i class="pi pi-search" aria-hidden="true" />
-          <span>{{ t('app.emptyResidentsSearch') }}</span>
-        </div>
+          <p v-if="residentDeleteError" class="import-alert import-alert--error" role="alert">
+            {{ residentDeleteError }}
+          </p>
+
+          <div v-if="isLoading" class="import-status import-panel-state">
+            <i class="pi pi-spin pi-spinner" aria-hidden="true" />
+            <span>{{ t('app.residentsLoading') }}</span>
+          </div>
+          <div v-else-if="loadError" class="import-alert import-alert--error import-panel-state" role="alert">
+            <i class="pi pi-exclamation-circle" aria-hidden="true" />
+            <span>{{ loadError }}</span>
+          </div>
+          <div v-else-if="!residents.length" class="import-empty import-panel-state">
+            <i class="pi pi-inbox" aria-hidden="true" />
+            <span>{{ t('app.emptyResidents') }}</span>
+          </div>
+          <div v-else-if="!filteredResidents.length" class="import-empty import-panel-state">
+            <i class="pi pi-search" aria-hidden="true" />
+            <span>{{ t('app.emptyResidentsSearch') }}</span>
+          </div>
         <ul v-else class="r-list" role="list">
           <li v-for="resident in filteredResidents" :key="resident.id" class="r-card">
             <div class="r-card__row">
@@ -664,31 +687,38 @@ const groupedReservations = computed(() => {
         </ul>
       </article>
 
-      <article class="mgmt-panel">
-        <div class="mgmt-panel__header">
-          <h2 class="mgmt-panel__title">{{ t('app.spacesColumnTitle') }}</h2>
-          <button type="button" class="mgmt-btn mgmt-btn--blue" @click="openAddSpaceModal">
-            <i class="pi pi-plus" aria-hidden="true" />
-            <span>{{ t('app.addSpaceAction') }}</span>
-          </button>
-        </div>
+        <article class="finance-panel finance-panel--table import-panel mgmt-col" aria-labelledby="spaces-col-heading">
+          <div class="mgmt-panel-toolbar">
+            <h2 id="spaces-col-heading" class="finance-panel__section-title">
+              {{ t('app.spacesColumnTitle') }}
+            </h2>
+            <Button
+              type="button"
+              rounded
+              severity="secondary"
+              icon="pi pi-plus"
+              class="import-dropzone__btn"
+              :label="t('app.addSpaceAction')"
+              @click="openAddSpaceModal"
+            />
+          </div>
 
-        <p v-if="spaceDeleteError" class="mgmt-msg mgmt-msg--error">
-          {{ spaceDeleteError }}
-        </p>
+          <p v-if="spaceDeleteError" class="import-alert import-alert--error" role="alert">
+            {{ spaceDeleteError }}
+          </p>
 
-        <div v-if="isLoadingSpaces" class="mgmt-empty">
-          <i class="pi pi-spin pi-spinner" aria-hidden="true" />
-          <span>{{ t('app.spacesLoading') }}</span>
-        </div>
-        <div v-else-if="spacesLoadError" class="mgmt-empty mgmt-empty--error">
-          <i class="pi pi-exclamation-circle" aria-hidden="true" />
-          <span>{{ spacesLoadError }}</span>
-        </div>
-        <div v-else-if="!spaces.length" class="mgmt-empty">
-          <i class="pi pi-image" aria-hidden="true" />
-          <span>{{ t('app.emptySpaces') }}</span>
-        </div>
+          <div v-if="isLoadingSpaces" class="import-status import-panel-state">
+            <i class="pi pi-spin pi-spinner" aria-hidden="true" />
+            <span>{{ t('app.spacesLoading') }}</span>
+          </div>
+          <div v-else-if="spacesLoadError" class="import-alert import-alert--error import-panel-state" role="alert">
+            <i class="pi pi-exclamation-circle" aria-hidden="true" />
+            <span>{{ spacesLoadError }}</span>
+          </div>
+          <div v-else-if="!spaces.length" class="import-empty import-panel-state">
+            <i class="pi pi-image" aria-hidden="true" />
+            <span>{{ t('app.emptySpaces') }}</span>
+          </div>
         <ul v-else class="s-list" role="list">
           <li
             v-for="space in spaces"
@@ -741,7 +771,8 @@ const groupedReservations = computed(() => {
           </li>
         </ul>
       </article>
-    </section>
+      </div>
+    </div>
 
     <div
       v-if="isAddResidentModalOpen"
@@ -1232,107 +1263,115 @@ const groupedReservations = computed(() => {
 
 <style scoped>
 .app-view {
-  padding: 1.5rem 1.25rem;
-  width: 100%;
+  padding: 1.75rem 1.5rem 2.5rem;
+  max-width: 72rem;
   box-sizing: border-box;
-  overflow: hidden;
 }
 
-.page-header {
-  display: flex;
-  align-items: baseline;
-  justify-content: space-between;
-  gap: 0.75rem;
-  flex-wrap: wrap;
-  margin-bottom: 1.25rem;
-}
-
-.page-header__title {
+.app-view__title {
   margin: 0;
-  font-size: 1.35rem;
-  font-weight: 700;
-  color: #1d1d1f;
-  letter-spacing: -0.025em;
+  font-size: 1.75rem;
+  font-weight: 600;
+  letter-spacing: -0.035em;
+  line-height: 1.15;
+  color: var(--apple-text, #1d1d1f);
 }
 
-.page-header__counters {
+.app-view__subtitle {
+  margin: 0.5rem 0 0;
+  max-width: 40rem;
+  font-size: 0.875rem;
+  font-weight: 400;
+  line-height: 1.45;
+  letter-spacing: -0.015em;
+  color: var(--apple-text-secondary, #6e6e73);
+}
+
+.app-view__subtitle--metrics {
+  max-width: none;
   display: flex;
-  align-items: center;
-  gap: 0.5rem;
   flex-wrap: wrap;
+  align-items: center;
+  gap: 0.35rem;
 }
 
-.page-counter {
-  font-size: 0.8rem;
-  color: #86868b;
-  font-weight: 500;
+.adv-metrics__sep {
+  color: #aeaeb2;
+  user-select: none;
 }
 
-.page-counter__sep {
-  width: 3px;
-  height: 3px;
-  border-radius: 50%;
-  background: #d2d2d7;
+.finance-page {
+  margin-top: 1.5rem;
+  display: flex;
+  flex-direction: column;
+  gap: 1.25rem;
 }
 
-.mgmt-layout {
-  display: grid;
-  grid-template-columns: repeat(2, minmax(0, 1fr));
-  gap: 1rem;
-  align-items: start;
+.finance-main-row {
+  display: flex;
+  flex-direction: row;
+  align-items: stretch;
+  gap: 1.25rem;
 }
 
-@media (max-width: 860px) {
-  .mgmt-layout {
-    grid-template-columns: minmax(0, 1fr);
+.mgmt-col {
+  flex: 1 1 50%;
+  min-width: 0;
+}
+
+@media (max-width: 1024px) {
+  .finance-main-row {
+    flex-direction: column;
   }
 }
 
-.mgmt-panel {
-  border: 1px solid #e8e8ed;
-  border-radius: 14px;
-  padding: 1rem;
-  background: #ffffff;
+.finance-panel {
+  padding: 1.2rem 1.25rem 1.35rem;
+  border-radius: 16px;
+  background: #fff;
+  border: 1px solid rgba(0, 0, 0, 0.06);
+  box-shadow: 0 1px 3px rgba(0, 0, 0, 0.03);
 }
 
-.mgmt-panel__header {
+.finance-panel--table {
+  padding: 1.2rem 1.25rem 1.35rem;
+  overflow: hidden;
+}
+
+.finance-panel__section-title {
+  margin: 0;
+  font-size: 1.0625rem;
+  font-weight: 600;
+  letter-spacing: -0.02em;
+  line-height: 1.25;
+  color: var(--apple-text, #1d1d1f);
+}
+
+.mgmt-panel-toolbar {
   display: flex;
   align-items: center;
   justify-content: space-between;
   gap: 0.5rem;
+  flex-wrap: wrap;
+  margin-bottom: 0.5rem;
 }
 
-.mgmt-panel__title {
-  margin: 0;
-  font-size: 0.95rem;
-  font-weight: 600;
-  color: #1d1d1f;
+.residents-plan-hint {
+  margin: 0 0 0.65rem;
+  font-size: 0.8125rem;
+  color: var(--apple-text-secondary, #6e6e73);
+  line-height: 1.4;
 }
 
-.mgmt-btn {
-  display: inline-flex;
-  align-items: center;
-  gap: 0.3rem;
-  border: none;
-  border-radius: 980px;
-  padding: 0.4rem 0.75rem;
-  font-weight: 600;
-  font-size: 0.8rem;
-  cursor: pointer;
-  transition: filter 0.15s ease;
-}
-
-.mgmt-btn:hover {
-  filter: brightness(0.92);
-}
-
-.mgmt-btn--blue {
-  background: #0a84ff;
-  color: #ffffff;
+.import-dropzone__btn :deep(.p-button) {
+  font-weight: 500;
+  font-size: 0.8125rem;
+  padding-block: 0.5rem;
+  padding-inline: 1rem;
 }
 
 .mgmt-search {
-  margin-top: 0.85rem;
+  margin-top: 0.65rem;
   display: flex;
   align-items: center;
   gap: 0.45rem;
@@ -1340,11 +1379,15 @@ const groupedReservations = computed(() => {
   border-radius: 10px;
   padding: 0.5rem 0.65rem;
   background: #ffffff;
-  transition: border-color 0.15s ease;
+  transition:
+    border-color 0.15s ease,
+    box-shadow 0.15s ease;
 }
 
 .mgmt-search:focus-within {
+  outline: none;
   border-color: #0a84ff;
+  box-shadow: 0 0 0 3px rgba(10, 132, 255, 0.18);
 }
 
 .mgmt-search__icon {
@@ -1366,38 +1409,60 @@ const groupedReservations = computed(() => {
   color: #86868b;
 }
 
-.mgmt-msg {
+.import-alert {
   margin: 0.75rem 0 0;
-  color: #6e6e73;
-  font-size: 0.825rem;
+  padding: 0.65rem 0.85rem;
+  border-radius: 10px;
+  font-size: 0.8125rem;
+  font-weight: 500;
 }
 
-.mgmt-msg--error {
-  color: #ff3b30;
+.import-alert--error {
+  color: #b42318;
+  background: rgba(180, 35, 24, 0.06);
+  border: 1px solid rgba(180, 35, 24, 0.12);
 }
 
-.mgmt-empty {
+.import-alert.import-panel-state {
+  display: flex;
+  align-items: center;
+  gap: 0.5rem;
+}
+
+.import-panel-state {
+  margin-top: 0.75rem;
+}
+
+.import-status {
   display: flex;
   flex-direction: column;
   align-items: center;
   gap: 0.4rem;
   padding: 2rem 1rem;
   color: #86868b;
-  font-size: 0.85rem;
+  font-size: 0.875rem;
   text-align: center;
 }
 
-.mgmt-empty .pi {
+.import-status .pi {
   font-size: 1.5rem;
   color: #c7c7cc;
 }
 
-.mgmt-empty--error {
-  color: #ff3b30;
+.import-empty {
+  display: flex;
+  flex-direction: column;
+  align-items: center;
+  gap: 0.4rem;
+  padding: 2rem 1rem;
+  color: #86868b;
+  font-size: 0.875rem;
+  text-align: center;
 }
 
-.mgmt-empty--error .pi {
-  color: #ff3b30;
+.import-empty .pi {
+  font-size: 1.5rem;
+  color: #c7c7cc;
 }
 
 .r-list {
@@ -1410,15 +1475,15 @@ const groupedReservations = computed(() => {
 }
 
 .r-card {
-  border: 1px solid #e8e8ed;
+  border: 1px solid rgba(0, 0, 0, 0.06);
   border-radius: 10px;
-  padding: 0.7rem 0.8rem;
-  background: #fafafc;
-  transition: background 0.15s ease;
+  padding: 0.75rem 0.85rem;
+  background: #fafafa;
+  transition: box-shadow 0.15s ease;
 }
 
 .r-card:hover {
-  background: #f5f5f7;
+  box-shadow: 0 1px 3px rgba(0, 0, 0, 0.06);
 }
 
 .r-card__row {
@@ -1543,16 +1608,16 @@ const groupedReservations = computed(() => {
   display: flex;
   align-items: center;
   gap: 0.75rem;
-  border: 1px solid #e8e8ed;
+  border: 1px solid rgba(0, 0, 0, 0.06);
   border-radius: 10px;
-  padding: 0.6rem 0.75rem;
-  background: #fafafc;
+  padding: 0.75rem 0.85rem;
+  background: #fafafa;
   cursor: pointer;
-  transition: background 0.15s ease;
+  transition: box-shadow 0.15s ease;
 }
 
 .s-card:hover {
-  background: #f5f5f7;
+  box-shadow: 0 1px 3px rgba(0, 0, 0, 0.06);
 }
 
 .s-card:focus-visible {
@@ -1626,6 +1691,17 @@ const groupedReservations = computed(() => {
   flex-shrink: 0;
   display: flex;
   gap: 0.2rem;
+}
+
+/* Space calendar modal — legacy class names in template */
+.mgmt-msg {
+  margin: 0.5rem 0 0;
+  font-size: 0.8125rem;
+  color: var(--apple-text-secondary, #6e6e73);
+}
+
+.mgmt-msg--error {
+  color: #b42318;
 }
 
 .resident-modal-backdrop {

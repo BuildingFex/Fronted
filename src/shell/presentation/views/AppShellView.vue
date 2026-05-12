@@ -54,6 +54,12 @@ const adminNavPrimary = computed(() => [
     icon: 'pi pi-book',
     routeName: AppRouteNames.APP_INFORMATION,
   },
+  {
+    key: 'residentHelp',
+    label: t('app.residentHelp'),
+    icon: 'pi pi-comments',
+    routeName: AppRouteNames.APP_RESIDENT_HELP,
+  },
 ])
 
 const adminNavAdministrative = computed(() => [
