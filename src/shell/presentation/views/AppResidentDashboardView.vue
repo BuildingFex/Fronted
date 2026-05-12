@@ -1,30 +1,41 @@
 <script setup>
-import { computed, onMounted, ref } from 'vue'
+import { computed, onMounted, ref, watch } from 'vue'
 import { useI18n } from 'vue-i18n'
 import { useSession } from '@/iam/application/sessionStore.js'
 import { reservationsApi } from '@/socialSpaces/infrastructure/reservationsApi.js'
 import { spacesApi } from '@/socialSpaces/infrastructure/spacesApi.js'
 import { announcementsApi } from '@/information/infrastructure/announcementsApi.js'
+import { incidentsApi } from '@/incidents/infrastructure/incidentsApi.js'
+import { useResidentPaymentStore } from '@/finances/application/residentPaymentStore.js'
+import Tag from 'primevue/tag'
 
 const { t } = useI18n()
-const { state } = useSession()
-const profile = computed(() => state.profile ?? {})
+const { state: sessionState } = useSession()
+const { state: paymentState, loadData: loadFinanceData } = useResidentPaymentStore()
 
+const profile = computed(() => sessionState.profile ?? {})
+
+// --- Data State ---
 const reservations = ref([])
 const spacesById = ref(new Map())
 const isLoadingReservations = ref(false)
-const reservationsError = ref('')
 
 const announcements = ref([])
 const isLoadingAnnouncements = ref(false)
 
-// ── carousel state ──
+const incidents = ref([])
+const isLoadingIncidents = ref(false)
+
+// --- Carousel & Modal State ---
 const currentIndex = ref(0)
-const showAllModal = ref(false)
+const showAllAnnouncements = ref(false)
+const showAllIncidents = ref(false)
+const showAllReservations = ref(false)
 
 const todayIso = new Date().toISOString().slice(0, 10)
 
-const upcomingReservations = computed(() => {
+// --- Computed Data ---
+const allUpcomingReservations = computed(() => {
   return reservations.value
     .filter((r) => r.date >= todayIso)
     .sort((a, b) => {
@@ -33,13 +44,56 @@ const upcomingReservations = computed(() => {
     })
 })
 
-// Active (non-expired) announcements for the carousel
+const todayReservations = computed(() => {
+  return allUpcomingReservations.value.filter(r => r.date === todayIso)
+})
+
+const otherUpcomingReservations = computed(() => {
+  return allUpcomingReservations.value.filter(r => r.date > todayIso)
+})
+
+const dashboardReservations = computed(() => {
+  // Show all today's, and if less than 3, fill with upcoming
+  const combined = [...todayReservations.value]
+  if (combined.length < 3) {
+    combined.push(...otherUpcomingReservations.value.slice(0, 3 - combined.length))
+  }
+  return combined
+})
+
 const activeAnnouncements = computed(() =>
   announcements.value.filter((a) => !a.expiresAt || new Date() < new Date(a.expiresAt))
 )
 
 const currentAnnouncement = computed(() => activeAnnouncements.value[currentIndex.value] ?? null)
 
+const incidentsSummary = computed(() => {
+  const summary = { open: 0, inProgress: 0, resolved: 0 }
+  incidents.value.forEach(i => {
+    if (i.status === 'open') summary.open++
+    else if (i.status === 'in-progress') summary.inProgress++
+    else if (i.status === 'resolved') summary.resolved++
+  })
+  return summary
+})
+
+const financeSummary = computed(() => {
+  const fees = paymentState.fees || []
+  const paid = fees.filter(f => f.status === 'Pagado').reduce((sum, f) => sum + f.amount, 0)
+  const pending = fees.filter(f => f.status === 'Pendiente').reduce((sum, f) => sum + f.amount, 0)
+  
+  // Checking overdue
+  const overdue = fees.filter(f => {
+    if (f.status !== 'Pendiente') return false
+    const due = new Date(f.dueDate + 'T00:00:00')
+    const now = new Date(todayIso + 'T00:00:00')
+    return due < now
+  }).reduce((sum, f) => sum + f.amount, 0)
+
+  return { paid, pending, overdue, total: paid + pending }
+})
+
+// --- Methods ---
 function prevAnn() {
   if (currentIndex.value > 0) currentIndex.value--
   else currentIndex.value = Math.max(0, activeAnnouncements.value.length - 1)
@@ -67,6 +121,22 @@ function priorityLabel(priority) {
   return map[priority] ?? map.normal
 }
 
+function formatCurrency(val) {
+  return new Intl.NumberFormat('es-PE', { style: 'currency', currency: 'PEN' }).format(val)
+}
+
+function getIncidentSeverity(status) {
+  if (status === 'open') return 'danger'
+  if (status === 'in-progress') return 'warn'
+  if (status === 'resolved') return 'success'
+  return 'info'
+}
+
+function isExpired(iso) {
+  if (!iso) return false
+  return new Date() > new Date(iso)
+}
+
 function formatDate(iso) {
   if (!iso) return ''
   const d = new Date(iso)
@@ -91,691 +161,1092 @@ function durationLabel(days) {
   return `${days} ${t('information.durationDays')}`
 }
 
-function isExpired(iso) {
-  if (!iso) return false
-  return new Date() > new Date(iso)
+// --- Chart Logic ---
+const chartCanvas = ref(null)
+
+function drawChart() {
+  const ctx = chartCanvas.value?.getContext('2d')
+  if (!ctx) return
+
+  const { paid, pending, overdue } = financeSummary.value
+  const total = paid + pending
+  if (total === 0) return
+
+  const width = chartCanvas.value.width
+  const height = chartCanvas.value.height
+  const centerX = width / 2
+  const centerY = height / 2
+  const radius = Math.min(width, height) / 2 - 10
+
+  ctx.clearRect(0, 0, width, height)
+
+  // Slices
+  const data = [
+    { val: paid, color: '#34c759' }, // Green
+    { val: pending - overdue, color: '#ff9500' }, // Orange
+    { val: overdue, color: '#ff3b30' } // Red
+  ]
+
+  let startAngle = -Math.PI / 2
+  data.forEach(item => {
+    if (item.val <= 0) return
+    const sliceAngle = (item.val / total) * 2 * Math.PI
+    
+    ctx.beginPath()
+    ctx.moveTo(centerX, centerY)
+    ctx.arc(centerX, centerY, radius, startAngle, startAngle + sliceAngle)
+    ctx.closePath()
+    ctx.fillStyle = item.color
+    ctx.fill()
+    
+    // White border between slices
+    ctx.strokeStyle = '#fff'
+    ctx.lineWidth = 2
+    ctx.stroke()
+
+    startAngle += sliceAngle
+  })
+
+  // Inner circle for donut effect
+  ctx.beginPath()
+  ctx.arc(centerX, centerY, radius * 0.7, 0, 2 * Math.PI)
+  ctx.fillStyle = '#fff'
+  ctx.fill()
 }
 
-async function loadReservations() {
-  if (!profile.value.id) { reservations.value = []; return }
+// Draw chart whenever finance data changes or on mount
+watch(() => financeSummary.value, () => {
+  setTimeout(drawChart, 100)
+}, { deep: true })
+
+async function loadInitialData() {
+  if (!profile.value.id) return
+  
   isLoadingReservations.value = true
-  reservationsError.value = ''
+  isLoadingAnnouncements.value = true
+  isLoadingIncidents.value = true
+
   try {
-    const [residentReservations, spaces] = await Promise.all([
+    const [resList, spaces, annList, allIncidents] = await Promise.all([
       reservationsApi.listByResident(profile.value.id),
       spacesApi.list(),
+      announcementsApi.list(),
+      incidentsApi.list()
     ])
-    reservations.value = residentReservations
-    spacesById.value = new Map(spaces.map((space) => [space.id, space]))
-  } catch {
-    reservationsError.value = t('app.reservationsLoadError')
+
+    reservations.value = resList
+    spacesById.value = new Map(spaces.map(s => [s.id, s]))
+    announcements.value = annList
+    incidents.value = allIncidents.filter(i => i.residentId === profile.value.id)
+    
+    // Load finance data
+    loadFinanceData(profile.value.id)
+  } catch (err) {
+    console.error('Error loading dashboard data', err)
   } finally {
     isLoadingReservations.value = false
-  }
-}
-
-async function loadAnnouncements() {
-  isLoadingAnnouncements.value = true
-  try {
-    announcements.value = await announcementsApi.list()
-    currentIndex.value = 0
-  } catch {
-    // silently fail
-  } finally {
     isLoadingAnnouncements.value = false
+    isLoadingIncidents.value = false
   }
 }
 
 onMounted(() => {
-  loadReservations()
-  loadAnnouncements()
+  loadInitialData()
 })
 </script>
 
 <template>
-  <div class="app-view">
-    <h1 class="app-view__title">{{ t('resident.dashboardTitle') }}</h1>
-    <p class="app-view__subtitle">{{ t('resident.welcome', { name: profile.name || '' }) }}</p>
+  <div class="dashboard-container">
+    <header class="dashboard-header">
+      <div>
+        <h1 class="dashboard-title">{{ t('resident.dashboardTitle') }}</h1>
+        <p class="dashboard-subtitle">{{ t('resident.dashboardSubtitle') }}</p>
+      </div>
+      <div class="welcome-badge">
+        <i class="pi pi-user" />
+        <span>{{ t('resident.welcome', { name: profile.name || '' }) }}</span>
+      </div>
+    </header>
 
-    <section class="resident-card resident-card--reminder">
-      <h2 class="resident-card__title">{{ t('resident.reservationsReminderTitle') }}</h2>
+    <div class="bento-grid">
+      <!-- KPI: Pending Finance -->
+      <div class="bento-item kpi-item kpi-item--pending">
+        <div class="kpi-icon">
+          <i class="pi pi-wallet" />
+        </div>
+        <div class="kpi-content">
+          <span class="kpi-label">{{ t('resident.kpiPendingAmount') }}</span>
+          <span class="kpi-value">{{ formatCurrency(financeSummary.pending) }}</span>
+        </div>
+        <div v-if="financeSummary.overdue > 0" class="kpi-badge kpi-badge--danger">
+          {{ t('resident.financeChartOverdue') }}
+        </div>
+      </div>
 
-      <p v-if="isLoadingReservations" class="resident-card__empty">
-        {{ t('app.reservationsLoading') }}
-      </p>
-      <p v-else-if="reservationsError" class="resident-card__empty resident-card__empty--error">
-        {{ reservationsError }}
-      </p>
-      <p v-else-if="!upcomingReservations.length" class="resident-card__empty">
-        {{ t('resident.reservationsReminderEmpty') }}
-      </p>
-      <ul v-else class="resident-card__reservations" role="list">
-        <li v-for="r in upcomingReservations" :key="r.id" class="resident-card__reservation">
-          <div class="resident-card__reservation-main">
-            <strong class="resident-card__reservation-space">{{ spaceNameFor(r) }}</strong>
-            <span class="resident-card__reservation-time">{{ r.startTime }} – {{ r.endTime }}</span>
+      <!-- KPI: Open Incidents -->
+      <div class="bento-item kpi-item kpi-item--incidents">
+        <div class="kpi-icon">
+          <i class="pi pi-exclamation-circle" />
+        </div>
+        <div class="kpi-content">
+          <span class="kpi-label">{{ t('resident.kpiOpenIncidents') }}</span>
+          <span class="kpi-value">{{ incidentsSummary.open }}</span>
+        </div>
+      </div>
+
+      <!-- KPI: Reservations -->
+      <div class="bento-item kpi-item kpi-item--reservations">
+        <div class="kpi-icon">
+          <i class="pi pi-calendar" />
+        </div>
+        <div class="kpi-content">
+          <span class="kpi-label">{{ t('resident.kpiUpcomingReservations') }}</span>
+          <span class="kpi-value">{{ allUpcomingReservations.length }}</span>
+        </div>
+      </div>
+
+      <!-- Finance Chart Section -->
+      <div class="bento-item chart-section">
+        <h2 class="section-title">{{ t('resident.financeChartTitle') }}</h2>
+        <div class="chart-container">
+          <div v-if="financeSummary.total > 0" class="chart-flex">
+            <div class="canvas-wrapper">
+              <canvas ref="chartCanvas" width="160" height="160"></canvas>
+              <div class="chart-center-text">
+                <span class="center-percent">{{ Math.round((financeSummary.paid / financeSummary.total) * 100) }}%</span>
+                <span class="center-label">{{ t('resident.financeChartPaid') }}</span>
+              </div>
+            </div>
+            <div class="chart-legend">
+              <div class="legend-item">
+                <span class="dot dot--paid"></span>
+                <span class="label">{{ t('resident.financeChartPaid') }}</span>
+                <span class="val">{{ formatCurrency(financeSummary.paid) }}</span>
+              </div>
+              <div class="legend-item">
+                <span class="dot dot--pending"></span>
+                <span class="label">{{ t('resident.financeChartPending') }}</span>
+                <span class="val">{{ formatCurrency(financeSummary.pending - financeSummary.overdue) }}</span>
+              </div>
+              <div class="legend-item">
+                <span class="dot dot--overdue"></span>
+                <span class="label">{{ t('resident.financeChartOverdue') }}</span>
+                <span class="val">{{ formatCurrency(financeSummary.overdue) }}</span>
+              </div>
+            </div>
           </div>
-          <span class="resident-card__reservation-date">{{ r.date }}</span>
-        </li>
-      </ul>
-    </section>
-
-    <!-- ── ANNOUNCEMENTS SECTION ── -->
-    <section class="resident-card resident-card--announcements">
-      <div class="ann-section-header">
-        <h2 class="resident-card__title">
-          <i class="pi pi-megaphone" aria-hidden="true" style="margin-right:0.4rem;color:#0071e3" />
-          {{ t('resident.announcementsTitle') }}
-        </h2>
-        <button
-          v-if="activeAnnouncements.length > 0"
-          type="button"
-          class="ann-see-all-btn"
-          @click="showAllModal = true"
-        >
-          <i class="pi pi-list" aria-hidden="true" />
-          {{ t('information.seeAll') }}
-        </button>
+          <div v-else class="chart-empty">
+            <i class="pi pi-chart-pie" />
+            <p>{{ t('resident.financeChartEmpty') }}</p>
+          </div>
+        </div>
       </div>
 
-      <!-- loading -->
-      <p v-if="isLoadingAnnouncements" class="resident-card__empty">
-        {{ t('information.loading') }}
-      </p>
+      <!-- Announcements Carousel -->
+      <div class="bento-item announcements-section">
+        <div class="section-header">
+          <h2 class="section-title">
+            <i class="pi pi-megaphone" />
+            {{ t('resident.announcementsTitle') }}
+          </h2>
+          <button v-if="activeAnnouncements.length > 0" class="btn-see-all" @click="showAllAnnouncements = true">
+            <i class="pi pi-external-link" />
+            {{ t('information.seeAll') }}
+          </button>
+        </div>
 
-      <!-- empty -->
-      <p v-else-if="activeAnnouncements.length === 0" class="resident-card__empty">
-        {{ t('resident.announcementsEmpty') }}
-      </p>
-
-      <!-- carousel -->
-      <div v-else class="ann-carousel">
-        <!-- nav: prev -->
-        <button
-          class="ann-carousel__nav ann-carousel__nav--prev"
-          :disabled="activeAnnouncements.length <= 1"
-          :aria-label="t('information.prevAnnouncement')"
-          type="button"
-          @click="prevAnn"
-        >
-          <i class="pi pi-chevron-left" />
-        </button>
-
-        <!-- card -->
-        <Transition name="ann-slide" mode="out-in">
-          <article
-            v-if="currentAnnouncement"
-            :key="currentAnnouncement.id"
-            class="ann-carousel__card"
-            :class="{
-              'ann-carousel__card--urgent': currentAnnouncement.priority === 'urgent',
-              'ann-carousel__card--important': currentAnnouncement.priority === 'important',
-            }"
-          >
-            <!-- top row: badge + duration -->
-            <div class="ann-carousel__top">
-              <span class="ann-badge" :class="priorityClass(currentAnnouncement.priority)">
-                {{ priorityLabel(currentAnnouncement.priority) }}
-              </span>
-              <span v-if="currentAnnouncement.duration" class="ann-carousel__duration">
-                <i class="pi pi-clock" aria-hidden="true" />
-                {{ durationLabel(currentAnnouncement.duration) }}
-              </span>
+        <div v-if="isLoadingAnnouncements" class="loading-state">
+          <i class="pi pi-spin pi-spinner" />
+        </div>
+        <div v-else-if="activeAnnouncements.length === 0" class="empty-state">
+          <p>{{ t('resident.announcementsEmpty') }}</p>
+        </div>
+        <div v-else class="carousel-wrapper">
+          <button class="nav-btn prev" @click="prevAnn" :disabled="activeAnnouncements.length <= 1">
+            <i class="pi pi-chevron-left" />
+          </button>
+          
+          <Transition name="fade" mode="out-in">
+            <div :key="currentIndex" class="announcement-card" :class="priorityClass(currentAnnouncement.priority)">
+              <div class="ann-header">
+                <span class="ann-badge" :class="priorityClass(currentAnnouncement.priority)">
+                  {{ priorityLabel(currentAnnouncement.priority) }}
+                </span>
+                <span class="ann-author">{{ currentAnnouncement.authorName }}</span>
+              </div>
+              <h3 class="ann-title">{{ currentAnnouncement.title }}</h3>
+              <p class="ann-body">{{ currentAnnouncement.body }}</p>
             </div>
+          </Transition>
 
-            <h3 class="ann-carousel__title">{{ currentAnnouncement.title }}</h3>
-            <p class="ann-carousel__body">{{ currentAnnouncement.body }}</p>
+          <button class="nav-btn next" @click="nextAnn" :disabled="activeAnnouncements.length <= 1">
+            <i class="pi pi-chevron-right" />
+          </button>
+        </div>
+        
+        <div v-if="activeAnnouncements.length > 1" class="carousel-dots">
+          <span 
+            v-for="(_, i) in activeAnnouncements" 
+            :key="i" 
+            class="dot" 
+            :class="{ active: i === currentIndex }"
+            @click="currentIndex = i"
+          ></span>
+        </div>
+      </div>
 
-            <!-- footer: author + expiry -->
-            <div class="ann-carousel__footer">
-              <span class="ann-carousel__author">
-                <i class="pi pi-user" aria-hidden="true" />
-                {{ currentAnnouncement.authorName }}
-              </span>
-              <span v-if="currentAnnouncement.expiresAt" class="ann-carousel__expiry">
-                <i class="pi pi-calendar" aria-hidden="true" />
-                {{ t('information.expiresOn', { date: formatExpiry(currentAnnouncement.expiresAt) }) }}
-              </span>
+      <!-- ── SEE-ALL ANNOUNCEMENTS MODAL ── -->
+      <Teleport to="body">
+        <Transition name="fade">
+          <div v-if="showAllAnnouncements" class="modal-overlay" @click.self="showAllAnnouncements = false">
+            <div class="modal-content" role="dialog" :aria-label="t('information.allAnnouncementsTitle')">
+              <header class="modal-header">
+                <h2 class="modal-title">
+                  <i class="pi pi-megaphone" aria-hidden="true" style="margin-right:0.4rem;color:#0071e3" />
+                  {{ t('information.allAnnouncementsTitle') }}
+                </h2>
+                <button
+                  type="button"
+                  class="modal-close"
+                  @click="showAllAnnouncements = false"
+                >
+                  <i class="pi pi-times" />
+                </button>
+              </header>
+
+              <div class="modal-body">
+                <article
+                  v-for="ann in announcements"
+                  :key="ann.id"
+                  class="ann-all-item"
+                  :class="{
+                    'ann-all-item--urgent': ann.priority === 'urgent',
+                    'ann-all-item--expired': isExpired(ann.expiresAt),
+                  }"
+                >
+                  <div class="ann-all-item__top">
+                    <span class="ann-badge" :class="priorityClass(ann.priority)">
+                      {{ priorityLabel(ann.priority) }}
+                    </span>
+                    <div class="ann-all-item__meta">
+                      <span v-if="ann.duration" class="ann-duration-tag">
+                        <i class="pi pi-clock" />
+                        {{ durationLabel(ann.duration) }}
+                      </span>
+                      <span v-if="isExpired(ann.expiresAt)" class="ann-expired-tag">
+                        {{ t('information.expired') }}
+                      </span>
+                    </div>
+                  </div>
+                  <h3 class="ann-all-item__title">{{ ann.title }}</h3>
+                  <p class="ann-all-item__body">{{ ann.body }}</p>
+                  <div class="ann-all-item__footer">
+                    <span class="ann-author">
+                      <i class="pi pi-user" />
+                      {{ ann.authorName }}
+                    </span>
+                    <div class="ann-dates">
+                      <time class="ann-created">{{ formatDate(ann.createdAt) }}</time>
+                      <span v-if="ann.expiresAt" class="ann-expiry">
+                        <i class="pi pi-calendar-times" />
+                        {{ t('information.expiresOn', { date: formatExpiry(ann.expiresAt) }) }}
+                      </span>
+                    </div>
+                  </div>
+                </article>
+              </div>
             </div>
-          </article>
+          </div>
         </Transition>
+      </Teleport>
 
-        <!-- nav: next -->
-        <button
-          class="ann-carousel__nav ann-carousel__nav--next"
-          :disabled="activeAnnouncements.length <= 1"
-          :aria-label="t('information.nextAnnouncement')"
-          type="button"
-          @click="nextAnn"
-        >
-          <i class="pi pi-chevron-right" />
-        </button>
+      <div class="bento-item reservations-section">
+        <div class="section-header">
+          <h2 class="section-title">{{ t('resident.reservationsReminderTitle') }}</h2>
+          <button v-if="allUpcomingReservations.length > 0" class="btn-see-all" @click="showAllReservations = true">
+            <i class="pi pi-external-link" />
+            {{ t('information.seeAll') }}
+          </button>
+        </div>
+        <div v-if="isLoadingReservations" class="loading-state">
+          <i class="pi pi-spin pi-spinner" />
+        </div>
+        <div v-else-if="allUpcomingReservations.length === 0" class="empty-state">
+          <i class="pi pi-calendar-times" />
+          <p>{{ t('resident.reservationsReminderEmpty') }}</p>
+        </div>
+        <div v-else class="res-list">
+          <!-- Today's Section (if any) -->
+          <div v-if="todayReservations.length > 0" class="res-group-label">{{ t('importView.today') }}</div>
+          <div v-for="res in todayReservations.slice(0, 3)" :key="'today-' + res.id" class="res-item res-item--today">
+            <div class="res-info">
+              <span class="res-space">{{ spaceNameFor(res) }}</span>
+              <span class="res-time">{{ res.startTime }} - {{ res.endTime }}</span>
+            </div>
+            <div class="res-date">
+              {{ res.date }}
+            </div>
+          </div>
+
+          <!-- Other Upcoming (if needed to fill) -->
+          <div v-if="otherUpcomingReservations.length > 0 && todayReservations.length < 3" class="res-group-label" style="margin-top: 0.5rem">
+            {{ t('resident.kpiUpcomingReservations') }}
+          </div>
+          <div v-for="res in otherUpcomingReservations.slice(0, Math.max(0, 3 - todayReservations.length))" :key="'other-' + res.id" class="res-item">
+            <div class="res-info">
+              <span class="res-space">{{ spaceNameFor(res) }}</span>
+              <span class="res-time">{{ res.startTime }} - {{ res.endTime }}</span>
+            </div>
+            <div class="res-date">
+              {{ res.date }}
+            </div>
+          </div>
+        </div>
       </div>
 
-      <!-- dots / counter -->
-      <div v-if="activeAnnouncements.length > 1" class="ann-carousel__dots">
-        <button
-          v-for="(_, i) in activeAnnouncements"
-          :key="i"
-          class="ann-carousel__dot"
-          :class="{ 'ann-carousel__dot--active': i === currentIndex }"
-          type="button"
-          :aria-label="`Comunicado ${i + 1}`"
-          @click="currentIndex = i"
-        />
+      <!-- Incidents Summary -->
+      <div class="bento-item incidents-section">
+        <div class="section-header">
+          <h2 class="section-title">{{ t('resident.incidentsSummaryTitle') }}</h2>
+          <button v-if="incidents.length > 0" class="btn-see-all" @click="showAllIncidents = true">
+            <i class="pi pi-external-link" />
+            {{ t('information.seeAll') }}
+          </button>
+        </div>
+        <div v-if="isLoadingIncidents" class="loading-state">
+          <i class="pi pi-spin pi-spinner" />
+        </div>
+        <div v-else-if="incidents.length === 0" class="empty-state">
+          <p>{{ t('resident.incidentsEmpty') }}</p>
+        </div>
+        <div v-else class="inc-grid">
+          <div class="inc-stat">
+            <span class="count">{{ incidentsSummary.open }}</span>
+            <span class="label">{{ t('resident.incidentsOpen') }}</span>
+          </div>
+          <div class="inc-stat">
+            <span class="count">{{ incidentsSummary.inProgress }}</span>
+            <span class="label">{{ t('resident.incidentsInProgress') }}</span>
+          </div>
+          <div class="inc-stat">
+            <span class="count">{{ incidentsSummary.resolved }}</span>
+            <span class="label">{{ t('resident.incidentsResolved') }}</span>
+          </div>
+        </div>
+        <div class="inc-recent" v-if="incidents.length > 0">
+          <div v-for="inc in incidents.slice(0, 3)" :key="inc.id" class="inc-item inc-item--dashboard">
+            <div class="inc-info-main">
+              <span class="inc-desc-text">{{ inc.description }}</span>
+              <span class="inc-date-sub">{{ formatDate(inc.createdAt) }}</span>
+            </div>
+            <Tag :value="inc.status" :severity="getIncidentSeverity(inc.status)" class="inc-tag" />
+          </div>
+        </div>
       </div>
-    </section>
+    </div>
 
-    <!-- ── SEE-ALL MODAL ── -->
+    <!-- ── SEE-ALL INCIDENTS MODAL ── -->
     <Teleport to="body">
-      <Transition name="ann-modal">
-        <div v-if="showAllModal" class="ann-all-overlay" @click.self="showAllModal = false">
-          <div class="ann-all-modal" role="dialog" :aria-label="t('information.allAnnouncementsTitle')">
-            <header class="ann-all-modal__header">
-              <h2 class="ann-all-modal__title">
-                <i class="pi pi-megaphone" aria-hidden="true" style="margin-right:0.4rem;color:#0071e3" />
-                {{ t('information.allAnnouncementsTitle') }}
+      <Transition name="fade">
+        <div v-if="showAllIncidents" class="modal-overlay" @click.self="showAllIncidents = false">
+          <div class="modal-content" role="dialog" :aria-label="t('resident.incidentsTitle')">
+            <header class="modal-header">
+              <h2 class="modal-title">
+                <i class="pi pi-exclamation-circle" aria-hidden="true" style="margin-right:0.4rem;color:#ff3b30" />
+                {{ t('resident.incidentsTitle') }}
               </h2>
-              <button
-                type="button"
-                class="ann-all-modal__close"
-                :aria-label="t('information.close')"
-                @click="showAllModal = false"
-              >
+              <button type="button" class="modal-close" @click="showAllIncidents = false">
                 <i class="pi pi-times" />
               </button>
             </header>
-
-            <div class="ann-all-modal__body">
-              <article
-                v-for="ann in announcements"
-                :key="ann.id"
-                class="ann-all-item"
-                :class="{
-                  'ann-all-item--urgent': ann.priority === 'urgent',
-                  'ann-all-item--expired': isExpired(ann.expiresAt),
-                }"
-              >
-                <div class="ann-all-item__top">
-                  <span class="ann-badge" :class="priorityClass(ann.priority)">
-                    {{ priorityLabel(ann.priority) }}
-                  </span>
-                  <div class="ann-all-item__meta">
-                    <span v-if="ann.duration" class="ann-carousel__duration">
-                      <i class="pi pi-clock" aria-hidden="true" />
-                      {{ durationLabel(ann.duration) }}
-                    </span>
-                    <span v-if="isExpired(ann.expiresAt)" class="ann-expired-tag">
-                      {{ t('information.expired') }}
-                    </span>
-                  </div>
+            <div class="modal-body">
+              <div v-for="inc in incidents" :key="inc.id" class="inc-all-item">
+                <div class="inc-all-header">
+                  <Tag :value="inc.status" :severity="getIncidentSeverity(inc.status)" />
+                  <span class="inc-date">{{ formatDate(inc.createdAt) }}</span>
                 </div>
-                <h3 class="ann-all-item__title">{{ ann.title }}</h3>
-                <p class="ann-all-item__body">{{ ann.body }}</p>
-                <div class="ann-all-item__footer">
-                  <span class="ann-carousel__author">
-                    <i class="pi pi-user" aria-hidden="true" />
-                    {{ ann.authorName }}
-                  </span>
-                  <div style="display:flex;flex-direction:column;align-items:flex-end;gap:0.1rem;">
-                    <time style="font-size:0.68rem;color:#86868b;">{{ formatDate(ann.createdAt) }}</time>
-                    <span v-if="ann.expiresAt" :class="isExpired(ann.expiresAt) ? 'ann-all-expiry--expired' : 'ann-all-expiry'">
-                      <i class="pi pi-calendar-times" aria-hidden="true" />
-                      {{ isExpired(ann.expiresAt) ? t('information.expired') : t('information.expiresOn', { date: formatExpiry(ann.expiresAt) }) }}
-                    </span>
-                  </div>
+                <p class="inc-all-desc">{{ inc.description }}</p>
+                <div v-if="inc.provider" class="inc-provider">
+                  <i class="pi pi-user-edit" /> {{ inc.provider }}
                 </div>
-              </article>
+              </div>
             </div>
           </div>
         </div>
       </Transition>
     </Teleport>
 
-
-    <section class="resident-card">
-      <h2 class="resident-card__title">{{ t('resident.profileTitle') }}</h2>
-      <ul class="resident-card__list" role="list">
-        <li><strong>{{ t('app.residentNameLabel') }}:</strong> {{ profile.name }}</li>
-        <li><strong>{{ t('app.residentFloorLabel') }}:</strong> {{ profile.floor }}</li>
-        <li><strong>{{ t('app.residentCodeLabel') }}:</strong> {{ profile.code }}</li>
-        <li v-if="profile.email"><strong>{{ t('auth.email') }}:</strong> {{ profile.email }}</li>
-      </ul>
-    </section>
+    <!-- ── SEE-ALL RESERVATIONS MODAL ── -->
+    <Teleport to="body">
+      <Transition name="fade">
+        <div v-if="showAllReservations" class="modal-overlay" @click.self="showAllReservations = false">
+          <div class="modal-content" role="dialog" :aria-label="t('resident.reservationsReminderTitle')">
+            <header class="modal-header">
+              <h2 class="modal-title">
+                <i class="pi pi-calendar" aria-hidden="true" style="margin-right:0.4rem;color:#34c759" />
+                {{ t('resident.reservationsReminderTitle') }}
+              </h2>
+              <button type="button" class="modal-close" @click="showAllReservations = false">
+                <i class="pi pi-times" />
+              </button>
+            </header>
+            <div class="modal-body">
+              <div v-for="res in allUpcomingReservations" :key="res.id" class="res-all-item">
+                <div class="res-all-info">
+                  <span class="res-space">{{ spaceNameFor(res) }}</span>
+                  <span class="res-time">{{ res.startTime }} - {{ res.endTime }}</span>
+                </div>
+                <div class="res-date-badge">
+                  {{ res.date }}
+                </div>
+              </div>
+            </div>
+          </div>
+        </div>
+      </Transition>
+    </Teleport>
   </div>
 </template>
 
 <style scoped>
-.app-view {
-  padding: 1.75rem 1.5rem;
-  max-width: 72rem;
-}
-
-.app-view__title {
-  margin: 0;
-  font-size: 1.5rem;
-  font-weight: 600;
-  letter-spacing: -0.03em;
-  color: var(--apple-text, #1d1d1f);
-}
-
-.app-view__subtitle {
-  margin: 0.35rem 0 1.25rem;
-  color: var(--apple-text-secondary, #6e6e73);
-}
-
-.resident-card {
-  background: #fff;
-  border: 1px solid #e8e8ed;
-  border-radius: 14px;
-  padding: 1rem 1.1rem;
-  max-width: 32rem;
-  margin-bottom: 0.85rem;
-}
-
-.resident-card--reminder {
-  background: #f0f4ff;
-  border-color: #c7d2fe;
-}
-
-.resident-card__title {
-  margin: 0 0 0.65rem;
-  font-size: 1rem;
-  font-weight: 600;
-}
-
-.resident-card__list {
-  list-style: none;
-  margin: 0;
-  padding: 0;
-  display: flex;
-  flex-direction: column;
-  gap: 0.35rem;
+.dashboard-container {
+  padding: 2rem;
+  max-width: 1200px;
+  margin: 0 auto;
   color: #1d1d1f;
+  font-family: -apple-system, BlinkMacSystemFont, "Segoe UI", Roboto, Helvetica, Arial, sans-serif;
 }
 
-.resident-card__empty {
+/* Header */
+.dashboard-header {
+  display: flex;
+  justify-content: space-between;
+  align-items: flex-start;
+  margin-bottom: 2.5rem;
+}
+
+.dashboard-title {
+  font-size: 2.25rem;
+  font-weight: 700;
+  letter-spacing: -0.04em;
   margin: 0;
+}
+
+.dashboard-subtitle {
   color: #6e6e73;
+  font-size: 1.1rem;
+  margin: 0.5rem 0 0;
+}
+
+.welcome-badge {
+  background: #f5f5f7;
+  padding: 0.5rem 1rem;
+  border-radius: 20px;
+  display: flex;
+  align-items: center;
+  gap: 0.5rem;
+  font-weight: 500;
   font-size: 0.9rem;
 }
 
-.resident-card__empty--error {
-  color: #b42318;
+/* Bento Grid */
+.bento-grid {
+  display: grid;
+  grid-template-columns: repeat(4, 1fr);
+  grid-template-rows: auto auto;
+  gap: 1.5rem;
 }
 
-.resident-card__reservations {
-  list-style: none;
-  margin: 0;
-  padding: 0;
-  display: flex;
-  flex-direction: column;
-  gap: 0.45rem;
-}
-
-.resident-card__reservation {
-  display: flex;
-  justify-content: space-between;
-  align-items: center;
-  gap: 0.85rem;
-  background: #ffffff;
-  border: 1px solid #dbeafe;
-  border-radius: 10px;
-  padding: 0.55rem 0.7rem;
-}
-
-.resident-card__reservation-main {
-  display: flex;
-  flex-direction: column;
-  gap: 0.2rem;
-  min-width: 0;
-}
-
-.resident-card__reservation-space {
-  color: #1d1d1f;
-  font-size: 0.95rem;
-  overflow: hidden;
-  text-overflow: ellipsis;
-}
-
-.resident-card__reservation-time {
-  color: #6e6e73;
-  font-size: 0.825rem;
-}
-
-.resident-card__reservation-date {
-  color: #0a84ff;
-  font-weight: 600;
-  font-size: 0.875rem;
-  white-space: nowrap;
-}
-
-/* ── announcements section ── */
-.resident-card--announcements {
-  max-width: 100%;
-}
-
-.ann-section-header {
-  display: flex;
-  align-items: center;
-  justify-content: space-between;
-  margin-bottom: 0.85rem;
-}
-.ann-section-header .resident-card__title { margin-bottom: 0; }
-
-.ann-see-all-btn {
-  display: inline-flex;
-  align-items: center;
-  gap: 0.35rem;
-  padding: 0.35rem 0.85rem;
-  border: 1px solid #d2d2d7;
-  border-radius: 980px;
+.bento-item {
   background: #fff;
-  color: #0071e3;
-  font-size: 0.78rem;
-  font-weight: 600;
-  font-family: inherit;
-  cursor: pointer;
-  transition: background 0.15s ease, border-color 0.15s ease;
-}
-.ann-see-all-btn:hover {
-  background: #f0f6ff;
-  border-color: #0071e3;
+  border-radius: 24px;
+  padding: 1.5rem;
+  box-shadow: 0 4px 20px rgba(0, 0, 0, 0.05);
+  border: 1px solid #f2f2f7;
+  transition: transform 0.2s ease, box-shadow 0.2s ease;
 }
 
-/* ── carousel wrapper ── */
-.ann-carousel {
+.bento-item:hover {
+  transform: translateY(-4px);
+  box-shadow: 0 8px 30px rgba(0, 0, 0, 0.08);
+}
+
+/* KPIs */
+.kpi-item {
   display: flex;
   align-items: center;
-  gap: 0.6rem;
+  gap: 1.25rem;
+  position: relative;
 }
 
-.ann-carousel__nav {
-  flex-shrink: 0;
-  width: 2rem;
-  height: 2rem;
-  border-radius: 50%;
-  border: 1px solid #e8e8ed;
-  background: #fff;
-  color: #1d1d1f;
-  font-size: 0.8rem;
-  cursor: pointer;
+.kpi-icon {
+  width: 54px;
+  height: 54px;
+  border-radius: 16px;
   display: flex;
   align-items: center;
   justify-content: center;
-  transition: background 0.15s ease, border-color 0.15s ease, color 0.15s ease;
-}
-.ann-carousel__nav:hover:not(:disabled) {
-  background: #0071e3;
-  border-color: #0071e3;
-  color: #fff;
-}
-.ann-carousel__nav:disabled {
-  opacity: 0.3;
-  cursor: default;
+  font-size: 1.5rem;
 }
 
-/* ── carousel card ── */
-.ann-carousel__card {
-  flex: 1;
-  min-width: 0;
-  background: #fff;
-  border: 1px solid #e8e8ed;
-  border-radius: 16px;
-  padding: 1.1rem 1.25rem;
-  box-shadow: 0 2px 12px rgba(0,0,0,0.05);
-  transition: box-shadow 0.18s ease;
-}
-.ann-carousel__card--urgent  { border-left: 4px solid #ff3b30; }
-.ann-carousel__card--important { border-left: 4px solid #e65100; }
+.kpi-item--pending .kpi-icon { background: #fff2e0; color: #ff9500; }
+.kpi-item--incidents .kpi-icon { background: #ffebeb; color: #ff3b30; }
+.kpi-item--reservations .kpi-icon { background: #e8f5e9; color: #34c759; }
 
-.ann-carousel__top {
+.kpi-content {
   display: flex;
-  align-items: center;
-  justify-content: space-between;
-  margin-bottom: 0.6rem;
+  flex-direction: column;
 }
 
-.ann-carousel__duration {
-  display: inline-flex;
-  align-items: center;
-  gap: 0.25rem;
-  font-size: 0.65rem;
-  font-weight: 600;
-  color: #0071e3;
-  background: #e8f0fe;
-  padding: 0.15rem 0.5rem;
-  border-radius: 980px;
+.kpi-label {
+  font-size: 0.85rem;
+  color: #86868b;
+  font-weight: 500;
 }
 
-.ann-carousel__title {
-  margin: 0 0 0.45rem;
-  font-size: 0.97rem;
+.kpi-value {
+  font-size: 1.5rem;
   font-weight: 700;
-  color: #1d1d1f;
   letter-spacing: -0.02em;
 }
 
-.ann-carousel__body {
-  margin: 0 0 0.8rem;
-  font-size: 0.84rem;
-  color: #3a3a3c;
-  line-height: 1.55;
-  white-space: pre-line;
+.kpi-badge {
+  position: absolute;
+  top: 10px;
+  right: 10px;
+  padding: 2px 8px;
+  border-radius: 10px;
+  font-size: 0.65rem;
+  font-weight: 700;
+  text-transform: uppercase;
 }
 
-.ann-carousel__footer {
+.kpi-badge--danger { background: #ff3b30; color: #fff; }
+
+/* Chart Section */
+.chart-section {
+  grid-column: span 2;
+  grid-row: span 1;
+}
+
+.section-title {
+  font-size: 1.25rem;
+  font-weight: 700;
+  margin: 0 0 1.25rem;
   display: flex;
   align-items: center;
-  justify-content: space-between;
   gap: 0.5rem;
+}
+
+.chart-flex {
+  display: flex;
+  align-items: center;
+  gap: 2rem;
+}
+
+.canvas-wrapper {
+  position: relative;
+  width: 160px;
+  height: 160px;
+}
+
+.chart-center-text {
+  position: absolute;
+  top: 50%;
+  left: 50%;
+  transform: translate(-50%, -50%);
+  display: flex;
+  flex-direction: column;
+  align-items: center;
+  pointer-events: none;
+}
+
+.center-percent {
+  font-size: 1.5rem;
+  font-weight: 700;
+}
+
+.center-label {
   font-size: 0.7rem;
   color: #86868b;
+  text-transform: uppercase;
+  font-weight: 600;
 }
 
-.ann-carousel__author {
-  display: inline-flex;
-  align-items: center;
-  gap: 0.25rem;
-  font-weight: 500;
-}
-
-.ann-carousel__expiry {
-  display: inline-flex;
-  align-items: center;
-  gap: 0.2rem;
-  color: #34a853;
-  font-weight: 500;
-}
-
-/* ── dots ── */
-.ann-carousel__dots {
-  display: flex;
-  justify-content: center;
-  gap: 0.35rem;
-  margin-top: 0.75rem;
-}
-.ann-carousel__dot {
-  width: 6px;
-  height: 6px;
-  border-radius: 50%;
-  border: none;
-  background: #d2d2d7;
-  cursor: pointer;
-  padding: 0;
-  transition: background 0.18s ease, transform 0.18s ease;
-}
-.ann-carousel__dot--active {
-  background: #0071e3;
-  transform: scale(1.3);
-}
-
-/* ── slide transition ── */
-.ann-slide-enter-active, .ann-slide-leave-active { transition: all 0.22s ease; }
-.ann-slide-enter-from { opacity: 0; transform: translateX(18px); }
-.ann-slide-leave-to  { opacity: 0; transform: translateX(-18px); }
-
-/* ── SEE-ALL MODAL ── */
-.ann-all-overlay {
-  position: fixed;
-  inset: 0;
-  z-index: 9100;
-  display: flex;
-  align-items: center;
-  justify-content: center;
-  background: rgba(0,0,0,0.38);
-  backdrop-filter: blur(4px);
-  -webkit-backdrop-filter: blur(4px);
-}
-
-.ann-all-modal {
-  background: #fff;
-  border-radius: 20px;
-  box-shadow: 0 24px 64px rgba(0,0,0,0.18);
-  width: 95%;
-  max-width: 36rem;
-  max-height: 85vh;
-  display: flex;
-  flex-direction: column;
-  overflow: hidden;
-  animation: ann-modal-in 0.28s cubic-bezier(0.34, 1.2, 0.64, 1);
-}
-
-@keyframes ann-modal-in {
-  from { opacity: 0; transform: translateY(14px) scale(0.97); }
-  to   { opacity: 1; transform: translateY(0) scale(1); }
-}
-
-.ann-all-modal__header {
-  display: flex;
-  align-items: center;
-  justify-content: space-between;
-  padding: 1.15rem 1.35rem 0.75rem;
-  border-bottom: 1px solid #e8e8ed;
-  flex-shrink: 0;
-}
-
-.ann-all-modal__title {
-  margin: 0;
-  font-size: 1.05rem;
-  font-weight: 700;
-  letter-spacing: -0.02em;
-  color: #1d1d1f;
-}
-
-.ann-all-modal__close {
-  background: none;
-  border: none;
-  font-size: 1rem;
-  color: #86868b;
-  cursor: pointer;
-  padding: 0.25rem;
-  border-radius: 6px;
-  line-height: 1;
-}
-.ann-all-modal__close:hover { color: #1d1d1f; }
-
-.ann-all-modal__body {
-  overflow-y: auto;
-  padding: 0.85rem 1.35rem 1.35rem;
+.chart-legend {
+  flex: 1;
   display: flex;
   flex-direction: column;
   gap: 0.75rem;
 }
 
-/* ── list items inside modal ── */
-.ann-all-item {
-  background: #fafafa;
-  border: 1px solid #e8e8ed;
-  border-radius: 12px;
-  padding: 0.9rem 1rem;
-  transition: border-color 0.15s ease;
-}
-.ann-all-item:hover { border-color: #d2d2d7; }
-.ann-all-item--urgent   { border-left: 3px solid #ff3b30; }
-.ann-all-item--expired  { opacity: 0.55; }
-
-.ann-all-item__top {
+.legend-item {
   display: flex;
   align-items: center;
-  justify-content: space-between;
-  margin-bottom: 0.45rem;
+  gap: 0.75rem;
 }
-.ann-all-item__meta {
+
+.dot {
+  width: 10px;
+  height: 10px;
+  border-radius: 50%;
+}
+
+.dot--paid { background: #34c759; }
+.dot--pending { background: #ff9500; }
+.dot--overdue { background: #ff3b30; }
+
+.legend-item .label {
+  font-size: 0.9rem;
+  color: #6e6e73;
+  flex: 1;
+}
+
+.legend-item .val {
+  font-weight: 600;
+  font-size: 0.95rem;
+}
+
+.chart-empty {
+  display: flex;
+  flex-direction: column;
+  align-items: center;
+  justify-content: center;
+  padding: 2rem;
+  color: #86868b;
+  gap: 1rem;
+}
+
+.chart-empty i { font-size: 3rem; opacity: 0.2; }
+
+/* Announcements Carousel */
+.announcements-section {
+  grid-column: span 2;
+  grid-row: span 1;
+  display: flex;
+  flex-direction: column;
+}
+
+.section-header {
+  display: flex;
+  justify-content: space-between;
+  align-items: center;
+}
+
+.btn-see-all {
+  background: #f0f7ff;
+  border: 1px solid #d0e7ff;
+  color: #0071e3;
+  padding: 0.4rem 0.8rem;
+  border-radius: 12px;
+  font-weight: 600;
+  font-size: 0.8rem;
+  cursor: pointer;
   display: flex;
   align-items: center;
   gap: 0.4rem;
+  transition: all 0.2s;
 }
 
-.ann-expired-tag {
-  display: inline-flex;
+.btn-see-all:hover {
+  background: #0071e3;
+  color: #fff;
+  border-color: #0071e3;
+}
+
+.carousel-wrapper {
+  display: flex;
   align-items: center;
-  font-size: 0.62rem;
+  gap: 1rem;
+  flex: 1;
+}
+
+.nav-btn {
+  background: #f5f5f7;
+  border: none;
+  width: 32px;
+  height: 32px;
+  border-radius: 50%;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  cursor: pointer;
+  transition: background 0.2s;
+}
+
+.nav-btn:hover:not(:disabled) { background: #e8e8ed; }
+.nav-btn:disabled { opacity: 0.3; cursor: default; }
+
+.announcement-card {
+  flex: 1;
+  padding: 1.25rem;
+  border-radius: 16px;
+  background: #fbfbfd;
+  min-height: 120px;
+  border-left: 4px solid #d2d2d7;
+}
+
+.announcement-card.ann-badge--urgent { border-left-color: #ff3b30; background: #fff8f8; }
+.announcement-card.ann-badge--important { border-left-color: #ff9500; background: #fffaf2; }
+
+.ann-header {
+  display: flex;
+  justify-content: space-between;
+  margin-bottom: 0.75rem;
+}
+
+.ann-badge {
+  padding: 2px 8px;
+  border-radius: 8px;
+  font-size: 0.65rem;
   font-weight: 700;
-  color: #b42318;
-  background: #fdecee;
-  padding: 0.12rem 0.45rem;
-  border-radius: 980px;
   text-transform: uppercase;
 }
 
-.ann-all-item__title {
-  margin: 0 0 0.3rem;
-  font-size: 0.9rem;
-  font-weight: 700;
-  color: #1d1d1f;
-  letter-spacing: -0.02em;
-}
-.ann-all-item__body {
-  margin: 0 0 0.6rem;
-  font-size: 0.82rem;
-  color: #3a3a3c;
-  line-height: 1.55;
-  white-space: pre-line;
-}
-.ann-all-item__footer {
+.ann-badge--normal { background: #e8e8ed; color: #86868b; }
+.ann-badge--important { background: #fff2e0; color: #ff9500; }
+.ann-badge--urgent { background: #ffebeb; color: #ff3b30; }
+
+.ann-author { font-size: 0.75rem; color: #86868b; font-weight: 500; }
+.ann-title { font-size: 1.1rem; font-weight: 700; margin: 0 0 0.5rem; }
+.ann-body { font-size: 0.9rem; color: #3a3a3c; line-height: 1.4; display: -webkit-box; -webkit-line-clamp: 2; -webkit-box-orient: vertical; overflow: hidden; }
+
+.carousel-dots {
   display: flex;
-  align-items: center;
-  justify-content: space-between;
+  justify-content: center;
   gap: 0.5rem;
+  margin-top: 1rem;
+}
+
+.carousel-dots .dot {
+  width: 6px;
+  height: 6px;
+  background: #d2d2d7;
+  border-radius: 50%;
+  cursor: pointer;
+  transition: background 0.2s;
+}
+
+.carousel-dots .dot.active { background: #0071e3; transform: scale(1.2); }
+
+/* Reservations Section */
+.reservations-section {
+  grid-column: span 2;
+}
+
+.res-list {
+  display: flex;
+  flex-direction: column;
+  gap: 1rem;
+}
+
+.res-item {
+  display: flex;
+  justify-content: space-between;
+  align-items: center;
+  background: #fbfbfd;
+  padding: 1rem;
+  border-radius: 16px;
+  border: 1px solid transparent;
+}
+
+.res-item--today {
+  background: #fff;
+  border-color: #d0e7ff;
+  box-shadow: 0 2px 8px rgba(0, 113, 227, 0.05);
+}
+
+.res-group-label {
   font-size: 0.7rem;
+  font-weight: 700;
+  text-transform: uppercase;
+  color: #86868b;
+  letter-spacing: 0.05em;
+  margin-bottom: 0.25rem;
+}
+
+.res-info { display: flex; flex-direction: column; }
+.res-space { font-weight: 600; font-size: 1rem; }
+.res-time { font-size: 0.85rem; color: #86868b; }
+.res-date { font-weight: 700; color: #0071e3; font-size: 0.9rem; }
+
+/* Incidents Section */
+.incidents-section {
+  grid-column: span 2;
+}
+
+.inc-grid {
+  display: flex;
+  justify-content: space-around;
+  margin-bottom: 1.5rem;
+  background: #f5f5f7;
+  padding: 1rem;
+  border-radius: 16px;
+}
+
+.inc-stat {
+  display: flex;
+  flex-direction: column;
+  align-items: center;
+}
+
+.inc-stat .count { font-size: 1.5rem; font-weight: 700; }
+.inc-stat .label { font-size: 0.75rem; color: #86868b; font-weight: 600; text-transform: uppercase; }
+
+.inc-recent {
+  display: flex;
+  flex-direction: column;
+  gap: 0.75rem;
+}
+
+.inc-item--dashboard {
+  display: flex;
+  justify-content: space-between;
+  align-items: center;
+  background: #fbfbfd;
+  padding: 1rem;
+  border-radius: 16px;
+  border: 1px solid transparent;
+  transition: all 0.2s;
+}
+
+.inc-item--dashboard:hover {
+  background: #fff;
+  border-color: #f2f2f7;
+  box-shadow: 0 2px 8px rgba(0,0,0,0.02);
+}
+
+.inc-info-main {
+  display: flex;
+  flex-direction: column;
+  gap: 0.25rem;
+  flex: 1;
+  min-width: 0;
+}
+
+.inc-desc-text {
+  font-weight: 600;
+  font-size: 0.95rem;
+  color: #1d1d1f;
+  white-space: nowrap;
+  overflow: hidden;
+  text-overflow: ellipsis;
+}
+
+.inc-date-sub {
+  font-size: 0.75rem;
   color: #86868b;
 }
 
-.ann-all-expiry {
-  display: inline-flex;
-  align-items: center;
-  gap: 0.2rem;
-  font-size: 0.65rem;
-  color: #34a853;
-  font-weight: 500;
-}
-.ann-all-expiry--expired {
-  display: inline-flex;
-  align-items: center;
-  gap: 0.2rem;
-  font-size: 0.65rem;
-  color: #b42318;
-  font-weight: 500;
+.inc-tag {
+  flex-shrink: 0;
 }
 
-/* ── priority badges ── */
-.ann-badge {
-  display: inline-flex;
+/* States */
+.loading-state, .empty-state {
+  display: flex;
+  flex-direction: column;
   align-items: center;
-  padding: 0.15rem 0.5rem;
-  border-radius: 980px;
-  font-size: 0.6rem;
+  justify-content: center;
+  flex: 1;
+  color: #86868b;
+  gap: 0.5rem;
+  padding: 1rem;
+}
+
+.empty-state i { font-size: 2rem; opacity: 0.3; }
+
+/* Modal Styles */
+.modal-overlay {
+  position: fixed;
+  inset: 0;
+  z-index: 9999;
+  background: rgba(0, 0, 0, 0.4);
+  backdrop-filter: blur(8px);
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  padding: 1rem;
+}
+
+.modal-content {
+  background: #fff;
+  width: 100%;
+  max-width: 600px;
+  max-height: 80vh;
+  border-radius: 24px;
+  display: flex;
+  flex-direction: column;
+  overflow: hidden;
+  box-shadow: 0 20px 40px rgba(0, 0, 0, 0.2);
+}
+
+.modal-header {
+  padding: 1.5rem;
+  border-bottom: 1px solid #f2f2f7;
+  display: flex;
+  justify-content: space-between;
+  align-items: center;
+}
+
+.modal-title {
+  margin: 0;
+  font-size: 1.25rem;
   font-weight: 700;
-  letter-spacing: 0.03em;
-  text-transform: uppercase;
 }
-.ann-badge--normal    { background: #f2f2f7; color: #6e6e73; }
-.ann-badge--important { background: #fff3e0; color: #e65100; }
-.ann-badge--urgent    { background: #fdecee; color: #b42318; }
 
-/* ── modal transition ── */
-.ann-modal-enter-active, .ann-modal-leave-active { transition: opacity 0.2s ease; }
-.ann-modal-enter-from, .ann-modal-leave-to { opacity: 0; }
+.modal-close {
+  background: #f5f5f7;
+  border: none;
+  width: 32px;
+  height: 32px;
+  border-radius: 50%;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  cursor: pointer;
+}
+
+.modal-body {
+  padding: 1.5rem;
+  overflow-y: auto;
+  display: flex;
+  flex-direction: column;
+  gap: 1rem;
+}
+
+.ann-all-item {
+  background: #fbfbfd;
+  border-radius: 16px;
+  padding: 1.25rem;
+  border: 1px solid #f2f2f7;
+}
+
+.ann-all-item--urgent { border-left: 4px solid #ff3b30; }
+.ann-all-item--expired { opacity: 0.6; }
+
+.ann-all-item__top {
+  display: flex;
+  justify-content: space-between;
+  align-items: center;
+  margin-bottom: 0.75rem;
+}
+
+.ann-all-item__meta {
+  display: flex;
+  gap: 0.5rem;
+}
+
+.ann-duration-tag, .ann-expired-tag {
+  font-size: 0.7rem;
+  font-weight: 600;
+  padding: 2px 8px;
+  border-radius: 8px;
+  display: flex;
+  align-items: center;
+  gap: 0.25rem;
+}
+
+.ann-duration-tag { background: #e8f0fe; color: #0071e3; }
+.ann-expired-tag { background: #ffebeb; color: #ff3b30; }
+
+.ann-all-item__title {
+  font-size: 1.1rem;
+  font-weight: 700;
+  margin: 0 0 0.5rem;
+}
+
+.ann-all-item__body {
+  font-size: 0.9rem;
+  color: #3a3a3c;
+  line-height: 1.4;
+  margin-bottom: 1rem;
+}
+
+.ann-all-item__footer {
+  display: flex;
+  justify-content: space-between;
+  align-items: flex-end;
+  border-top: 1px solid #f2f2f7;
+  padding-top: 0.75rem;
+}
+
+.ann-dates {
+  display: flex;
+  flex-direction: column;
+  align-items: flex-end;
+  gap: 0.2rem;
+}
+
+.ann-created { font-size: 0.75rem; color: #86868b; }
+.ann-expiry { font-size: 0.75rem; color: #34c759; font-weight: 500; display: flex; align-items: center; gap: 0.25rem; }
+
+/* All Incidents Items */
+.inc-all-item {
+  background: #fbfbfd;
+  border-radius: 16px;
+  padding: 1.25rem;
+  border: 1px solid #f2f2f7;
+  display: flex;
+  flex-direction: column;
+  gap: 0.75rem;
+}
+
+.inc-all-header {
+  display: flex;
+  justify-content: space-between;
+  align-items: center;
+}
+
+.inc-date { font-size: 0.75rem; color: #86868b; }
+.inc-all-desc { font-size: 0.95rem; color: #1d1d1f; margin: 0; line-height: 1.5; }
+.inc-provider { font-size: 0.8rem; color: #0071e3; font-weight: 500; display: flex; align-items: center; gap: 0.4rem; }
+
+/* All Reservations Items */
+.res-all-item {
+  display: flex;
+  justify-content: space-between;
+  align-items: center;
+  background: #fbfbfd;
+  padding: 1.25rem;
+  border-radius: 16px;
+  border: 1px solid #f2f2f7;
+}
+
+.res-all-info { display: flex; flex-direction: column; gap: 0.25rem; }
+.res-date-badge {
+  background: #e8f5e9;
+  padding: 0.4rem 0.8rem;
+  border-radius: 12px;
+  font-weight: 700;
+  font-size: 0.85rem;
+  color: #34c759;
+}
+
+/* Transitions */
+.fade-enter-active, .fade-leave-active { transition: opacity 0.3s ease; }
+.fade-enter-from, .fade-leave-to { opacity: 0; }
+
+/* Responsive */
+@media (max-width: 1024px) {
+  .bento-grid {
+    grid-template-columns: repeat(2, 1fr);
+  }
+}
+
+@media (max-width: 640px) {
+  .bento-grid {
+    grid-template-columns: 1fr;
+  }
+  .chart-flex {
+    flex-direction: column;
+  }
+  .dashboard-header {
+    flex-direction: column;
+    gap: 1rem;
+  }
+  .bento-item {
+    grid-column: span 1 !important;
+  }
+}
 </style>
-

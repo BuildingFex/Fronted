@@ -432,6 +432,97 @@
       ],
       "guestInviteToken": "invite-seed-demo",
       "ownerAdminId": "admin-seed-1"
+    },
+    {
+      "id": "reservation-1778601105084",
+      "spaceId": "space-1778188293343",
+      "residentId": "resident-1778207900950",
+      "residentName": "Alberto",
+      "residentCode": "505",
+      "date": "2026-05-13",
+      "startTime": "13:00",
+      "endTime": "14:00",
+      "guests": [],
+      "guestInviteToken": null,
+      "ownerAdminId": "admin-seed-1"
+    },
+    {
+      "id": "reservation-1778601135070",
+      "spaceId": "space-1778208004723",
+      "residentId": "resident-1778207900950",
+      "residentName": "Alberto",
+      "residentCode": "505",
+      "date": "2026-05-13",
+      "startTime": "15:00",
+      "endTime": "16:00",
+      "guests": [],
+      "guestInviteToken": null,
+      "ownerAdminId": "admin-seed-1"
+    },
+    {
+      "id": "reservation-1778601174491",
+      "spaceId": "space-1778208960458",
+      "residentId": "resident-1778207900950",
+      "residentName": "Alberto",
+      "residentCode": "505",
+      "date": "2026-05-13",
+      "startTime": "15:00",
+      "endTime": "15:30",
+      "guests": [],
+      "guestInviteToken": null,
+      "ownerAdminId": "admin-seed-1"
+    },
+    {
+      "id": "reservation-1778601218063",
+      "spaceId": "space-1778188293343",
+      "residentId": "resident-1778207900950",
+      "residentName": "Alberto",
+      "residentCode": "505",
+      "date": "2026-05-12",
+      "startTime": "13:00",
+      "endTime": "14:00",
+      "guests": [],
+      "guestInviteToken": null,
+      "ownerAdminId": "admin-seed-1"
+    },
+    {
+      "id": "reservation-1778601257682",
+      "spaceId": "space-1778208960458",
+      "residentId": "resident-1778207900950",
+      "residentName": "Alberto",
+      "residentCode": "505",
+      "date": "2026-05-12",
+      "startTime": "16:00",
+      "endTime": "17:00",
+      "guests": [],
+      "guestInviteToken": null,
+      "ownerAdminId": "admin-seed-1"
+    },
+    {
+      "id": "reservation-1778602121038",
+      "spaceId": "space-1778208004723",
+      "residentId": "resident-1778207900950",
+      "residentName": "Alberto",
+      "residentCode": "505",
+      "date": "2026-05-12",
+      "startTime": "13:00",
+      "endTime": "13:30",
+      "guests": [],
+      "guestInviteToken": null,
+      "ownerAdminId": "admin-seed-1"
+    },
+    {
+      "id": "reservation-1778602246576",
+      "spaceId": "space-1778188293343",
+      "residentId": "resident-1778207900950",
+      "residentName": "Alberto",
+      "residentCode": "505",
+      "date": "2026-05-12",
+      "startTime": "14:00",
+      "endTime": "15:00",
+      "guests": [],
+      "guestInviteToken": null,
+      "ownerAdminId": "admin-seed-1"
     }
   ],
   "receipts": [
@@ -637,6 +728,46 @@
       "createdAt": "2026-05-11T18:20:16.177Z",
       "provider": "",
       "ownerAdminId": "admin-seed-1"
+    },
+    {
+      "id": "incident-1778601320883",
+      "residentId": "resident-1778207900950",
+      "residentName": "Alberto",
+      "description": "Problema de agua",
+      "status": "in-progress",
+      "createdAt": "2026-05-12T15:55:20.883Z",
+      "provider": "Sedapal",
+      "ownerAdminId": "admin-seed-1"
+    },
+    {
+      "id": "incident-1778601337194",
+      "residentId": "resident-1778207900950",
+      "residentName": "Alberto",
+      "description": "Problema de luz",
+      "status": "open",
+      "createdAt": "2026-05-12T15:55:37.194Z",
+      "provider": "",
+      "ownerAdminId": "admin-seed-1"
+    },
+    {
+      "id": "incident-1778601369218",
+      "residentId": "resident-1778207900950",
+      "residentName": "Alberto",
+      "description": "Problema con el gas",
+      "status": "open",
+      "createdAt": "2026-05-12T15:56:09.218Z",
+      "provider": "",
+      "ownerAdminId": "admin-seed-1"
+    },
+    {
+      "id": "incident-1778602077162",
+      "residentId": "resident-1778207900950",
+      "residentName": "Alberto",
+      "description": "Incidencias con el ascensor",
+      "status": "open",
+      "createdAt": "2026-05-12T16:07:57.162Z",
+      "provider": "",
+      "ownerAdminId": "admin-seed-1"
     }
   ],
   "teamWorkers": [
@@ -689,6 +820,18 @@
       "id": "ann-1778536686798",
       "createdAt": "2026-05-11T21:58:06.798Z",
       "expiresAt": "2026-05-18T21:58:06.798Z",
+      "ownerAdminId": "admin-seed-1"
+    },
+    {
+      "title": "Prueba 2",
+      "body": "Test",
+      "priority": "normal",
+      "duration": 7,
+      "authorId": "admin-seed-1",
+      "authorName": "Admin Demo",
+      "id": "ann-1778600974963",
+      "createdAt": "2026-05-12T15:49:34.963Z",
+      "expiresAt": "2026-05-19T15:49:34.963Z",
       "ownerAdminId": "admin-seed-1"
     }
   ],

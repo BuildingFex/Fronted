@@ -139,7 +139,10 @@ function toggleAppLocale() {
     <SkipLink />
     <aside class="app-shell__sidebar">
       <header class="app-shell__top">
-        <RouterLink class="app-shell__brand" :to="{ name: AppRouteNames.APP_DASHBOARD }">
+        <RouterLink 
+          class="app-shell__brand" 
+          :to="{ name: isResident ? AppRouteNames.APP_RESIDENT_DASHBOARD : AppRouteNames.APP_DASHBOARD }"
+        >
           <img
             src="/logo-buildingfex.png"
             :alt="t('brand')"
