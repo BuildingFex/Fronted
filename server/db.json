@@ -197,6 +197,17 @@
       "role": "resident",
       "admissionDate": "2026-05-11",
       "ownerAdminId": "admin-1778537421417"
+    },
+    {
+      "id": "admin-1778544760498",
+      "name": "Sebastian Martin Beingolea Montalvo",
+      "email": "u202217546853@upc.edu.pe",
+      "password": "546456",
+      "dni": "546456",
+      "address": "Calle San Martin, Apu Mountain Lodge Cuzco",
+      "company": "456456",
+      "ruc": "56445654",
+      "role": "admin"
     }
   ],
   "fees": [
@@ -386,6 +397,40 @@
       "date": "2026-05-08",
       "startTime": "10:00",
       "endTime": "11:00",
+      "guests": [],
+      "guestInviteToken": null,
+      "ownerAdminId": "admin-seed-1"
+    },
+    {
+      "id": "reservation-1778545334855",
+      "spaceId": "space-1778188293343",
+      "residentId": "resident-1778137645757",
+      "residentName": "Sebastian Martin Beingolea Montalvo",
+      "residentCode": "302",
+      "date": "2026-05-12",
+      "startTime": "12:00",
+      "endTime": "13:00",
+      "guests": [
+        {
+          "id": "guest-1778545610093-0",
+          "name": "sebas",
+          "checkedIn": true,
+          "checkedInAt": "2026-05-12T00:38:12.277Z"
+        },
+        {
+          "id": "guest-1778545610093-1",
+          "name": "mariaa",
+          "checkedIn": false,
+          "checkedInAt": null
+        },
+        {
+          "id": "guest-1778546320797-2",
+          "name": "alberto",
+          "checkedIn": true,
+          "checkedInAt": "2026-05-12T00:38:48.563Z"
+        }
+      ],
+      "guestInviteToken": "invite-seed-demo",
       "ownerAdminId": "admin-seed-1"
     }
   ],
@@ -487,6 +532,12 @@
       "baseMonthlyExpense": 150,
       "lateFeeRate": 0.05,
       "id": "rKabXWn"
+    },
+    {
+      "ownerAdminId": "admin-1778544760498",
+      "baseMonthlyExpense": 150,
+      "lateFeeRate": 0.05,
+      "id": "rTWEMjr"
     }
   ],
   "incidents": [
@@ -638,6 +689,17 @@
       "id": "ann-1778536686798",
       "createdAt": "2026-05-11T21:58:06.798Z",
       "expiresAt": "2026-05-18T21:58:06.798Z",
+      "ownerAdminId": "admin-seed-1"
+    }
+  ],
+  "importUploads": [
+    {
+      "id": "import-1778544745408",
+      "fileName": "receipt-1ASI0639-2610-6818-Actividad Informes del Estado del Arte Artículos 1 – 8.txt",
+      "mimeType": "text/plain",
+      "size": 373,
+      "uploadedAt": "2026-05-12T00:12:25.408Z",
+      "dataUrl": "data:text/plain;base64,VHUgZW50cmVnYSBzZSByZWFsaXrDsyBjb3JyZWN0YW1lbnRlLiBzdWNjZXNzZnVsIQpDdXJzbzogMUFTSTA2MzktMjYxMC02ODE4LCBUYWxsZXIgZGUgRGVzZW1wZcOxbyBQcm9mZXNpb25hbCAtIFByZXNlbmNpYWwKRXZhbHVhY2nDs246IEFjdGl2aWRhZDogSW5mb3JtZXMgZGVsIEVzdGFkbyBkZWwgQXJ0ZSAoQXJ0w61jdWxvcyAxIOKAkyA4KQoKRmVjaGEgZGUgZW50cmVnYTogMTAvNS8yNiAyMDo0NyAoVVRDLTUpClRhbWHDsW8gZGUgZW50cmVnYTogdW5kZWZpbmVkClJlbWl0ZW50ZTogU2ViYXN0aWFuIE1hcnRpbiBCZWluZ29sZWEgTW9udGFsdm8KTsO6bWVybyBkZSBjb25maXJtYWNpw7NuOiA1NGFmNmRlMjc5MDI0YzVlODllYzAzYjAyM2EzODZhNw==",
       "ownerAdminId": "admin-seed-1"
     }
   ]

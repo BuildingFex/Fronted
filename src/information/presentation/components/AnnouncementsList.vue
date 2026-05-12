@@ -7,6 +7,8 @@ defineProps({
   announcements: { type: Array, required: true },
   loading: { type: Boolean, default: false },
   isAdmin: { type: Boolean, default: false },
+  /** When `finance`, use the same card grid / surfaces as Finanzas (admin information). */
+  layout: { type: String, default: 'default' },
 })
 
 const emit = defineEmits(['delete'])
@@ -61,7 +63,7 @@ function isExpired(iso) {
 </script>
 
 <template>
-  <div class="ann-list">
+  <div class="ann-list" :class="{ 'ann-list--finance': layout === 'finance' }">
     <!-- loading -->
     <p v-if="loading" class="ann-list__status">
       <i class="pi pi-spin pi-spinner" aria-hidden="true" />
@@ -130,6 +132,30 @@ function isExpired(iso) {
 </template>
 
 <style scoped>
+/* Finance-style admin layout (matches AppFinanceView history cards) */
+.ann-list--finance .ann-list__grid {
+  display: grid;
+  grid-template-columns: repeat(auto-fill, minmax(280px, 1fr));
+  gap: 1rem;
+}
+
+.ann-list--finance .ann-card {
+  background: #fafafa;
+  border: 1px solid rgba(0, 0, 0, 0.06);
+  border-radius: 12px;
+  padding: 1.1rem 1.2rem;
+  box-shadow: none;
+}
+
+.ann-list--finance .ann-card:hover {
+  box-shadow: 0 1px 3px rgba(0, 0, 0, 0.06);
+  border-color: rgba(0, 0, 0, 0.08);
+}
+
+.ann-list--finance .ann-card--urgent {
+  border-left-width: 3px;
+}
+
 .ann-list__status {
   display: flex;
   align-items: center;

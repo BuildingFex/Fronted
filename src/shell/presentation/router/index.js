@@ -16,8 +16,10 @@ import AppSettingsView from '@/shell/presentation/views/AppSettingsView.vue'
 import AppResidentDashboardView from '@/shell/presentation/views/AppResidentDashboardView.vue'
 import AppResidentFinanceView from '@/shell/presentation/views/AppResidentFinanceView.vue'
 import AppResidentServicesView from '@/shell/presentation/views/AppResidentServicesView.vue'
+import AppResidentGenerationView from '@/shell/presentation/views/AppResidentGenerationView.vue'
 import AppResidentIncidentsView from '@/shell/presentation/views/AppResidentIncidentsView.vue'
 import AppResidentSupportView from '@/shell/presentation/views/AppResidentSupportView.vue'
+import GuestInviteView from '@/socialSpaces/presentation/views/GuestInviteView.vue'
 
 export default createRouter({
   history: createWebHistory(),
@@ -25,6 +27,11 @@ export default createRouter({
     { path: '/', redirect: { name: AppRouteNames.LOGIN } },
     { path: AppPaths.LOGIN, name: AppRouteNames.LOGIN, component: AuthView },
     { path: AppPaths.REGISTER, name: AppRouteNames.REGISTER, component: AuthView },
+    {
+      path: AppPaths.GUEST_INVITE,
+      name: AppRouteNames.GUEST_INVITE,
+      component: GuestInviteView,
+    },
     {
       path: AppPaths.APP,
       component: AppShellView,
@@ -62,6 +69,11 @@ export default createRouter({
           path: 'resident/services',
           name: AppRouteNames.APP_RESIDENT_SERVICES,
           component: AppResidentServicesView,
+        },
+        {
+          path: 'resident/generation',
+          name: AppRouteNames.APP_RESIDENT_GENERATION,
+          component: AppResidentGenerationView,
         },
         {
           path: 'resident/incidents',

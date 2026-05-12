@@ -61,8 +61,24 @@ export function publicSpace(space) {
   }
 }
 
-export function publicReservation(reservation) {
-  return {
+/**
+ * @param {object} reservation
+ * @param {{ omitInviteToken?: boolean }} [options] When true, strips `guestInviteToken` (admin space lists).
+ */
+export function publicReservation(reservation, options = {}) {
+  const omitInviteToken = Boolean(options.omitInviteToken)
+  const rawGuests = reservation.guests
+  const guests = Array.isArray(rawGuests)
+    ? rawGuests
+        .map((g, i) => ({
+          id: String(g?.id ?? `guest-${i}`),
+          name: String(g?.name ?? '').trim(),
+          checkedIn: Boolean(g?.checkedIn),
+          checkedInAt: g?.checkedInAt ? String(g.checkedInAt) : null,
+        }))
+        .filter((g) => g.name.length > 0)
+    : []
+  const base = {
     id: reservation.id,
     spaceId: reservation.spaceId,
     residentId: reservation.residentId ?? '',
@@ -71,7 +87,38 @@ export function publicReservation(reservation) {
     date: reservation.date,
     startTime: reservation.startTime,
     endTime: reservation.endTime,
+    guests,
   }
+  if (!omitInviteToken) {
+    base.guestInviteToken = reservation.guestInviteToken ?? null
+  }
+  return base
+}
+
+/** Minutes after reservation start when the guest-invite QR and link stop working. */
+export const INVITE_QR_VALID_MINUTES_AFTER_START = 25
+
+/**
+ * @param {string} dateStr YYYY-MM-DD
+ * @param {string} startTimeStr HH:mm
+ * @param {number} [extraMinutesAfterStart]
+ * @returns {number | null} expiry instant (ms), or null if inputs invalid
+ */
+export function reservationInviteExpiresAtMs(
+  dateStr,
+  startTimeStr,
+  extraMinutesAfterStart = INVITE_QR_VALID_MINUTES_AFTER_START,
+) {
+  const date = String(dateStr ?? '').trim()
+  const time = String(startTimeStr ?? '').trim()
+  const [y, mo, d] = date.split('-').map(Number)
+  const [h, mi] = time.split(':').map(Number)
+  if (!Number.isFinite(y) || !Number.isFinite(mo) || !Number.isFinite(d)) return null
+  if (!Number.isFinite(h) || !Number.isFinite(mi)) return null
+  const start = new Date(y, mo - 1, d, h, mi, 0, 0)
+  const t = start.getTime()
+  if (Number.isNaN(t)) return null
+  return t + extraMinutesAfterStart * 60 * 1000
 }
 
 export function timeToMinutes(value) {

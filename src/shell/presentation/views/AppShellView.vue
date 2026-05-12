@@ -85,6 +85,12 @@ const residentNavItems = computed(() => [
     routeName: AppRouteNames.APP_RESIDENT_SERVICES,
   },
   {
+    key: 'residentGeneration',
+    label: t('resident.navGeneration'),
+    icon: 'pi pi-calendar',
+    routeName: AppRouteNames.APP_RESIDENT_GENERATION,
+  },
+  {
     key: 'residentIncidents',
     label: t('resident.navIncidents'),
     icon: 'pi pi-flag',

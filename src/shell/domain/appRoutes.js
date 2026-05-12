@@ -5,6 +5,7 @@
 export const AppRouteNames = /** @type {const} */ ({
   LOGIN: 'login',
   REGISTER: 'register',
+  GUEST_INVITE: 'guest-invite',
   APP_DASHBOARD: 'app-dashboard',
   APP_ADVANCED_MANAGEMENT: 'app-advanced-management',
   APP_IMPORT: 'app-import',
@@ -19,6 +20,7 @@ export const AppRouteNames = /** @type {const} */ ({
   APP_RESIDENT_DASHBOARD: 'app-resident-dashboard',
   APP_RESIDENT_FINANCE: 'app-resident-finance',
   APP_RESIDENT_SERVICES: 'app-resident-services',
+  APP_RESIDENT_GENERATION: 'app-resident-generation',
   APP_RESIDENT_INCIDENTS: 'app-resident-incidents',
   APP_RESIDENT_SUPPORT: 'app-resident-support',
 })
@@ -28,6 +30,7 @@ export const AppRouteNames = /** @type {const} */ ({
 export const AppPaths = /** @type {const} */ ({
   LOGIN: '/login',
   REGISTER: '/register',
+  GUEST_INVITE: '/invite/:token',
   APP: '/app',
   APP_ADVANCED_MANAGEMENT: '/app/advanced-management',
   APP_IMPORT: '/app/import',
@@ -43,6 +46,7 @@ export const AppPaths = /** @type {const} */ ({
   APP_RESIDENT_DASHBOARD: '/app/resident/dashboard',
   APP_RESIDENT_FINANCE: '/app/resident/finance',
   APP_RESIDENT_SERVICES: '/app/resident/services',
+  APP_RESIDENT_GENERATION: '/app/resident/generation',
   APP_RESIDENT_INCIDENTS: '/app/resident/incidents',
   APP_RESIDENT_SUPPORT: '/app/resident/support',
 })
