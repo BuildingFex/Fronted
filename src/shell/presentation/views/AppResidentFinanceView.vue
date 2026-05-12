@@ -14,6 +14,7 @@ import TabList from 'primevue/tablist'
 import Tab from 'primevue/tab'
 import TabPanels from 'primevue/tabpanels'
 import TabPanel from 'primevue/tabpanel'
+import Card from 'primevue/card'
 import Message from 'primevue/message'
 import { useToast } from 'primevue/usetoast'
 import {
@@ -75,6 +76,10 @@ const hasOverdue = computed(() =>
   fees.value.some((f) => f.status === 'Pendiente' && getDaysUntilDue(f.dueDate) < 0),
 )
 
+const totalPaid = computed(() =>
+  paymentHistory.value.reduce((sum, p) => sum + p.amount, 0),
+)
+
 const isPayDialogOpen = ref(false)
 const isProcessing = ref(false)
 const bricksLoaded = ref(false)
@@ -106,7 +111,7 @@ watch(isPayDialogOpen, async (open) => {
   const container = mpBrickContainer.value
   if (!container) { useFallbackForm.value = true; return }
 
-  const amount = nextDueFee.value?.amount ?? pendingTotal.value
+  const amount = pendingTotal.value
   const ctrl = await renderCardPaymentBrick(container, {
     amount,
     onSubmit: async (cardFormData) => { await handleBricksPayment(cardFormData) },
@@ -126,7 +131,7 @@ async function handleBricksPayment(cardFormData) {
   try {
     const result = await processCardPayment({
       ...cardFormData,
-      transaction_amount: nextDueFee.value?.amount ?? 0,
+      transaction_amount: pendingTotal.value,
     })
     recordSuccessfulPayment(result)
   } catch {
@@ -142,7 +147,7 @@ async function confirmFallbackPayment() {
     const result = await processCardPayment({
       token: 'DEMO-TOKEN',
       payment_method_id: 'visa',
-      transaction_amount: nextDueFee.value?.amount ?? 0,
+      transaction_amount: pendingTotal.value,
       installments: 1,
       payer: { email: profile.value.email || 'demo@buildingfex.com' },
     })
@@ -193,43 +198,86 @@ const activeTab = ref('0')
 </script>
 
 <template>
-  <div class="app-view">
+  <div class="view-container">
     <Toast position="top-right" />
 
-    <h1 class="app-view__title">{{ t('resident.financeTitle') }}</h1>
-    <p class="app-view__subtitle">
-      {{ t('resident.financeSubtitle', { name: profile.name || '' }) }}
-    </p>
+    <div class="page-header">
+      <h1 class="page-title">{{ t('resident.financeTitle') }}</h1>
+      <p class="page-subtitle">
+        {{ t('resident.financeSubtitle', { name: profile.name || '' }) }}
+      </p>
+    </div>
 
-    <div class="finance-page">
-      <Message v-if="paymentState.error" severity="error" :closable="false" class="finance-page__error">
-        {{ paymentState.error }}
-      </Message>
+    <Message v-if="paymentState.error" severity="error" :closable="false" class="error-msg">
+      {{ paymentState.error }}
+    </Message>
 
-      <section class="finance-panel">
-        <div class="finance-summary">
-          <div>
-            <span class="finance-summary__label">{{ t('residentFinance.totalDue') }}</span>
-            <strong class="finance-summary__amount" :class="{ 'finance-summary__amount--overdue': hasOverdue }">
-              S/ {{ pendingTotal.toLocaleString('es-PE', { minimumFractionDigits: 2 }) }}
-            </strong>
-            <span v-if="nextDueFee" class="finance-summary__hint" :class="hasOverdue ? 'finance-summary__hint--overdue' : 'finance-summary__hint--primary'">
-              {{ nextDueFee.month }}
-              <template v-if="hasOverdue"> · {{ t('residentFinance.overdueWarning') }}</template>
-            </span>
+    <!-- KPI CARDS GRID (Pure CSS Layout) -->
+    <div class="kpi-grid custom-scrollbar">
+      <!-- Card 1: Total Paid -->
+      <div class="kpi-card">
+        <div class="kpi-header">
+          <div class="kpi-icon icon-purple">
+            <i class="pi pi-wallet" aria-hidden="true"></i>
           </div>
-          <Button
-            type="button"
-            rounded
-            :severity="hasOverdue ? 'danger' : 'secondary'"
-            :label="t('residentFinance.payNow')"
-            :disabled="pendingTotal === 0 || paymentState.isLoading"
-            @click="openPayDialog"
-          />
+          <span class="kpi-label">{{ t('residentFinance.kpiTotalPaid', 'Historial Pagado') }}</span>
         </div>
-      </section>
+        <div class="kpi-value">S/ {{ totalPaid.toLocaleString('es-PE', { minimumFractionDigits: 2 }) }}</div>
+        <span class="kpi-subtext subtext-green">
+          <i class="pi pi-arrow-up" aria-hidden="true"></i> {{ paymentHistory.length }} pagos realizados
+        </span>
+      </div>
 
-      <section class="finance-panel">
+      <!-- Card 2: Pending Payments -->
+      <div class="kpi-card" :class="{ 'card-danger': hasOverdue }">
+        <div class="kpi-header">
+          <div class="kpi-icon" :class="hasOverdue ? 'icon-red' : 'icon-orange'">
+            <i class="pi pi-clock" aria-hidden="true"></i>
+          </div>
+          <span class="kpi-label">{{ t('residentFinance.kpiPending', 'Monto Pendiente') }}</span>
+        </div>
+        <div class="kpi-value" :class="{ 'text-red': hasOverdue }">S/ {{ pendingTotal.toLocaleString('es-PE', { minimumFractionDigits: 2 }) }}</div>
+        <span v-if="hasOverdue" class="kpi-subtext subtext-red">
+          <i class="pi pi-exclamation-triangle" aria-hidden="true"></i> Tienes cuotas vencidas
+        </span>
+        <span v-else class="kpi-subtext">
+          <i class="pi pi-check" aria-hidden="true"></i> Al día con tus pagos
+        </span>
+      </div>
+
+      <!-- Card 3: Next Fee Month -->
+      <div class="kpi-card relative-overflow">
+        <div class="kpi-header">
+          <div class="kpi-icon icon-blue">
+            <i class="pi pi-calendar" aria-hidden="true"></i>
+          </div>
+          <span class="kpi-label">{{ t('residentFinance.kpiNextFee', 'Próxima Cuota') }}</span>
+        </div>
+        <div class="kpi-value">{{ nextDueFee?.month || '—' }}</div>
+        <span class="kpi-subtext">
+          Vence: {{ nextDueFee?.dueDate || 'Sin deuda' }}
+        </span>
+      </div>
+
+      <!-- Card 4: Action / Pay Now -->
+      <div class="kpi-card kpi-action-card">
+        <Button
+          :label="t('residentFinance.payNow')"
+          icon="pi pi-credit-card"
+          :severity="hasOverdue ? 'danger' : 'primary'"
+          size="large"
+          class="pay-btn"
+          :disabled="pendingTotal === 0 || paymentState.isLoading"
+          @click="openPayDialog"
+        />
+        <span class="kpi-subtext text-center mt-2">
+          Pago seguro procesado por Mercado Pago
+        </span>
+      </div>
+    </div>
+
+    <Card>
+      <template #content>
         <Tabs v-model:value="activeTab">
           <TabList>
             <Tab value="0">
@@ -244,110 +292,112 @@ const activeTab = ref('0')
 
           <TabPanels>
             <TabPanel value="0">
-              <DataTable :value="fees" responsiveLayout="scroll" :loading="paymentState.isLoading" class="incidents-data incidents-table">
+              <DataTable :value="fees" responsiveLayout="scroll" :loading="paymentState.isLoading" class="premium-table">
+                <Column field="concept" :header="t('residentFinance.colConcept', 'Concepto')" />
                 <Column field="month" :header="t('residentFinance.colMonth')" />
                 <Column :header="t('residentFinance.colAmount')">
                   <template #body="{ data }">
-                    <span class="finance-amount">S/ {{ data.amount.toFixed(2) }}</span>
+                    <span class="font-semibold text-900">S/ {{ data.amount.toFixed(2) }}</span>
                   </template>
                 </Column>
                 <Column field="dueDate" :header="t('residentFinance.colDueDate')" />
                 <Column :header="t('residentFinance.colBillingStatus')">
                   <template #body="{ data }">
-                    <Tag class="incidents-status-tag" :value="feeStatusLabel(data)" :severity="feeSeverity(data)" rounded />
+                    <Tag :value="feeStatusLabel(data)" :severity="feeSeverity(data)" rounded class="px-3" />
                   </template>
                 </Column>
               </DataTable>
             </TabPanel>
 
             <TabPanel value="1">
-              <p v-if="!paymentHistory.length && !paymentState.isLoading" class="finance-empty">
+              <p v-if="!paymentHistory.length && !paymentState.isLoading" class="text-center text-color-secondary my-4">
                 {{ t('residentFinance.noPaymentsYet') }}
               </p>
-              <DataTable v-else :value="paymentHistory" responsiveLayout="scroll" :loading="paymentState.isLoading" class="incidents-data incidents-table">
+              <DataTable v-else :value="paymentHistory" responsiveLayout="scroll" :loading="paymentState.isLoading" class="premium-table">
+                <Column field="concept" :header="t('residentFinance.colConcept', 'Concepto')" />
                 <Column field="feeMonth" :header="t('residentFinance.colMonth')" />
                 <Column :header="t('residentFinance.colAmount')">
                   <template #body="{ data }">
-                    <span class="finance-amount">S/ {{ data.amount.toFixed(2) }}</span>
+                    <span class="font-semibold text-900">S/ {{ data.amount.toFixed(2) }}</span>
                   </template>
                 </Column>
                 <Column :header="t('residentFinance.colPaidAt')">
                   <template #body="{ data }">
-                    <span>{{ formatDateTime(data.paidAt) }}</span>
+                    <span class="text-500">{{ formatDateTime(data.paidAt) }}</span>
                   </template>
                 </Column>
                 <Column field="method" :header="t('residentFinance.colMethod')">
                   <template #body="{ data }">
-                    <span class="finance-method"><i class="pi pi-wallet mr-1" aria-hidden="true"></i> {{ data.method }}</span>
+                    <span class="text-primary font-semibold"><i class="pi pi-wallet mr-1" aria-hidden="true"></i> {{ data.method }}</span>
                   </template>
                 </Column>
-                <Column field="reference" :header="t('residentFinance.colReference')" />
+                <Column field="reference" :header="t('residentFinance.colReference')">
+                  <template #body="{ data }">
+                     <span class="text-500">{{ data.reference }}</span>
+                  </template>
+                </Column>
               </DataTable>
             </TabPanel>
           </TabPanels>
         </Tabs>
-      </section>
-    </div>
+      </template>
+    </Card>
 
     <Dialog
       v-model:visible="isPayDialogOpen"
       modal
       :header="t('residentFinance.payDialogTitle')"
       :style="{ width: 'min(32rem, 94vw)' }"
-      class="finance-dialog"
       :draggable="false"
     >
-      <div class="finance-dialog__summary">
-        <span>{{ t('residentFinance.totalDue') }}</span>
-        <strong>S/ {{ (nextDueFee?.amount ?? 0).toFixed(2) }}</strong>
+      <div class="p-3 border-round bg-gray-100 border-1 border-gray-300 flex justify-content-between align-items-center mb-3">
+        <div class="flex flex-column">
+          <span class="text-sm text-color-secondary">{{ t('residentFinance.totalDue', 'Total Acumulado a Pagar') }}</span>
+          <span class="text-xs text-orange-500 font-semibold" v-if="fees.filter(f => f.status === 'Pendiente').length > 1">
+            {{ fees.filter(f => f.status === 'Pendiente').length }} cuotas pendientes
+          </span>
+        </div>
+        <strong class="text-2xl text-primary">S/ {{ pendingTotal.toFixed(2) }}</strong>
       </div>
 
       <div ref="mpBrickContainer" v-show="!useFallbackForm" style="min-height: 100px;"></div>
 
-      <div v-if="!bricksLoaded && !useFallbackForm" class="finance-dialog__loading">
-        <i class="pi pi-spin pi-spinner finance-dialog__spinner" aria-hidden="true"></i>
+      <div v-if="!bricksLoaded && !useFallbackForm" class="flex flex-column align-items-center gap-3 py-4 text-color-secondary">
+        <i class="pi pi-spin pi-spinner text-2xl text-primary" aria-hidden="true"></i>
         <span>{{ t('residentFinance.loadingMP') }}</span>
       </div>
 
-      <div v-if="useFallbackForm" class="finance-dialog__fallback">
-        <Message severity="info" :closable="false" class="finance-dialog__demo-msg">
+      <div v-if="useFallbackForm" class="flex flex-column gap-3">
+        <Message severity="info" :closable="false" class="mb-2">
           <i class="pi pi-wallet mr-2" aria-hidden="true"></i> Mercado Pago · {{ t('residentFinance.demoMode') }}
         </Message>
 
-        <div class="finance-dialog__field">
-          <label for="rf-card-number" class="finance-dialog__label">{{ t('residentFinance.cardNumber') }}</label>
+        <div class="flex flex-column gap-1">
+          <label for="rf-card-number" class="text-sm font-semibold text-color-secondary">{{ t('residentFinance.cardNumber') }}</label>
           <InputText id="rf-card-number" v-model="payForm.cardNumber" placeholder="0000 0000 0000 0000" maxlength="19" class="w-full" />
         </div>
-        <div class="finance-dialog__row">
-          <div class="finance-dialog__field">
-            <label for="rf-expiry" class="finance-dialog__label">{{ t('residentFinance.expiry') }}</label>
+        <div class="flex gap-3">
+          <div class="flex flex-column gap-1 flex-1">
+            <label for="rf-expiry" class="text-sm font-semibold text-color-secondary">{{ t('residentFinance.expiry') }}</label>
             <InputText id="rf-expiry" v-model="payForm.expiry" @input="formatExpiryDate" placeholder="MM/YY" maxlength="5" class="w-full" />
           </div>
-          <div class="finance-dialog__field">
-            <label for="rf-cvv" class="finance-dialog__label">{{ t('residentFinance.cvv') }}</label>
+          <div class="flex flex-column gap-1 flex-1">
+            <label for="rf-cvv" class="text-sm font-semibold text-color-secondary">{{ t('residentFinance.cvv') }}</label>
             <InputText id="rf-cvv" v-model="payForm.cvv" placeholder="•••" maxlength="4" class="w-full" />
           </div>
         </div>
-        <div class="finance-dialog__field">
-          <label for="rf-holder" class="finance-dialog__label">{{ t('residentFinance.cardHolder') }}</label>
+        <div class="flex flex-column gap-1">
+          <label for="rf-holder" class="text-sm font-semibold text-color-secondary">{{ t('residentFinance.cardHolder') }}</label>
           <InputText id="rf-holder" v-model="payForm.holder" :placeholder="t('residentFinance.cardHolderPlaceholder')" class="w-full" />
         </div>
       </div>
 
       <template #footer>
-        <Button
-          type="button"
-          text
-          rounded
-          :label="t('app.cancelAction')"
-          :disabled="isProcessing"
-          @click="isPayDialogOpen = false"
-        />
+        <Button :label="t('app.cancelAction')" icon="pi pi-times" severity="secondary" outlined @click="isPayDialogOpen = false" :disabled="isProcessing" />
         <Button
           v-if="useFallbackForm"
-          type="button"
-          rounded
           :label="isProcessing ? t('residentFinance.processing') : t('residentFinance.confirmPay')"
+          icon="pi pi-check"
           :loading="isProcessing"
           @click="confirmFallbackPayment"
         />
@@ -357,285 +407,181 @@ const activeTab = ref('0')
 </template>
 
 <style scoped>
-.app-view {
-  padding: 1.75rem 1.5rem 2.5rem;
-  max-width: 72rem;
+.view-container {
+  padding: 1.5rem;
+  max-width: 1200px;
+  margin: 0 auto;
 }
 
-.app-view__title {
-  margin: 0;
-  font-size: 1.75rem;
-  font-weight: 600;
-  letter-spacing: -0.035em;
-  line-height: 1.15;
-  color: var(--apple-text, #1d1d1f);
-}
-
-.app-view__subtitle {
-  margin: 0.5rem 0 0;
-  max-width: 36rem;
-  font-size: 0.875rem;
-  font-weight: 400;
-  line-height: 1.45;
-  letter-spacing: -0.015em;
-  color: var(--apple-text-secondary, #6e6e73);
-}
-
-.finance-page {
-  margin-top: 1.5rem;
+/* Page Header */
+.page-header {
+  margin-bottom: 2rem;
   display: flex;
   flex-direction: column;
-  gap: 1.25rem;
-}
-
-.finance-page__error {
-  margin: 0;
-}
-
-/* Panel — mismo borde/sombra que payments */
-.finance-panel {
-  padding: 1.2rem 1.25rem 1.35rem;
-  border-radius: 16px;
-  background: #fff;
-  border: 1px solid rgba(0, 0, 0, 0.06);
-  box-shadow: 0 1px 3px rgba(0, 0, 0, 0.03);
-}
-
-/* Resumen de deuda — mismo patrón que incidents-panel__head de payments */
-.finance-summary {
-  display: flex;
-  flex-wrap: wrap;
-  align-items: flex-start;
-  justify-content: space-between;
-  gap: 0.85rem 1rem;
-}
-
-.finance-summary__label {
-  display: block;
-  font-size: 0.75rem;
-  font-weight: 600;
-  letter-spacing: 0.04em;
-  text-transform: uppercase;
-  color: #86868b;
-}
-
-.finance-summary__amount {
-  display: block;
-  margin-top: 0.2rem;
-  font-size: 1.5rem;
-  font-weight: 600;
-  letter-spacing: -0.03em;
-  font-variant-numeric: tabular-nums;
-  color: var(--apple-text, #1d1d1f);
-}
-
-.finance-summary__amount--overdue {
-  color: #d70015;
-}
-
-.finance-summary__hint {
-  display: block;
-  margin-top: 0.25rem;
-  font-size: 0.8125rem;
-  color: var(--apple-text-secondary, #6e6e73);
-}
-
-.finance-summary__hint--overdue {
-  color: #d70015;
-}
-
-.finance-summary__hint--primary {
-  color: var(--apple-text-secondary, #6e6e73);
-}
-
-/* Montos en tabla */
-.finance-amount {
-  font-weight: 600;
-  font-variant-numeric: tabular-nums;
-}
-
-/* Método de pago en tabla */
-.finance-method {
-  font-weight: 600;
-  color: var(--apple-text, #1d1d1f);
-}
-
-/* Vacío */
-.finance-empty {
-  margin: 0;
-  padding: 0.75rem 0 0.25rem;
-  font-size: 0.875rem;
-  color: var(--apple-text-secondary, #6e6e73);
-}
-
-/* Tabla — exactamente igual que payments */
-.incidents-table {
-  margin-top: 0.15rem;
-}
-
-.incidents-data :deep(.p-datatable) {
-  font-size: 0.875rem;
-  border: none;
-  border-radius: 12px;
-  overflow: hidden;
-}
-
-.incidents-data :deep(.p-datatable-wrapper) {
-  border-radius: 12px;
-}
-
-.incidents-data :deep(.p-datatable-header) {
-  background: transparent;
-  border: none;
-  padding: 0;
-}
-
-.incidents-data :deep(.p-datatable-loading-overlay) {
-  background: rgba(255, 255, 255, 0.75);
-}
-
-.incidents-data :deep(.p-datatable-thead > tr > th) {
-  background: rgba(0, 0, 0, 0.02);
-  color: #86868b;
-  font-weight: 600;
-  font-size: 0.6875rem;
-  text-transform: uppercase;
-  letter-spacing: 0.055em;
-  border: none;
-  border-bottom: 1px solid rgba(0, 0, 0, 0.06);
-  padding: 0.6rem 0.75rem;
-}
-
-.incidents-data :deep(.p-datatable-tbody > tr) {
-  background: transparent;
-  transition: background 0.12s ease;
-}
-
-.incidents-data :deep(.p-datatable-tbody > tr:hover) {
-  background: rgba(0, 0, 0, 0.02);
-}
-
-.incidents-data :deep(.p-datatable-tbody > tr > td) {
-  border: none;
-  border-bottom: 1px solid rgba(0, 0, 0, 0.05);
-  padding: 0.7rem 0.75rem;
-  vertical-align: middle;
-  color: var(--apple-text, #1d1d1f);
-}
-
-.incidents-data :deep(.p-datatable-tbody > tr:last-child > td) {
-  border-bottom: none;
-}
-
-.incidents-status-tag :deep(.p-tag) {
-  border-radius: 980px;
-  font-size: 0.6875rem;
-  font-weight: 600;
-  letter-spacing: 0.03em;
-  padding: 0.3rem 0.65rem;
-}
-
-/* Diálogo — exactamente igual que payments */
-.finance-dialog :deep(.p-dialog-header) {
-  font-weight: 600;
-  letter-spacing: -0.02em;
-  color: var(--apple-text, #1d1d1f);
-  border-bottom: 1px solid rgba(0, 0, 0, 0.06);
-  padding: 1rem 1.25rem;
-}
-
-.finance-dialog :deep(.p-dialog-content) {
-  padding: 1.15rem 1.25rem 1.25rem;
-}
-
-.finance-dialog :deep(.p-dialog-footer) {
   gap: 0.5rem;
-  border-top: 1px solid rgba(0, 0, 0, 0.06);
-  padding: 0.85rem 1.25rem;
-  display: flex;
-  justify-content: flex-end;
-  flex-wrap: wrap;
 }
-
-.finance-dialog__summary {
-  display: flex;
-  justify-content: space-between;
-  align-items: center;
-  padding: 0.75rem 1rem;
-  margin-bottom: 1rem;
-  border-radius: 12px;
-  background: #f5f5f7;
-  border: 1px solid rgba(0, 0, 0, 0.06);
-  font-size: 0.875rem;
-  color: var(--apple-text-secondary, #6e6e73);
-}
-
-.finance-dialog__summary strong {
-  font-size: 1.125rem;
-  font-weight: 600;
-  color: var(--apple-text, #1d1d1f);
-  font-variant-numeric: tabular-nums;
-}
-
-.finance-dialog__loading {
-  display: flex;
-  flex-direction: column;
-  align-items: center;
-  gap: 0.75rem;
-  padding: 1.5rem 0;
-  color: var(--apple-text-secondary, #6e6e73);
-  font-size: 0.875rem;
-}
-
-.finance-dialog__spinner {
-  font-size: 1.5rem;
-  color: var(--p-primary-color, #0a84ff);
-}
-
-.finance-dialog__fallback {
-  display: flex;
-  flex-direction: column;
-  gap: 0.85rem;
-}
-
-.finance-dialog__demo-msg {
+.page-title {
+  font-size: 1.75rem;
+  font-weight: 700;
   margin: 0;
+  color: var(--surface-900);
+  letter-spacing: -0.02em;
+}
+.page-subtitle {
+  margin: 0;
+  font-size: 1.125rem;
+  color: var(--surface-500);
+}
+.error-msg {
+  margin-bottom: 1.5rem;
+  box-shadow: 0 1px 3px rgba(0,0,0,0.1);
 }
 
-.finance-dialog__field {
+/* KPI GRID CSS */
+.kpi-grid {
+  display: flex;
+  flex-direction: row;
+  gap: 1.25rem;
+  margin-bottom: 2rem;
+  overflow-x: auto;
+  padding-bottom: 0.5rem;
+}
+
+.kpi-card {
+  flex: 1;
+  min-width: 250px;
+  background: var(--surface-0, #ffffff);
+  border: 1px solid var(--surface-200, #e2e8f0);
+  border-radius: 16px;
+  padding: 1.5rem;
+  box-shadow: 0 4px 15px rgba(0, 0, 0, 0.03);
   display: flex;
   flex-direction: column;
+}
+
+.kpi-header {
+  display: flex;
+  align-items: center;
+  margin-bottom: 1rem;
+}
+
+.kpi-icon {
+  width: 44px;
+  height: 44px;
+  border-radius: 12px;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  margin-right: 1rem;
+  font-size: 1.2rem;
+}
+
+.icon-purple {
+  background: #f3e8ff;
+  color: #9333ea;
+}
+
+.icon-orange {
+  background: #ffedd5;
+  color: #ea580c;
+}
+
+.icon-red {
+  background: #fee2e2;
+  color: #dc2626;
+}
+
+.icon-blue {
+  background: #e0f2fe;
+  color: #0284c7;
+}
+
+.kpi-label {
+  color: var(--surface-500, #64748b);
+  font-weight: 500;
+  font-size: 0.9rem;
+}
+
+.kpi-value {
+  color: var(--surface-900, #0f172a);
+  font-weight: 700;
+  font-size: 1.8rem;
+  margin-bottom: 0.5rem;
+}
+
+.kpi-subtext {
+  color: var(--surface-500, #64748b);
+  font-size: 0.8rem;
+  font-weight: 500;
+  display: flex;
+  align-items: center;
   gap: 0.35rem;
 }
 
-.finance-dialog__label {
-  font-size: 0.8125rem;
+.subtext-green { color: #16a34a; }
+.subtext-red { color: #dc2626; }
+.text-red { color: #dc2626 !important; }
+.card-danger { background: #fff5f5; border-color: #fecaca; }
+
+.kpi-action-card {
+  background: linear-gradient(135deg, rgba(10, 132, 255, 0.05) 0%, transparent 100%);
+  justify-content: center;
+  align-items: center;
+}
+
+.pay-btn {
+  width: 100%;
+  padding: 1rem;
+  border-radius: 12px;
   font-weight: 600;
-  color: var(--apple-text, #1d1d1f);
+  box-shadow: 0 4px 10px rgba(0, 0, 0, 0.1);
+  transition: transform 0.2s ease;
 }
 
-.finance-dialog__row {
-  display: flex;
-  gap: 0.75rem;
-  flex-wrap: wrap;
+.pay-btn:not(:disabled):hover {
+  transform: translateY(-2px);
 }
 
-.finance-dialog__row .finance-dialog__field {
-  flex: 1;
-  min-width: 7rem;
+.custom-scrollbar::-webkit-scrollbar {
+  height: 6px;
 }
-
-.finance-dialog :deep(.p-inputtext) {
+.custom-scrollbar::-webkit-scrollbar-track {
+  background: transparent;
+}
+.custom-scrollbar::-webkit-scrollbar-thumb {
+  background-color: var(--surface-300);
   border-radius: 10px;
-  border: 1px solid #d2d2d7;
-  font-size: 0.9375rem;
-  color: var(--apple-text, #1d1d1f);
 }
 
-.finance-dialog :deep(.p-inputtext:enabled:focus) {
-  outline: none;
-  border-color: #0a84ff;
-  box-shadow: 0 0 0 3px rgba(10, 132, 255, 0.18);
+/* Premium DataTable Styling matching reference image */
+.premium-table :deep(.p-datatable-header) {
+  background: transparent;
+  border: none;
+}
+.premium-table :deep(.p-datatable-thead > tr > th) {
+  background: transparent;
+  color: var(--surface-500);
+  font-weight: 500;
+  font-size: 0.85rem;
+  text-transform: capitalize;
+  border: none;
+  border-bottom: 1px solid var(--surface-200);
+  padding: 1rem;
+}
+.premium-table :deep(.p-datatable-tbody > tr) {
+  background: transparent;
+}
+.premium-table :deep(.p-datatable-tbody > tr:hover) {
+  background: var(--surface-50);
+}
+.premium-table :deep(.p-datatable-tbody > tr > td) {
+  border: none;
+  border-bottom: 1px solid var(--surface-100);
+  padding: 1rem;
+  vertical-align: middle;
+}
+.premium-table :deep(.p-datatable-wrapper) {
+  border-radius: 12px;
 }
 </style>
 
