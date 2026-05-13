@@ -4,11 +4,11 @@ import { useI18n } from 'vue-i18n'
 import { useSession } from '@/iam/application/sessionStore.js'
 import { authApi } from '@/iam/infrastructure/authApi.js'
 import { residentsApi } from '@/residents/infrastructure/residentsApi.js'
-import { SubscriptionPlanId, maxResidentsForSubscriptionPlan } from '@/shell/domain/subscriptionPlans.js'
+import { SubscriptionPlanId, maxResidentsForSubscriptionPlan } from '@/shared/domain/subscriptionPlans.js'
 import {
   getSubscriptionPlanIdForOwner,
   saveSubscriptionPlanForOwner,
-} from '@/shell/infrastructure/subscriptionPlanStorage.js'
+} from '@/shared/infrastructure/subscriptionPlanStorage.js'
 
 const { t } = useI18n()
 const { state, isAdmin, isResident } = useSession()

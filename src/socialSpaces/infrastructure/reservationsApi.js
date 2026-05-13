@@ -1,12 +1,12 @@
-import { apiClient } from '@/shell/infrastructure/api/apiClient.js'
-import { withOwnerParams } from '@/shell/infrastructure/api/ownerQuery.js'
-import { getActiveDataOwnerId } from '@/shell/infrastructure/api/ownerTenant.js'
+import { apiClient } from '@/shared/infrastructure/api/apiClient.js'
+import { withOwnerParams } from '@/shared/infrastructure/api/ownerQuery.js'
+import { getActiveDataOwnerId } from '@/shared/infrastructure/api/ownerTenant.js'
 import {
   apiError,
   publicReservation,
   reservationsOverlap,
   timeToMinutes,
-} from '@/shell/infrastructure/api/utils.js'
+} from '@/shared/infrastructure/api/utils.js'
 
 /**
  * Social Spaces bounded-context API (reservations side).

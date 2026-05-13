@@ -1,6 +1,6 @@
-import { apiClient } from '@/shell/infrastructure/api/apiClient.js'
-import { withOwnerParams } from '@/shell/infrastructure/api/ownerQuery.js'
-import { getActiveDataOwnerId } from '@/shell/infrastructure/api/ownerTenant.js'
+import { apiClient } from '@/shared/infrastructure/api/apiClient.js'
+import { withOwnerParams } from '@/shared/infrastructure/api/ownerQuery.js'
+import { getActiveDataOwnerId } from '@/shared/infrastructure/api/ownerTenant.js'
 
 export const incidentsApi = {
   async list() {

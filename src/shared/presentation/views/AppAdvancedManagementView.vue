@@ -2,7 +2,7 @@
 import { computed, onMounted, reactive, ref } from 'vue'
 import { useI18n } from 'vue-i18n'
 import Button from 'primevue/button'
-import { getResidentLimitForActiveOwner } from '@/shell/infrastructure/subscriptionPlanStorage.js'
+import { getResidentLimitForActiveOwner } from '@/shared/infrastructure/subscriptionPlanStorage.js'
 import { residentsApi } from '@/residents/infrastructure/residentsApi.js'
 import { spacesApi } from '@/socialSpaces/infrastructure/spacesApi.js'
 import { reservationsApi } from '@/socialSpaces/infrastructure/reservationsApi.js'

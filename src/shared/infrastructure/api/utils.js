@@ -4,7 +4,7 @@ import { getActiveDataOwnerId } from './ownerTenant.js'
 /**
  * Cross-context HTTP/data utilities used by bounded-context APIs.
  * Each bounded context owns its own API module; these helpers stay in
- * the `shell` infrastructure because they are technical and shared by
+ * the `shared` infrastructure because they are technical and shared by
  * several contexts (iam, residents, socialSpaces).
  */
 

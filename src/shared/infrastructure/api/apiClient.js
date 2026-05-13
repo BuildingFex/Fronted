@@ -1,5 +1,5 @@
 import axios from 'axios'
-import { API_BASE_URL } from '@/shell/infrastructure/envConfig.js'
+import { API_BASE_URL } from '@/shared/infrastructure/envConfig.js'
 
 /**
  * Centralized axios instance pointing at the json-server backend.

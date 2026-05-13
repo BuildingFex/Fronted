@@ -1,7 +1,7 @@
-import { apiClient } from '@/shell/infrastructure/api/apiClient.js'
+import { apiClient } from '@/shared/infrastructure/api/apiClient.js'
 import { reservationsApi } from '@/socialSpaces/infrastructure/reservationsApi.js'
-import { withOwnerParams } from '@/shell/infrastructure/api/ownerQuery.js'
-import { getActiveDataOwnerId } from '@/shell/infrastructure/api/ownerTenant.js'
+import { withOwnerParams } from '@/shared/infrastructure/api/ownerQuery.js'
+import { getActiveDataOwnerId } from '@/shared/infrastructure/api/ownerTenant.js'
 import {
   apiError,
   createSessionToken,
@@ -11,8 +11,8 @@ import {
   normalizeEmail,
   publicResident,
   publicUser,
-} from '@/shell/infrastructure/api/utils.js'
-import { getResidentLimitForActiveOwner } from '@/shell/infrastructure/subscriptionPlanStorage.js'
+} from '@/shared/infrastructure/api/utils.js'
+import { getResidentLimitForActiveOwner } from '@/shared/infrastructure/subscriptionPlanStorage.js'
 
 /**
  * Residents bounded-context API.

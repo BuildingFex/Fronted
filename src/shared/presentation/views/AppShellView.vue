@@ -3,7 +3,7 @@ import { computed } from 'vue'
 import { RouterLink, RouterView, useRoute, useRouter } from 'vue-router'
 import { useI18n } from 'vue-i18n'
 import SkipLink from '../components/SkipLink.vue'
-import { AppRouteNames } from '@/shell/domain/appRoutes.js'
+import { AppRouteNames } from '@/shared/domain/appRoutes.js'
 import { useSession } from '@/iam/application/sessionStore.js'
 
 const { t, locale } = useI18n()

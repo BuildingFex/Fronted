@@ -1,11 +1,11 @@
-import { apiClient } from '@/shell/infrastructure/api/apiClient.js'
+import { apiClient } from '@/shared/infrastructure/api/apiClient.js'
 import {
   apiError,
   createSessionToken,
   findUserByEmail,
   normalizeEmail,
   publicUser,
-} from '@/shell/infrastructure/api/utils.js'
+} from '@/shared/infrastructure/api/utils.js'
 
 /**
  * IAM (Identity & Access Management) bounded-context API.
