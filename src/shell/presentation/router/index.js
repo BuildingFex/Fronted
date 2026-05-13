@@ -1,4 +1,5 @@
 import { createRouter, createWebHistory } from 'vue-router'
+import { getSessionRole, SessionRoles } from '@/iam/application/sessionStore.js'
 import { AppPaths, AppRouteNames } from '@/shell/domain/appRoutes.js'
 import AuthView from '@/iam/presentation/views/AuthView.vue'
 import AppShellView from '@/shell/presentation/views/AppShellView.vue'
@@ -22,8 +23,25 @@ import AppResidentIncidentsView from '@/shell/presentation/views/AppResidentInci
 import AppResidentSupportView from '@/shell/presentation/views/AppResidentSupportView.vue'
 import GuestInviteView from '@/socialSpaces/presentation/views/GuestInviteView.vue'
 
-export default createRouter({
-  history: createWebHistory(),
+/** Routes a resident may open (admin shell URLs are blocked for this role). */
+const RESIDENT_APP_ROUTE_NAMES = new Set([
+  AppRouteNames.APP_RESIDENT_DASHBOARD,
+  AppRouteNames.APP_RESIDENT_FINANCE,
+  AppRouteNames.APP_RESIDENT_SERVICES,
+  AppRouteNames.APP_RESIDENT_GENERATION,
+  AppRouteNames.APP_RESIDENT_INCIDENTS,
+  AppRouteNames.APP_RESIDENT_SUPPORT,
+  AppRouteNames.APP_SETTINGS,
+])
+
+const PUBLIC_ROUTE_NAMES = new Set([
+  AppRouteNames.LOGIN,
+  AppRouteNames.REGISTER,
+  AppRouteNames.GUEST_INVITE,
+])
+
+const router = createRouter({
+  history: createWebHistory(import.meta.env.BASE_URL),
   routes: [
     { path: '/', redirect: { name: AppRouteNames.LOGIN } },
     { path: AppPaths.LOGIN, name: AppRouteNames.LOGIN, component: AuthView },
@@ -100,3 +118,28 @@ export default createRouter({
     return { top: 0 }
   },
 })
+
+router.beforeEach((to) => {
+  if (PUBLIC_ROUTE_NAMES.has(to.name)) {
+    return true
+  }
+  if (!to.path.startsWith('/app')) {
+    return true
+  }
+
+  const role = getSessionRole()
+  if (!role) {
+    return { name: AppRouteNames.LOGIN, query: { redirect: to.fullPath } }
+  }
+
+  if (
+    role === SessionRoles.RESIDENT &&
+    (to.name == null || !RESIDENT_APP_ROUTE_NAMES.has(to.name))
+  ) {
+    return { name: AppRouteNames.APP_RESIDENT_DASHBOARD }
+  }
+
+  return true
+})
+
+export default router

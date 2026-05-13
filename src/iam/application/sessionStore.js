@@ -7,6 +7,11 @@ const STORAGE_KEY = 'buildingfex.session'
 
 const state = reactive(loadInitialSession())
 
+/** Current session role; for router guards outside component setup. */
+export function getSessionRole() {
+  return state.role
+}
+
 /**
  * json-server "tenant": admin id or (for resident login) the building admin id.
  * Always derived from session state so it cannot drift from persisted profile.

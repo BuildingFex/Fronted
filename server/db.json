@@ -23,17 +23,6 @@
       "ownerAdminId": "admin-seed-1"
     },
     {
-      "id": "resident-1778188760782",
-      "name": "Carlos",
-      "floor": "3",
-      "code": "2032",
-      "email": "u20221733853@upc.edu.pe",
-      "password": "12Sebastian12",
-      "role": "resident",
-      "admissionDate": "2026-04-09",
-      "ownerAdminId": "admin-seed-1"
-    },
-    {
       "id": "resident-1778207900950",
       "name": "Alberto",
       "floor": "5",

@@ -273,7 +273,7 @@ function toggleAppLocale() {
   position: fixed;
   top: 0;
   left: 0;
-  z-index: 50;
+  z-index: 300;
   height: 100vh;
   height: 100dvh;
   width: var(--shell-sidebar-width);
@@ -283,7 +283,7 @@ function toggleAppLocale() {
   display: flex;
   flex-direction: column;
   overflow-x: hidden;
-  overflow-y: auto;
+  overflow-y: hidden;
   overscroll-behavior: contain;
   -webkit-overflow-scrolling: touch;
   background: var(--shell-sidebar-bg);
@@ -539,6 +539,9 @@ function toggleAppLocale() {
   width: 100%;
   display: flex;
   justify-content: center;
+  overflow-x: hidden;
+  overflow-y: auto;
+  -webkit-overflow-scrolling: touch;
 }
 
 .app-shell__nav-cluster {

@@ -14,6 +14,15 @@ const router = useRouter()
 const { t } = useI18n()
 const { setAdminSession, setResidentSession } = useSession()
 
+/** Internal app path from ?redirect= (rejects protocol-relative URLs). */
+function navigateAfterAuth(fallback) {
+  const raw = route.query.redirect
+  if (typeof raw === 'string' && raw.startsWith('/') && !raw.startsWith('//')) {
+    return router.push(raw)
+  }
+  return router.push(fallback)
+}
+
 const isRegister = computed(() => route.name === AppRouteNames.REGISTER)
 
 const isResidentInvite = computed(
@@ -91,7 +100,7 @@ async function onResidentCredentialsSubmit() {
       email: user.email,
       ownerAdminId: user.ownerAdminId ?? null,
     })
-    router.push({ name: AppRouteNames.APP_RESIDENT_DASHBOARD })
+    navigateAfterAuth({ name: AppRouteNames.APP_RESIDENT_DASHBOARD })
   } catch (error) {
     if (error?.code === 'EMAIL_ALREADY_EXISTS') {
       residentError.value = t('auth.emailAlreadyExists')
@@ -170,14 +179,14 @@ async function onLoginSubmit() {
         email: user.email,
         ownerAdminId: user.ownerAdminId ?? null,
       })
-      router.push({ name: AppRouteNames.APP_RESIDENT_DASHBOARD })
+      navigateAfterAuth({ name: AppRouteNames.APP_RESIDENT_DASHBOARD })
     } else {
       setAdminSession({
         id: user.id,
         name: user.name,
         email: user.email,
       })
-      router.push({ name: AppRouteNames.APP_DASHBOARD })
+      navigateAfterAuth({ name: AppRouteNames.APP_DASHBOARD })
     }
   } catch (error) {
     if (error?.code === 'INVALID_PASSWORD') {
@@ -215,7 +224,7 @@ async function onRegisterSubmit() {
       name: user.name,
       email: user.email,
     })
-    router.push({ name: AppRouteNames.APP_DASHBOARD })
+    navigateAfterAuth({ name: AppRouteNames.APP_DASHBOARD })
   } catch (error) {
     if (error?.code === 'EMAIL_ALREADY_EXISTS') {
       registerError.value = t('auth.emailAlreadyExists')
