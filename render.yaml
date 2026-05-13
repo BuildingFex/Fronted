@@ -1,0 +1,12 @@
+# Optional: New → Blueprint → Connect repo to create/update the static frontend.
+# Your json-server Web Service can stay as a separate manual service.
+services:
+  - type: web
+    name: fronted-spa
+    runtime: static
+    buildCommand: npm install && npm run build
+    staticPublishPath: ./dist
+    routes:
+      - type: rewrite
+        source: /*
+        destination: /index.html
