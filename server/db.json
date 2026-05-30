@@ -155,17 +155,6 @@
       "role": "admin"
     },
     {
-      "id": "resident-1778537327167",
-      "name": "ew",
-      "floor": "ew",
-      "code": "ew",
-      "email": "",
-      "password": "",
-      "role": "resident",
-      "admissionDate": "2026-05-11",
-      "ownerAdminId": "admin-1778537320235"
-    },
-    {
       "id": "admin-1778537421417",
       "name": "ewew",
       "email": "smbmontaewlvo@gmail.com",
@@ -175,17 +164,6 @@
       "company": "dsafsfsdf",
       "ruc": "ewewew",
       "role": "admin"
-    },
-    {
-      "id": "resident-1778537431026",
-      "name": "ewewewe2we2d",
-      "floor": "ewew",
-      "code": "ewew",
-      "email": "u202217854433433@upc.edu.pe",
-      "password": "RDPbGhMQ99CSy-_",
-      "role": "resident",
-      "admissionDate": "2026-05-11",
-      "ownerAdminId": "admin-1778537421417"
     },
     {
       "id": "admin-1778544760498",
@@ -199,23 +177,12 @@
       "role": "admin"
     },
     {
-      "id": "resident-1778602398967",
-      "name": "Manuel",
-      "floor": "10",
-      "code": "909",
-      "email": "manuelcorreo@upc.edu.pe",
-      "password": "999",
-      "role": "resident",
-      "admissionDate": "2026-05-09",
-      "ownerAdminId": "admin-seed-1"
-    },
-    {
-      "id": "resident-1778605899726",
-      "name": "pepito",
-      "floor": "12",
-      "code": "121",
-      "email": "pepito@gmail.com",
-      "password": "pepito",
+      "id": "resident-1778606441910",
+      "name": "manuel",
+      "floor": "9",
+      "code": "888",
+      "email": "manuel@123.com",
+      "password": "123",
       "role": "resident",
       "admissionDate": "2026-05-12",
       "ownerAdminId": "admin-seed-1"
@@ -312,18 +279,6 @@
       "reference": "MP-1778435239801",
       "id": "E7ytthq",
       "ownerAdminId": "admin-seed-1"
-    },
-    {
-      "residentId": "resident-1778605899726",
-      "feeId": "receipt-1778605899768",
-      "feeMonth": "Junio de 2026",
-      "concept": "Mantenimiento",
-      "amount": 150,
-      "paidAt": "2026-05-12T17:12:33.954Z",
-      "method": "Mercado Pago",
-      "reference": "MP-1778605953954",
-      "ownerAdminId": "admin-seed-1",
-      "id": "v7Bn1XR"
     }
   ],
   "kpi": [
@@ -535,8 +490,9 @@
       "dueDate": "2026-05-01",
       "amount": 360,
       "status": "Overdue",
-      "lateFee": 10,
-      "ownerAdminId": "admin-seed-1"
+      "lateFee": 0,
+      "ownerAdminId": "admin-seed-1",
+      "isLateFeeWaived": true
     },
     {
       "residentId": "resident-1778307819154",
@@ -665,6 +621,16 @@
       "dueDate": "2026-06-10",
       "amount": 150,
       "status": "Paid",
+      "lateFee": 0,
+      "ownerAdminId": "admin-seed-1"
+    },
+    {
+      "id": 1778606441961,
+      "residentId": "resident-1778606441910",
+      "issueDate": "2026-05-12",
+      "dueDate": "2026-06-10",
+      "amount": 1000,
+      "status": "Pending",
       "lateFee": 0,
       "ownerAdminId": "admin-seed-1"
     }
