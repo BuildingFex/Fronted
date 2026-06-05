@@ -409,8 +409,8 @@
         {
           "id": "guest-1778545610093-1",
           "name": "mariaa",
-          "checkedIn": false,
-          "checkedInAt": null
+          "checkedIn": true,
+          "checkedInAt": "2026-06-05T16:21:43.643Z"
         },
         {
           "id": "guest-1778546320797-2",
@@ -533,7 +533,9 @@
       "amount": 150,
       "status": "Pending",
       "lateFee": 0,
-      "ownerAdminId": "admin-seed-1"
+      "ownerAdminId": "admin-seed-1",
+      "extraCharges": 1745.85,
+      "concept": "Mantenimiento + Servicios compartidos"
     },
     {
       "id": 1778536650063,
@@ -543,7 +545,9 @@
       "amount": 150,
       "status": "Pending",
       "lateFee": 0,
-      "ownerAdminId": "admin-seed-1"
+      "ownerAdminId": "admin-seed-1",
+      "extraCharges": 1745.85,
+      "concept": "Mantenimiento + Servicios compartidos"
     },
     {
       "id": 1778536809723,
@@ -574,6 +578,66 @@
       "status": "Pending",
       "lateFee": 0,
       "ownerAdminId": "admin-1778537421417"
+    },
+    {
+      "id": 1780677280938,
+      "residentId": "resident-1778137645757",
+      "issueDate": "2026-06-05",
+      "dueDate": "2026-06-28",
+      "amount": 0,
+      "extraCharges": 1745.85,
+      "status": "Pending",
+      "lateFee": 0,
+      "concept": "Mantenimiento + Servicios compartidos",
+      "ownerAdminId": "admin-seed-1"
+    },
+    {
+      "id": 1780677281019,
+      "residentId": "resident-1778207900950",
+      "issueDate": "2026-06-05",
+      "dueDate": "2026-06-28",
+      "amount": 0,
+      "extraCharges": 1745.85,
+      "status": "Pending",
+      "lateFee": 0,
+      "concept": "Mantenimiento + Servicios compartidos",
+      "ownerAdminId": "admin-seed-1"
+    },
+    {
+      "id": 1780677281445,
+      "residentId": "resident-1778307819154",
+      "issueDate": "2026-06-05",
+      "dueDate": "2026-06-28",
+      "amount": 0,
+      "extraCharges": 1745.85,
+      "status": "Pending",
+      "lateFee": 0,
+      "concept": "Mantenimiento + Servicios compartidos",
+      "ownerAdminId": "admin-seed-1"
+    },
+    {
+      "id": 1780677281157,
+      "residentId": "resident-1778347893731",
+      "issueDate": "2026-06-05",
+      "dueDate": "2026-06-28",
+      "amount": 0,
+      "extraCharges": 1745.85,
+      "status": "Pending",
+      "lateFee": 0,
+      "concept": "Mantenimiento + Servicios compartidos",
+      "ownerAdminId": "admin-seed-1"
+    },
+    {
+      "id": 1780677281562,
+      "residentId": "resident-giuseppe",
+      "issueDate": "2026-06-05",
+      "dueDate": "2026-06-28",
+      "amount": 0,
+      "extraCharges": 1745.85,
+      "status": "Pending",
+      "lateFee": 0,
+      "concept": "Mantenimiento + Servicios compartidos",
+      "ownerAdminId": "admin-seed-1"
     }
   ],
   "financeSettings": [
@@ -771,6 +835,23 @@
     }
   ],
   "adminManagementExpenses": [],
+  "sharedUtilityServices": [
+    {
+      "id": "shared-svc-1780676929973",
+      "type": "water",
+      "amount": 1000,
+      "ownerAdminId": "admin-seed-1"
+    },
+    {
+      "id": "shared-svc-1780677287097",
+      "type": "water",
+      "amount": 11110,
+      "month": "2026-06",
+      "residentCount": 7,
+      "perResidentShare": 1587.14,
+      "ownerAdminId": "admin-seed-1"
+    }
+  ],
   "fixedPayoutRecipients": [
     {
       "id": "fp-1778366750737",

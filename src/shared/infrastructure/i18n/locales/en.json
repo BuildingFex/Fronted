@@ -387,6 +387,25 @@
     "invoiceInvalid": "Choose a valid image file.",
     "removePhoto": "Remove photo"
   },
+  "sharedServices": {
+    "sectionTitle": "Shared utilities",
+    "addService": "Add service",
+    "modalTitle": "Add shared utility",
+    "typeLabel": "Service type",
+    "typeWater": "Water",
+    "typeElectricity": "Electricity",
+    "totalLabel": "Total (PEN)",
+    "save": "Save",
+    "tableType": "Service",
+    "tableAmount": "Total",
+    "tableShare": "Per unit",
+    "shareUnits": "(÷ {count} units)",
+    "splitHint": "Each service total is split equally across all units and added to what each one pays this month.",
+    "emptyServices": "No services registered yet.",
+    "loadError": "Could not load services.",
+    "saveError": "Could not save the service.",
+    "requiredFields": "Select a service type and enter a valid total."
+  },
   "fixedPay": {
     "openButton": "Fixed amounts",
     "sectionTitle": "Fixed payouts",

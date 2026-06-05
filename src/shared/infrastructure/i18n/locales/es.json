@@ -388,6 +388,25 @@
     "invoiceInvalid": "Elige un archivo de imagen válido.",
     "removePhoto": "Quitar foto"
   },
+  "sharedServices": {
+    "sectionTitle": "Servicios compartidos",
+    "addService": "Agregar servicio",
+    "modalTitle": "Agregar servicio compartido",
+    "typeLabel": "Tipo de servicio",
+    "typeWater": "Agua",
+    "typeElectricity": "Luz",
+    "totalLabel": "Total (PEN)",
+    "save": "Guardar",
+    "tableType": "Servicio",
+    "tableAmount": "Total",
+    "tableShare": "Por departamento",
+    "shareUnits": "(÷ {count} deptos.)",
+    "splitHint": "El total de cada servicio se divide en partes iguales entre todos los departamentos y se suma a lo que cada uno paga este mes.",
+    "emptyServices": "Aún no hay servicios registrados.",
+    "loadError": "No se pudieron cargar los servicios.",
+    "saveError": "No se pudo guardar el servicio.",
+    "requiredFields": "Indica el tipo de servicio y un total válido."
+  },
   "fixedPay": {
     "openButton": "Montos fijos",
     "sectionTitle": "Montos fijos (pagos recurrentes)",

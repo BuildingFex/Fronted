@@ -5,6 +5,7 @@ import Button from 'primevue/button'
 import Column from 'primevue/column'
 import DataTable from 'primevue/datatable'
 import Dialog from 'primevue/dialog'
+import Dropdown from 'primevue/dropdown'
 import InputNumber from 'primevue/inputnumber'
 import InputText from 'primevue/inputtext'
 import {
@@ -14,6 +15,7 @@ import {
   formatLocalYYYYMMDD,
 } from '@/finances/infrastructure/fixedPayoutRecipientsApi.js'
 import { adminManagementExpensesApi } from '@/finances/infrastructure/adminManagementExpensesApi.js'
+import { sharedUtilityServicesApi } from '@/finances/infrastructure/sharedUtilityServicesApi.js'
 import { useFinancesStore } from '@/finances/application/financesStore.js'
 
 const { t, locale } = useI18n()
@@ -23,6 +25,10 @@ const expenses = ref([])
 const costsLoading = ref(false)
 const costsLoadError = ref('')
 
+const sharedServices = ref([])
+const servicesLoading = ref(false)
+const servicesLoadError = ref('')
+
 const fixedRecipients = ref([])
 const fixedLoading = ref(false)
 const fixedLoadError = ref('')
@@ -31,6 +37,10 @@ const modalOpen = ref(false)
 const saving = ref(false)
 const submitError = ref('')
 const processingPhoto = ref(false)
+
+const serviceModalOpen = ref(false)
+const serviceSaving = ref(false)
+const serviceSubmitError = ref('')
 
 const fixedModalOpen = ref(false)
 const fixedSaving = ref(false)
@@ -44,6 +54,11 @@ const form = reactive({
   invoicePhotoUrl: '',
 })
 
+const serviceForm = reactive({
+  type: 'water',
+  amount: null,
+})
+
 const fixedForm = reactive({
   name: '',
   dni: '',
@@ -52,6 +67,11 @@ const fixedForm = reactive({
   intervalDays: 30,
   photoUrl: '',
 })
+
+const serviceTypeOptions = computed(() => [
+  { label: t('sharedServices.typeWater'), value: 'water' },
+  { label: t('sharedServices.typeElectricity'), value: 'electricity' },
+])
 
 const MAX_IMAGE_DIMENSION = 1024
 const IMAGE_OUTPUT_QUALITY = 0.82
@@ -187,6 +207,25 @@ async function loadCosts() {
   }
 }
 
+function serviceTypeLabel(type) {
+  if (type === 'water') return t('sharedServices.typeWater')
+  if (type === 'electricity') return t('sharedServices.typeElectricity')
+  return String(type ?? '—')
+}
+
+async function loadSharedServices() {
+  servicesLoading.value = true
+  servicesLoadError.value = ''
+  try {
+    sharedServices.value = await sharedUtilityServicesApi.list()
+  } catch {
+    servicesLoadError.value = t('sharedServices.loadError')
+    sharedServices.value = []
+  } finally {
+    servicesLoading.value = false
+  }
+}
+
 async function loadFixedRecipients() {
   fixedLoading.value = true
   fixedLoadError.value = ''
@@ -225,6 +264,21 @@ function resetFixedForm() {
   fixedForm.intervalDays = 30
   fixedForm.photoUrl = ''
   fixedSubmitError.value = ''
+}
+
+function resetServiceForm() {
+  serviceForm.type = 'water'
+  serviceForm.amount = null
+  serviceSubmitError.value = ''
+}
+
+function openServiceModal() {
+  resetServiceForm()
+  serviceModalOpen.value = true
+}
+
+function closeServiceModal() {
+  serviceModalOpen.value = false
 }
 
 function openFixedModal() {
@@ -307,6 +361,39 @@ async function submitCost() {
   }
 }
 
+async function submitSharedService() {
+  if (serviceSaving.value) return
+  serviceSubmitError.value = ''
+
+  const amt =
+    serviceForm.amount === null || serviceForm.amount === undefined || serviceForm.amount === ''
+      ? Number.NaN
+      : Number(serviceForm.amount)
+
+  if (!serviceForm.type || !Number.isFinite(amt) || amt < 0) {
+    serviceSubmitError.value = t('sharedServices.requiredFields')
+    return
+  }
+
+  serviceSaving.value = true
+  try {
+    await sharedUtilityServicesApi.add({
+      type: serviceForm.type,
+      amount: amt,
+    })
+    closeServiceModal()
+    await Promise.all([loadSharedServices(), loadData()])
+  } catch (err) {
+    if (err?.code === 'SHARED_SERVICE_FIELDS_REQUIRED') {
+      serviceSubmitError.value = t('sharedServices.requiredFields')
+    } else {
+      serviceSubmitError.value = t('sharedServices.saveError')
+    }
+  } finally {
+    serviceSaving.value = false
+  }
+}
+
 async function submitFixedRecipient() {
   if (fixedSaving.value) return
   fixedSubmitError.value = ''
@@ -358,6 +445,7 @@ async function submitFixedRecipient() {
 onMounted(() => {
   loadData()
   loadCosts()
+  loadSharedServices()
   loadFixedRecipients()
 })
 </script>
@@ -551,6 +639,113 @@ onMounted(() => {
         <p v-if="costsLoadError" class="collections-panel__error" role="alert">
           {{ costsLoadError }}
         </p>
+        </section>
+
+        <section class="collections-panel" aria-labelledby="collections-services-heading">
+          <header class="collections-panel__head">
+            <h2 id="collections-services-heading" class="collections-panel__title">
+              {{ t('sharedServices.sectionTitle') }}
+            </h2>
+            <Button
+              type="button"
+              rounded
+              :label="t('sharedServices.addService')"
+              severity="secondary"
+              class="collections-panel__btn"
+              @click="openServiceModal"
+            />
+          </header>
+
+          <Dialog
+            v-model:visible="serviceModalOpen"
+            modal
+            :header="t('sharedServices.modalTitle')"
+            class="collections-service-dialog"
+            :style="{ width: 'min(26rem, 92vw)' }"
+            :draggable="false"
+          >
+            <div class="collections-form">
+              <div class="collections-form__field">
+                <label for="shared-service-type">{{ t('sharedServices.typeLabel') }}</label>
+                <Dropdown
+                  id="shared-service-type"
+                  v-model="serviceForm.type"
+                  :options="serviceTypeOptions"
+                  option-label="label"
+                  option-value="value"
+                  class="collections-form__input w-full"
+                  fluid
+                />
+              </div>
+              <div class="collections-form__field">
+                <label for="shared-service-amount">{{ t('sharedServices.totalLabel') }}</label>
+                <InputNumber
+                  id="shared-service-amount"
+                  v-model="serviceForm.amount"
+                  class="collections-form__input-num w-full"
+                  :min="0"
+                  mode="decimal"
+                  :maxFractionDigits="2"
+                  fluid
+                />
+              </div>
+              <p v-if="serviceSubmitError" class="collections-form__error" role="alert">
+                {{ serviceSubmitError }}
+              </p>
+            </div>
+            <template #footer>
+              <Button
+                type="button"
+                text
+                rounded
+                :label="t('app.cancelAction')"
+                @click="closeServiceModal"
+              />
+              <Button
+                type="button"
+                rounded
+                :label="t('sharedServices.save')"
+                :loading="serviceSaving"
+                @click="submitSharedService"
+              />
+            </template>
+          </Dialog>
+
+          <p v-if="servicesLoading && !servicesLoadError" class="collections-panel__loading">
+            {{ t('collectionsMgmt.loading') }}
+          </p>
+
+          <DataTable :value="sharedServices" class="collections-data collections-table">
+            <template #empty>
+              <p class="collections-table__empty">{{ t('sharedServices.emptyServices') }}</p>
+            </template>
+            <Column :header="t('sharedServices.tableType')">
+              <template #body="{ data }">
+                {{ serviceTypeLabel(data.type) }}
+              </template>
+            </Column>
+            <Column :header="t('sharedServices.tableAmount')">
+              <template #body="{ data }">
+                {{ nfCurrency(Number(data.amount) || 0) }}
+              </template>
+            </Column>
+            <Column :header="t('sharedServices.tableShare')">
+              <template #body="{ data }">
+                <template v-if="Number(data.residentCount) > 0">
+                  {{ nfCurrency(Number(data.perResidentShare) || 0) }}
+                  <span class="collections-share-hint">
+                    {{ t('sharedServices.shareUnits', { count: data.residentCount }) }}
+                  </span>
+                </template>
+                <span v-else>—</span>
+              </template>
+            </Column>
+          </DataTable>
+          <p class="collections-panel__hint">{{ t('sharedServices.splitHint') }}</p>
+
+          <p v-if="servicesLoadError" class="collections-panel__error" role="alert">
+            {{ servicesLoadError }}
+          </p>
         </section>
 
         <section class="collections-panel" aria-labelledby="collections-fixed-heading">
@@ -901,6 +1096,19 @@ onMounted(() => {
   color: var(--apple-text-secondary, #6e6e73);
 }
 
+.collections-panel__hint {
+  margin: 0.75rem 0 0;
+  font-size: 0.75rem;
+  line-height: 1.45;
+  color: #aeaeb2;
+}
+
+.collections-share-hint {
+  margin-left: 0.35rem;
+  font-size: 0.75rem;
+  color: var(--apple-text-secondary, #6e6e73);
+}
+
 .collections-panel__error {
   margin: 0.75rem 0 0;
   font-size: 0.8125rem;
@@ -1086,11 +1294,14 @@ onMounted(() => {
 }
 
 .collections-cost-dialog :deep(.p-dialog-footer),
+.collections-service-dialog :deep(.p-dialog-footer),
 .collections-fixed-dialog :deep(.p-dialog-footer) {
   gap: 0.5rem;
 }
 
 .collections-cost-dialog :deep(.p-inputnumber),
+.collections-service-dialog :deep(.p-inputnumber),
+.collections-service-dialog :deep(.p-dropdown),
 .collections-fixed-dialog :deep(.p-inputnumber) {
   width: 100%;
 }
