@@ -1,11 +1,11 @@
-import { apiClient } from '@/shell/infrastructure/api/apiClient.js'
+import { apiClient } from '@/shared/infrastructure/api/apiClient.js'
 import {
   apiError,
   createSessionToken,
   findUserByEmail,
   normalizeEmail,
   publicUser,
-} from '@/shell/infrastructure/api/utils.js'
+} from '@/shared/infrastructure/api/utils.js'
 
 /**
  * IAM (Identity & Access Management) bounded-context API.
@@ -54,10 +54,50 @@ export const authApi = {
     }
 
     const { data: created } = await apiClient.post('/users', newUser)
+    const merged =
+      created && typeof created === 'object' ? { ...newUser, ...created } : { ...newUser }
+    const ownerId = merged.id
+
+    try {
+      await apiClient.post('/financeSettings', {
+        ownerAdminId: ownerId,
+        baseMonthlyExpense: 150,
+        lateFeeRate: 0.05,
+      })
+    } catch {
+      // ignore seed failure (e.g. duplicate); admin can still open Finanzas
+    }
+    try {
+      await apiClient.post('/kpi', {
+        ownerAdminId: ownerId,
+        totalResidents: 0,
+        occupiedUnits: 0,
+        emptyUnits: 0,
+        totalDebt: 0,
+      })
+    } catch {
+      // ignore
+    }
 
     return {
-      user: publicUser(created),
-      token: createSessionToken(created.id),
+      user: publicUser(merged),
+      token: createSessionToken(ownerId),
+    }
+  },
+
+  /**
+   * Full user row for settings views (password stripped). Uses GET /users/:id.
+   */
+  async getProfileById(userId) {
+    if (!userId) return null
+    try {
+      const { data } = await apiClient.get(`/users/${encodeURIComponent(userId)}`)
+      if (!data || typeof data !== 'object') return null
+      // eslint-disable-next-line no-unused-vars -- strip secret
+      const { password, ...rest } = data
+      return rest
+    } catch {
+      return null
     }
   },
 }

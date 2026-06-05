@@ -1,36 +1,173 @@
-import axios from 'axios';
-import { Receipt } from '../domain/receipt.js';
-
-const API_BASE_URL = 'http://localhost:3001';
+import { apiClient } from '@/shared/infrastructure/api/apiClient.js'
+import { withOwnerParams } from '@/shared/infrastructure/api/ownerQuery.js'
+import { getActiveDataOwnerId } from '@/shared/infrastructure/api/ownerTenant.js'
+import { Receipt } from '../domain/receipt.js'
 
 export const financesApi = {
   async getSettings() {
-    const response = await axios.get(`${API_BASE_URL}/financeSettings`);
-    return response.data;
+    const { data } = await apiClient.get('/financeSettings', { params: withOwnerParams() })
+    const row = Array.isArray(data) ? data[0] : data
+    if (row && typeof row === 'object') {
+      return {
+        baseMonthlyExpense: row.baseMonthlyExpense ?? 150,
+        lateFeeRate: row.lateFeeRate ?? 0.05,
+      }
+    }
+    return { baseMonthlyExpense: 150, lateFeeRate: 0.05 }
   },
 
   async getResidents() {
-    const response = await axios.get(`${API_BASE_URL}/users?role=resident`);
-    return response.data;
+    const { data } = await apiClient.get('/users', {
+      params: withOwnerParams({ role: 'resident' }),
+    })
+    return Array.isArray(data) ? data : []
   },
 
   async getReceipts() {
-    const response = await axios.get(`${API_BASE_URL}/receipts`);
-    return response.data.map(data => new Receipt(data));
+    const { data } = await apiClient.get('/receipts', { params: withOwnerParams() })
+    return (Array.isArray(data) ? data : []).map((d) => new Receipt(d))
   },
 
   async getReceiptsByResident(residentId) {
-    const response = await axios.get(`${API_BASE_URL}/receipts?residentId=${residentId}`);
-    return response.data.map(data => new Receipt(data));
+    const { data } = await apiClient.get('/receipts', {
+      params: withOwnerParams({ residentId }),
+    })
+    return (Array.isArray(data) ? data : []).map((d) => new Receipt(d))
   },
 
   async createReceipt(receiptData) {
-    const response = await axios.post(`${API_BASE_URL}/receipts`, receiptData);
-    return new Receipt(response.data);
+    const ownerId = getActiveDataOwnerId()
+    const payload = {
+      ...receiptData,
+      ...(ownerId ? { ownerAdminId: ownerId } : {}),
+    }
+    const { data } = await apiClient.post('/receipts', payload)
+    return new Receipt(data)
   },
 
   async updateReceipt(receiptId, updateData) {
-    const response = await axios.patch(`${API_BASE_URL}/receipts/${receiptId}`, updateData);
-    return new Receipt(response.data);
-  }
-};
+    const { data } = await apiClient.patch(`/receipts/${receiptId}`, updateData)
+    return new Receipt(data)
+  },
+
+  async getFees(residentId) {
+    // 1. Fetch both tables: receipts and fees
+    const [receiptsRes, feesRes] = await Promise.all([
+      apiClient.get('/receipts', { params: withOwnerParams({ residentId }) }),
+      apiClient.get('/fees', { params: withOwnerParams({ residentId }) })
+    ]);
+
+    const receiptsData = receiptsRes.data || [];
+    const feesData = feesRes.data || [];
+
+    // 2. Map receipts to unified format
+    const mappedReceipts = receiptsData.map(receipt => {
+      let monthName = '';
+      if (receipt.dueDate) {
+        const [year, month, day] = receipt.dueDate.split('-');
+        const dateObj = new Date(year, parseInt(month) - 1, day);
+        const name = dateObj.toLocaleString('es-PE', { month: 'long', year: 'numeric' });
+        monthName = name.charAt(0).toUpperCase() + name.slice(1);
+      }
+      return {
+        id: `receipt-${receipt.id}`,
+        originalId: receipt.id,
+        type: 'receipt',
+        residentId: receipt.residentId,
+        month: monthName || "Mes Actual",
+        amount: Number(receipt.amount) + Number(receipt.lateFee || 0) + Number(receipt.extraCharges || 0),
+        dueDate: receipt.dueDate,
+        status: receipt.status === 'Paid' ? 'Pagado' : 'Pendiente',
+        concept: receipt.concept || "Mantenimiento"
+      };
+    });
+
+    // 3. Map fees to unified format
+    const mappedFees = feesData.map(fee => {
+      return {
+        id: `fee-${fee.id}`,
+        originalId: fee.id,
+        type: 'fee',
+        residentId: fee.residentId,
+        month: fee.month || "Mes Actual",
+        amount: Number(fee.amount),
+        dueDate: fee.dueDate,
+        status: fee.status === 'Pagado' ? 'Pagado' : 'Pendiente',
+        concept: fee.concept || "Cuota Mantenimiento"
+      };
+    });
+
+    // 4. Combine both
+    const combined = [...mappedReceipts, ...mappedFees];
+
+    // 5. Fallback if totally empty
+    if (combined.length === 0) {
+      return [
+        {
+          id: `mock-1-${residentId}`,
+          residentId,
+          month: "Mayo 2026",
+          amount: 150,
+          dueDate: "2026-05-31",
+          status: "Pendiente",
+          concept: "Mantenimiento (Estimado)"
+        }
+      ];
+    }
+    
+    // Sort by due date descending
+    return combined.sort((a, b) => b.dueDate.localeCompare(a.dueDate));
+  },
+
+  async addFee(feeData) {
+    const ownerId = getActiveDataOwnerId()
+    const receiptData = {
+      residentId: feeData.residentId,
+      issueDate: new Date().toISOString().split('T')[0],
+      dueDate: feeData.dueDate,
+      amount: feeData.amount,
+      status: feeData.status === 'Pagado' ? 'Paid' : 'Pending',
+      lateFee: 0,
+      ...(ownerId ? { ownerAdminId: ownerId } : {})
+    };
+    const { data } = await apiClient.post('/receipts', receiptData);
+    return data;
+  },
+
+  async getPayments(residentId) {
+    const { data } = await apiClient.get('/payments', { params: withOwnerParams({ residentId }) });
+    return data;
+  },
+
+  async addPayment(paymentData) {
+    const ownerId = getActiveDataOwnerId()
+    const payload = {
+      ...paymentData,
+      ...(ownerId ? { ownerAdminId: ownerId } : {}),
+    }
+    const { data } = await apiClient.post('/payments', payload);
+    return data;
+  },
+
+  async updateFeeStatus(feeId, status) {
+    const idStr = String(feeId);
+    if (idStr.startsWith('receipt-')) {
+      const realId = idStr.replace('receipt-', '');
+      const statusEn = status === 'Pagado' ? 'Paid' : 'Pending';
+      const { data } = await apiClient.patch(`/receipts/${realId}`, { status: statusEn });
+      return data;
+    } else if (idStr.startsWith('fee-')) {
+      const realId = idStr.replace('fee-', '');
+      const statusEs = status === 'Pagado' ? 'Pagado' : 'Pendiente';
+      const { data } = await apiClient.patch(`/fees/${realId}`, { status: statusEs });
+      return data;
+    }
+    // Fallback for non-prefixed or mock
+    return { id: feeId, status };
+  },
+
+  async getDashboardKpis() {
+    const { data } = await apiClient.get('/kpi', { params: withOwnerParams() })
+    return data
+  },
+}

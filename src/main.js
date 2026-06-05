@@ -1,12 +1,13 @@
 import { createApp, watch } from 'vue'
 import PrimeVue from 'primevue/config'
 import Aura from '@primevue/themes/aura'
-import App from '@/shell/presentation/App.vue'
-import i18n from '@/shell/infrastructure/i18n'
-import router from '@/shell/presentation/router'
-import '@/shell/presentation/assets/main.css'
+import ToastService from 'primevue/toastservice'
+import App from '@/shared/presentation/App.vue'
+import i18n from '@/shared/infrastructure/i18n'
+import router from '@/shared/presentation/router'
+import '@/shared/presentation/assets/main.css'
 import 'primeicons/primeicons.css'
-import { syncDocumentLocale } from '@/shell/application/syncDocumentLocale.js'
+import { syncDocumentLocale } from '@/shared/application/syncDocumentLocale.js'
 
 const app = createApp(App)
 
@@ -17,6 +18,7 @@ app.use(PrimeVue, {
     preset: Aura,
   },
 })
+app.use(ToastService)
 
 app.mount('#app')
 

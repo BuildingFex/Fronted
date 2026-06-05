@@ -3,8 +3,8 @@ import { computed, ref, watch, watchEffect } from 'vue'
 import { RouterLink, useRoute, useRouter } from 'vue-router'
 import { useI18n } from 'vue-i18n'
 import Button from 'primevue/button'
-import SkipLink from '@/shell/presentation/components/SkipLink.vue'
-import { AppRouteNames } from '@/shell/domain/appRoutes.js'
+import SkipLink from '@/shared/presentation/components/SkipLink.vue'
+import { AppRouteNames } from '@/shared/domain/appRoutes.js'
 import { authApi } from '@/iam/infrastructure/authApi.js'
 import { residentsApi } from '@/residents/infrastructure/residentsApi.js'
 import { useSession } from '@/iam/application/sessionStore.js'
@@ -13,6 +13,15 @@ const route = useRoute()
 const router = useRouter()
 const { t } = useI18n()
 const { setAdminSession, setResidentSession } = useSession()
+
+/** Internal app path from ?redirect= (rejects protocol-relative URLs). */
+function navigateAfterAuth(fallback) {
+  const raw = route.query.redirect
+  if (typeof raw === 'string' && raw.startsWith('/') && !raw.startsWith('//')) {
+    return router.push(raw)
+  }
+  return router.push(fallback)
+}
 
 const isRegister = computed(() => route.name === AppRouteNames.REGISTER)
 
@@ -89,8 +98,9 @@ async function onResidentCredentialsSubmit() {
       floor: user.floor,
       code: user.code,
       email: user.email,
+      ownerAdminId: user.ownerAdminId ?? null,
     })
-    router.push({ name: AppRouteNames.APP_RESIDENT_DASHBOARD })
+    navigateAfterAuth({ name: AppRouteNames.APP_RESIDENT_DASHBOARD })
   } catch (error) {
     if (error?.code === 'EMAIL_ALREADY_EXISTS') {
       residentError.value = t('auth.emailAlreadyExists')
@@ -167,15 +177,16 @@ async function onLoginSubmit() {
         floor: user.floor,
         code: user.code,
         email: user.email,
+        ownerAdminId: user.ownerAdminId ?? null,
       })
-      router.push({ name: AppRouteNames.APP_RESIDENT_DASHBOARD })
+      navigateAfterAuth({ name: AppRouteNames.APP_RESIDENT_DASHBOARD })
     } else {
       setAdminSession({
         id: user.id,
         name: user.name,
         email: user.email,
       })
-      router.push({ name: AppRouteNames.APP_DASHBOARD })
+      navigateAfterAuth({ name: AppRouteNames.APP_DASHBOARD })
     }
   } catch (error) {
     if (error?.code === 'INVALID_PASSWORD') {
@@ -199,7 +210,7 @@ async function onRegisterSubmit() {
   registerLoading.value = true
   registerError.value = ''
   try {
-    await authApi.registerAdmin({
+    const { user } = await authApi.registerAdmin({
       name: regName.value,
       email: regEmail.value,
       password: regPassword.value,
@@ -208,8 +219,12 @@ async function onRegisterSubmit() {
       company: regCompany.value,
       ruc: regRuc.value,
     })
-    setAdminSession({ email: regEmail.value, name: regName.value })
-    router.push({ name: AppRouteNames.APP_DASHBOARD })
+    setAdminSession({
+      id: user.id,
+      name: user.name,
+      email: user.email,
+    })
+    navigateAfterAuth({ name: AppRouteNames.APP_DASHBOARD })
   } catch (error) {
     if (error?.code === 'EMAIL_ALREADY_EXISTS') {
       registerError.value = t('auth.emailAlreadyExists')

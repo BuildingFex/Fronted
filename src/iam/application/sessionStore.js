@@ -7,6 +7,27 @@ const STORAGE_KEY = 'buildingfex.session'
 
 const state = reactive(loadInitialSession())
 
+/** Current session role; for router guards outside component setup. */
+export function getSessionRole() {
+  return state.role
+}
+
+/**
+ * json-server "tenant": admin id or (for resident login) the building admin id.
+ * Always derived from session state so it cannot drift from persisted profile.
+ */
+export function getActiveDataOwnerId() {
+  if (state.role === SessionRoles.ADMIN) {
+    const id = state.profile?.id
+    return id != null && String(id).length ? String(id) : null
+  }
+  if (state.role === SessionRoles.RESIDENT) {
+    const oid = state.profile?.ownerAdminId
+    return oid != null && String(oid).length ? String(oid) : null
+  }
+  return null
+}
+
 function loadInitialSession() {
   if (typeof window === 'undefined') {
     return { role: null, profile: null }
@@ -16,10 +37,9 @@ function loadInitialSession() {
     if (!raw) return { role: null, profile: null }
     const parsed = JSON.parse(raw)
     if (parsed && typeof parsed === 'object') {
-      return {
-        role: parsed.role ?? null,
-        profile: parsed.profile ?? null,
-      }
+      const role = parsed.role ?? null
+      const profile = parsed.profile ?? null
+      return { role, profile }
     }
   } catch {
     // ignore parse errors

@@ -1,5 +1,7 @@
-import { apiClient } from '@/shell/infrastructure/api/apiClient.js'
+import { apiClient } from '@/shared/infrastructure/api/apiClient.js'
 import { reservationsApi } from '@/socialSpaces/infrastructure/reservationsApi.js'
+import { withOwnerParams } from '@/shared/infrastructure/api/ownerQuery.js'
+import { getActiveDataOwnerId } from '@/shared/infrastructure/api/ownerTenant.js'
 import {
   apiError,
   createSessionToken,
@@ -9,7 +11,8 @@ import {
   normalizeEmail,
   publicResident,
   publicUser,
-} from '@/shell/infrastructure/api/utils.js'
+} from '@/shared/infrastructure/api/utils.js'
+import { getResidentLimitForActiveOwner } from '@/shared/infrastructure/subscriptionPlanStorage.js'
 
 /**
  * Residents bounded-context API.
@@ -17,11 +20,13 @@ import {
  * Owns: lifecycle of resident accounts (creation by admin, invitation lookup,
  * credentials provisioning).
  * Errors expose `error.code`: 'RESIDENT_FIELDS_REQUIRED',
- * 'RESIDENT_CODE_ALREADY_EXISTS', 'RESIDENT_NOT_FOUND', 'EMAIL_ALREADY_EXISTS'.
+ * 'RESIDENT_CODE_ALREADY_EXISTS', 'RESIDENT_PLAN_LIMIT_REACHED', 'RESIDENT_NOT_FOUND', 'EMAIL_ALREADY_EXISTS'.
  */
 export const residentsApi = {
   async list() {
-    const { data } = await apiClient.get('/users', { params: { role: 'resident' } })
+    const { data } = await apiClient.get('/users', {
+      params: withOwnerParams({ role: 'resident' }),
+    })
     return Array.isArray(data) ? data.map(publicResident) : []
   },
 
@@ -39,6 +44,17 @@ export const residentsApi = {
       throw apiError('RESIDENT_CODE_ALREADY_EXISTS')
     }
 
+    const ownerAdminId = getActiveDataOwnerId()
+    if (!ownerAdminId) {
+      throw apiError('RESIDENT_OWNER_REQUIRED')
+    }
+
+    const existingResidents = await residentsApi.list()
+    const limit = getResidentLimitForActiveOwner()
+    if (existingResidents.length >= limit) {
+      throw apiError('RESIDENT_PLAN_LIMIT_REACHED')
+    }
+
     const todayStr = new Date().toLocaleDateString('en-CA'); // Gets YYYY-MM-DD local format
     const newResident = {
       id: `resident-${Date.now()}`,
@@ -48,7 +64,8 @@ export const residentsApi = {
       email: '',
       password: '',
       role: 'resident',
-      admissionDate: todayStr
+      admissionDate: todayStr,
+      ownerAdminId,
     }
 
     const { data: created } = await apiClient.post('/users', newResident)
@@ -56,7 +73,7 @@ export const residentsApi = {
   },
 
   async findByCode(code) {
-    const resident = await findResidentByCode(code)
+    const resident = await findResidentByCode(code, { globalScope: true })
     if (!resident) {
       throw apiError('RESIDENT_NOT_FOUND')
     }
@@ -132,7 +149,7 @@ export const residentsApi = {
     const cleanEmail = normalizeEmail(email)
     const cleanPassword = String(password ?? '')
 
-    const resident = await findResidentByCode(code)
+    const resident = await findResidentByCode(code, { globalScope: true })
     if (!resident) {
       throw apiError('RESIDENT_NOT_FOUND')
     }

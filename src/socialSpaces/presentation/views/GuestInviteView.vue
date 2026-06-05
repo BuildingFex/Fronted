@@ -4,7 +4,7 @@ import { useRoute } from 'vue-router'
 import { useI18n } from 'vue-i18n'
 import QRCode from 'qrcode'
 import { reservationsApi } from '@/socialSpaces/infrastructure/reservationsApi.js'
-import { reservationInviteExpiresAtMs } from '@/shell/infrastructure/api/utils.js'
+import { reservationInviteExpiresAtMs } from '@/shared/infrastructure/api/utils.js'
 
 const route = useRoute()
 const { t, locale } = useI18n()

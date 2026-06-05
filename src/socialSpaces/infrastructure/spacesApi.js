@@ -1,5 +1,7 @@
-import { apiClient } from '@/shell/infrastructure/api/apiClient.js'
-import { apiError, publicSpace } from '@/shell/infrastructure/api/utils.js'
+import { apiClient } from '@/shared/infrastructure/api/apiClient.js'
+import { withOwnerParams } from '@/shared/infrastructure/api/ownerQuery.js'
+import { getActiveDataOwnerId } from '@/shared/infrastructure/api/ownerTenant.js'
+import { apiError, publicSpace } from '@/shared/infrastructure/api/utils.js'
 
 /**
  * Social Spaces bounded-context API (spaces side).
@@ -9,7 +11,7 @@ import { apiError, publicSpace } from '@/shell/infrastructure/api/utils.js'
  */
 export const spacesApi = {
   async list() {
-    const { data } = await apiClient.get('/socialSpaces')
+    const { data } = await apiClient.get('/socialSpaces', { params: withOwnerParams() })
     return Array.isArray(data) ? data.map(publicSpace) : []
   },
 
@@ -23,12 +25,14 @@ export const spacesApi = {
       throw apiError('SPACE_NAME_REQUIRED')
     }
 
+    const ownerId = getActiveDataOwnerId()
     const newSpace = {
       id: `space-${Date.now()}`,
       name: cleanName,
       description: cleanDescription,
       capacity: Number.isFinite(parsedCapacity) ? parsedCapacity : null,
       imageUrl: cleanImageUrl,
+      ...(ownerId ? { ownerAdminId: ownerId } : {}),
     }
 
     const { data: created } = await apiClient.post('/socialSpaces', newSpace)
