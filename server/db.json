@@ -174,5 +174,19 @@
       "createdAt": "2026-05-09T20:29:54.153Z",
       "provider": ""
     }
-  ]
+  ],
+  "financeSettings": [
+    {
+      "id": "finance-settings-admin-seed-1",
+      "ownerAdminId": "admin-seed-1",
+      "baseMonthlyExpense": 150,
+      "lateFeeRate": 0.05
+    }
+  ],
+  "receipts": [],
+  "fees": [],
+  "payments": [],
+  "adminManagementExpenses": [],
+  "sharedUtilityServices": [],
+  "fixedPayoutRecipients": []
 }
