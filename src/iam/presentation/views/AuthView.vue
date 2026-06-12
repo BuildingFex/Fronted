@@ -165,7 +165,7 @@ async function onLoginSubmit() {
   loginLoading.value = true
   loginEmailError.value = ''
   try {
-    const { user } = await authApi.login({
+    const { user, token } = await authApi.login({
       email: loginEmail.value,
       password: loginPassword.value,
     })
@@ -178,14 +178,14 @@ async function onLoginSubmit() {
         code: user.code,
         email: user.email,
         ownerAdminId: user.ownerAdminId ?? null,
-      })
+      }, token)
       navigateAfterAuth({ name: AppRouteNames.APP_RESIDENT_DASHBOARD })
     } else {
       setAdminSession({
         id: user.id,
         name: user.name,
         email: user.email,
-      })
+      }, token)
       navigateAfterAuth({ name: AppRouteNames.APP_DASHBOARD })
     }
   } catch (error) {
@@ -210,7 +210,7 @@ async function onRegisterSubmit() {
   registerLoading.value = true
   registerError.value = ''
   try {
-    const { user } = await authApi.registerAdmin({
+    const { user, token } = await authApi.registerAdmin({
       name: regName.value,
       email: regEmail.value,
       password: regPassword.value,
@@ -223,7 +223,7 @@ async function onRegisterSubmit() {
       id: user.id,
       name: user.name,
       email: user.email,
-    })
+    }, token)
     navigateAfterAuth({ name: AppRouteNames.APP_DASHBOARD })
   } catch (error) {
     if (error?.code === 'EMAIL_ALREADY_EXISTS') {

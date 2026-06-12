@@ -21,16 +21,17 @@ export const authApi = {
   },
 
   async login({ email, password }) {
-    const user = await findUserByEmail(email)
-    if (!user) {
-      throw apiError('EMAIL_NOT_FOUND')
-    }
-    if (user.password !== password) {
-      throw apiError('INVALID_PASSWORD')
-    }
-    return {
-      user: publicUser(user),
-      token: createSessionToken(user.id),
+    try {
+      const { data } = await apiClient.post('/api/v1/authentication/sign-in', { email, password })
+      return {
+        user: publicUser(data.user),
+        token: data.token,
+      }
+    } catch (err) {
+      if (err.payload && err.payload.code) {
+        throw apiError(err.payload.code)
+      }
+      throw err
     }
   },
 

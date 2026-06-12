@@ -28,23 +28,28 @@ export function getActiveDataOwnerId() {
   return null
 }
 
+export function getSessionToken() {
+  return state.token
+}
+
 function loadInitialSession() {
   if (typeof window === 'undefined') {
-    return { role: null, profile: null }
+    return { role: null, profile: null, token: null }
   }
   try {
     const raw = window.localStorage.getItem(STORAGE_KEY)
-    if (!raw) return { role: null, profile: null }
+    if (!raw) return { role: null, profile: null, token: null }
     const parsed = JSON.parse(raw)
     if (parsed && typeof parsed === 'object') {
       const role = parsed.role ?? null
       const profile = parsed.profile ?? null
-      return { role, profile }
+      const token = parsed.token ?? null
+      return { role, profile, token }
     }
   } catch {
     // ignore parse errors
   }
-  return { role: null, profile: null }
+  return { role: null, profile: null, token: null }
 }
 
 function persist() {
@@ -52,7 +57,7 @@ function persist() {
   try {
     window.localStorage.setItem(
       STORAGE_KEY,
-      JSON.stringify({ role: state.role, profile: state.profile }),
+      JSON.stringify({ role: state.role, profile: state.profile, token: state.token }),
     )
   } catch {
     // ignore storage errors
@@ -63,21 +68,24 @@ export function useSession() {
   const isAdmin = computed(() => state.role === SessionRoles.ADMIN)
   const isResident = computed(() => state.role === SessionRoles.RESIDENT)
 
-  function setAdminSession(profile = {}) {
+  function setAdminSession(profile = {}, token = null) {
     state.role = SessionRoles.ADMIN
     state.profile = profile
+    state.token = token
     persist()
   }
 
-  function setResidentSession(profile = {}) {
+  function setResidentSession(profile = {}, token = null) {
     state.role = SessionRoles.RESIDENT
     state.profile = profile
+    state.token = token
     persist()
   }
 
   function clearSession() {
     state.role = null
     state.profile = null
+    state.token = null
     persist()
   }
 

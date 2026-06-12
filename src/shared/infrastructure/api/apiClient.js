@@ -16,6 +16,20 @@ export const apiClient = axios.create({
   },
 })
 
+// Add JWT Authorization header
+apiClient.interceptors.request.use(async (config) => {
+  try {
+    const { getSessionToken } = await import('@/iam/application/sessionStore.js')
+    const token = getSessionToken()
+    if (token) {
+      config.headers.Authorization = `Bearer ${token}`
+    }
+  } catch {
+    // Ignore import errors
+  }
+  return config
+})
+
 apiClient.interceptors.response.use(
   (response) => response,
   (error) => {
