@@ -147,6 +147,8 @@ async function onLoginContinue() {
       return
     }
     loginStep.value = 2
+  } catch (e) {
+    loginEmailError.value = e?.message || t('auth.genericError')
   } finally {
     loginLoading.value = false
   }
@@ -154,11 +156,15 @@ async function onLoginContinue() {
 
 async function handleLoginSubmit() {
   if (loginLoading.value) return
-  if (loginStep.value === 1) {
-    await onLoginContinue()
-    return
+  try {
+    if (loginStep.value === 1) {
+      await onLoginContinue()
+      return
+    }
+    await onLoginSubmit()
+  } catch (e) {
+    loginEmailError.value = e?.message || t('auth.genericError')
   }
-  await onLoginSubmit()
 }
 
 async function onLoginSubmit() {

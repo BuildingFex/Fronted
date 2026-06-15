@@ -331,7 +331,12 @@
     "statusPaid": "Paid",
     "statusOverdue": "Overdue",
     "allFloors": "All floors",
-    "filterFloorAria": "Filter payment history by floor"
+    "filterFloorAria": "Filter payment history by floor",
+    "settingsTitle": "Charge Settings",
+    "baseMonthlyExpense": "Monthly Fee (S/)",
+    "lateFeeRate": "Late Fee Rate (%)",
+    "saveSettings": "Save Settings",
+    "settingsSaved": "Settings saved successfully"
   },
   "teamMgmt": {
     "addWorker": "Add worker",
