@@ -109,6 +109,20 @@ export function useFinancesStore() {
     return `${y}-${m}-${day}`;
   };
 
+  const updateSettings = async (newSettings) => {
+    try {
+      state.isLoading = true;
+      const updated = await financesApi.updateSettings(newSettings);
+      state.settings = updated;
+      return updated;
+    } catch (err) {
+      console.error('Error updating finance settings:', err);
+      throw new Error('Error updating finance settings');
+    } finally {
+      state.isLoading = false;
+    }
+  };
+
   const generateInitialReceipt = async (resident) => {
     if (!state.settings) {
       // Attempt a gentle fallback fetch if settings are missing (likely on fresh reload without navigating to finances first)
@@ -276,6 +290,7 @@ export function useFinancesStore() {
     generateInitialReceipt,
     generateMonthlyReceipts,
     simulatePaymentReconciliation,
-    simulateNightlyCron
+    simulateNightlyCron,
+    updateSettings
   };
 }
