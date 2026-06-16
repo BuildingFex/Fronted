@@ -1,61 +1,77 @@
-git  # BuildingFex — Landing
+# BuildingFex — Frontend (Vue 3)
 
-Sitio estático de marketing para BuildingFex, construido con Vue 3 y Vite.
+Aplicación web de BuildingFex. Consume la API real **BuildingFex.Api** (.NET + MySQL), no json-server.
 
 ## Requisitos
 
-- Node.js 18 o superior (recomendado LTS)
-- npm
+- Node.js 18+ y npm
+- [.NET 10 SDK](https://dotnet.microsoft.com/download)
+- MySQL 8 (local o Docker)
 
-## Instalación
+## Inicio rápido (frontend + backend)
+
+### 1. Backend
 
 ```bash
-npm install
+cd C:\Users\smbmontalvo\Documents\BackEnd
+docker compose up -d          # MySQL, si usas Docker
+cd BuildingFex.Api
+dotnet restore
+dotnet run
 ```
 
-## Desarrollo
+API: `http://localhost:5001` — Swagger: `http://localhost:5001/swagger`
+
+### 2. Frontend
 
 ```bash
+cd C:\Users\smbmontalvo\Downloads\Fronted
+npm install
+cp .env.example .env.development   # o copia manual en Windows
 npm run dev
 ```
 
-Abre la URL que muestra Vite (por defecto `http://localhost:5173`).
+App: `http://localhost:5173`
 
-## Producción
+En desarrollo, las peticiones van al mismo origen (`localhost:5173`) y **Vite las reenvía** al backend en `:5001` (ver `vite.config.js`).
 
-```bash
-npm run build
-npm run preview   # sirve la carpeta dist localmente
-```
+### 3. Probar login
+
+| Rol | Email | Contraseña |
+|-----|-------|------------|
+| Admin | `admin@buildingfex.test` | `admin123` |
+| Residente | `giuseppevillanueva15@gmail.com` | `naruto15` |
 
 ## Variables de entorno
 
-Copia `.env.example` a `.env` y ajusta los valores:
+| Variable | Desarrollo | Producción |
+|----------|------------|------------|
+| `VITE_API_BASE_URL` | Vacío (usa proxy Vite) | URL pública de BuildingFex.Api |
+| `VITE_API_PROXY_TARGET` | `http://localhost:5001` (opcional) | — |
 
-| Variable | Descripción |
-|----------|-------------|
-| `VITE_WEB_APP_URL` | URL base de la aplicación web (sin barra final). Enlaces del hero y CTAs. |
-| `VITE_YOUTUBE_PRODUCT_ID` | ID de YouTube para el vídeo de producto (opcional). |
-| `VITE_YOUTUBE_TEAM_ID` | ID de YouTube para el vídeo del equipo (opcional). |
-| `VITE_DEVELOPER_URL` | URL opcional para el enlace “Desarrollado por” en el pie. |
+Copia `.env.example` → `.env.development` y ajusta `.env.production` antes de `npm run build`.
 
-## Estructura del código
+## Arquitectura API
 
-El código de la landing vive bajo `src/marketing/`, organizado por capas (dominio, aplicación, infraestructura y presentación).
+- `src/shared/infrastructure/api/apiClient.js` — axios + JWT (`Authorization: Bearer`)
+- `src/iam/infrastructure/authApi.js` — `POST /api/v1/authentication/sign-in` y `register-admin`
+- Módulos `*Api.js` por bounded context — rutas compat (`/users`, `/incidents`, `/receipts`, …)
+
+## Scripts
+
+| Comando | Descripción |
+|---------|-------------|
+| `npm run dev` | Vite dev server (proxy → API :5001) |
+| `npm run build` | Build de producción |
+| `npm run preview` | Sirve `dist/` localmente |
+| `npm run mock:server` | json-server legacy (solo referencia, no usar en flujo normal) |
+
+## Producción
+
+1. Despliega **BuildingFex.Api** y anota su URL.
+2. En `.env.production`: `VITE_API_BASE_URL=https://tu-api.example.com`
+3. `npm run build` y publica `dist/`.
 
 ## Licencia
 
 Privado — BuildingFex.
-
-actualizar 
-git fecht 
-
-git checkout nonbrederama
-
-git branch 
-
-nonbrederama
-
-git add .
-git commit -m "mensaje"
-git push 

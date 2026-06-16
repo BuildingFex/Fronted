@@ -1,11 +1,12 @@
 import axios from 'axios'
 import { API_BASE_URL } from '@/shared/infrastructure/envConfig.js'
+import { getAccessToken } from '@/iam/application/sessionStore.js'
 
 /**
- * Centralized axios instance pointing at the json-server backend.
+ * Centralized axios instance pointing at the BuildingFex API.
  *
  * Errors are normalized so the rest of the app can branch on `error.code`
- * (e.g. 'NETWORK_ERROR', 'TIMEOUT', or any HTTP-derived code such as 'HTTP_404').
+ * (e.g. 'NETWORK_ERROR', 'TIMEOUT', 'EMAIL_NOT_FOUND', or 'HTTP_404').
  */
 export const apiClient = axios.create({
   baseURL: API_BASE_URL,
@@ -14,6 +15,14 @@ export const apiClient = axios.create({
     'Content-Type': 'application/json',
     Accept: 'application/json',
   },
+})
+
+apiClient.interceptors.request.use((config) => {
+  const token = getAccessToken()
+  if (token) {
+    config.headers.Authorization = `Bearer ${token}`
+  }
+  return config
 })
 
 apiClient.interceptors.response.use(
@@ -31,10 +40,16 @@ apiClient.interceptors.response.use(
       return Promise.reject(networkError)
     }
 
-    const httpError = new Error(`HTTP_${error.response.status}`)
-    httpError.code = `HTTP_${error.response.status}`
+    const payload = error.response.data
+    const apiCode =
+      payload && typeof payload === 'object' && typeof payload.code === 'string'
+        ? payload.code
+        : null
+
+    const httpError = new Error(apiCode ?? `HTTP_${error.response.status}`)
+    httpError.code = apiCode ?? `HTTP_${error.response.status}`
     httpError.status = error.response.status
-    httpError.payload = error.response.data
+    httpError.payload = payload
     return Promise.reject(httpError)
   },
 )

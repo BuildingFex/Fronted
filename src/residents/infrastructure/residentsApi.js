@@ -2,15 +2,14 @@ import { apiClient } from '@/shared/infrastructure/api/apiClient.js'
 import { reservationsApi } from '@/socialSpaces/infrastructure/reservationsApi.js'
 import { withOwnerParams } from '@/shared/infrastructure/api/ownerQuery.js'
 import { getActiveDataOwnerId } from '@/shared/infrastructure/api/ownerTenant.js'
+import { authApi } from '@/iam/infrastructure/authApi.js'
 import {
   apiError,
-  createSessionToken,
   findResidentByCode,
   findUserByEmail,
   normalizeCode,
   normalizeEmail,
   publicResident,
-  publicUser,
 } from '@/shared/infrastructure/api/utils.js'
 import { getResidentLimitForActiveOwner } from '@/shared/infrastructure/subscriptionPlanStorage.js'
 
@@ -159,17 +158,11 @@ export const residentsApi = {
       throw apiError('EMAIL_ALREADY_EXISTS')
     }
 
-    const { data: updated } = await apiClient.patch(
-      `/users/${encodeURIComponent(resident.id)}`,
-      {
-        email: cleanEmail,
-        password: cleanPassword,
-      },
-    )
+    await apiClient.patch(`/users/${encodeURIComponent(resident.id)}`, {
+      email: cleanEmail,
+      password: cleanPassword,
+    })
 
-    return {
-      user: publicUser(updated),
-      token: createSessionToken(updated.id),
-    }
+    return authApi.login({ email: cleanEmail, password: cleanPassword })
   },
 }

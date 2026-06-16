@@ -45,7 +45,7 @@ export function useResidentPaymentStore() {
           delete realFee.id
           realFee.status = 'Pagado'
           
-          // Disparamos la creación sin hacer await inmediatamente para mitigar el reinicio de json-server
+          // Fire-and-forget; UI already reflects the paid status locally
           financesApi.addFee(realFee).catch(() => {})
           fee.status = 'Pagado'
         } else {

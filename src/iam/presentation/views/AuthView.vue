@@ -54,10 +54,13 @@ watchEffect(async () => {
     inviteResident.value = await residentsApi.findByCode(inviteCode.value)
   } catch (error) {
     inviteResident.value = null
-    inviteFetchError.value =
-      error?.code === 'RESIDENT_NOT_FOUND'
-        ? t('auth.inviteNotFound')
-        : t('auth.genericError')
+    if (error?.code === 'RESIDENT_NOT_FOUND') {
+      inviteFetchError.value = t('auth.inviteNotFound')
+    } else if (error?.code === 'NETWORK_ERROR' || error?.code === 'TIMEOUT') {
+      inviteFetchError.value = t('auth.apiUnavailable')
+    } else {
+      inviteFetchError.value = t('auth.genericError')
+    }
   } finally {
     inviteLoading.value = false
   }
@@ -87,21 +90,28 @@ async function onResidentCredentialsSubmit() {
 
   residentLoading.value = true
   try {
-    const { user } = await residentsApi.setCredentials({
+    const { user, token } = await residentsApi.setCredentials({
       code: inviteCode.value,
       email,
       password,
     })
-    setResidentSession({
-      id: user.id,
-      name: user.name,
-      floor: user.floor,
-      code: user.code,
-      email: user.email,
-      ownerAdminId: user.ownerAdminId ?? null,
-    })
+    setResidentSession(
+      {
+        id: user.id,
+        name: user.name,
+        floor: user.floor,
+        code: user.code,
+        email: user.email,
+        ownerAdminId: user.ownerAdminId ?? null,
+      },
+      token,
+    )
     navigateAfterAuth({ name: AppRouteNames.APP_RESIDENT_DASHBOARD })
   } catch (error) {
+    if (error?.code === 'NETWORK_ERROR' || error?.code === 'TIMEOUT') {
+      residentError.value = t('auth.apiUnavailable')
+      return
+    }
     if (error?.code === 'EMAIL_ALREADY_EXISTS') {
       residentError.value = t('auth.emailAlreadyExists')
       return
@@ -139,17 +149,7 @@ async function onLoginContinue() {
     loginEmailError.value = t('auth.emailInvalid')
     return
   }
-  loginLoading.value = true
-  try {
-    const exists = await authApi.isEmailRegistered(raw)
-    if (!exists) {
-      loginEmailError.value = t('auth.emailNotRegistered')
-      return
-    }
-    loginStep.value = 2
-  } finally {
-    loginLoading.value = false
-  }
+  loginStep.value = 2
 }
 
 async function handleLoginSubmit() {
@@ -165,30 +165,40 @@ async function onLoginSubmit() {
   loginLoading.value = true
   loginEmailError.value = ''
   try {
-    const { user } = await authApi.login({
+    const { user, token } = await authApi.login({
       email: loginEmail.value,
       password: loginPassword.value,
     })
 
     if (user.role === 'resident') {
-      setResidentSession({
-        id: user.id,
-        name: user.name,
-        floor: user.floor,
-        code: user.code,
-        email: user.email,
-        ownerAdminId: user.ownerAdminId ?? null,
-      })
+      setResidentSession(
+        {
+          id: user.id,
+          name: user.name,
+          floor: user.floor,
+          code: user.code,
+          email: user.email,
+          ownerAdminId: user.ownerAdminId ?? null,
+        },
+        token,
+      )
       navigateAfterAuth({ name: AppRouteNames.APP_RESIDENT_DASHBOARD })
     } else {
-      setAdminSession({
-        id: user.id,
-        name: user.name,
-        email: user.email,
-      })
+      setAdminSession(
+        {
+          id: user.id,
+          name: user.name,
+          email: user.email,
+        },
+        token,
+      )
       navigateAfterAuth({ name: AppRouteNames.APP_DASHBOARD })
     }
   } catch (error) {
+    if (error?.code === 'NETWORK_ERROR' || error?.code === 'TIMEOUT') {
+      loginEmailError.value = t('auth.apiUnavailable')
+      return
+    }
     if (error?.code === 'INVALID_PASSWORD') {
       loginEmailError.value = t('auth.passwordInvalid')
       return
@@ -210,7 +220,7 @@ async function onRegisterSubmit() {
   registerLoading.value = true
   registerError.value = ''
   try {
-    const { user } = await authApi.registerAdmin({
+    const { user, token } = await authApi.registerAdmin({
       name: regName.value,
       email: regEmail.value,
       password: regPassword.value,
@@ -219,15 +229,22 @@ async function onRegisterSubmit() {
       company: regCompany.value,
       ruc: regRuc.value,
     })
-    setAdminSession({
-      id: user.id,
-      name: user.name,
-      email: user.email,
-    })
+    setAdminSession(
+      {
+        id: user.id,
+        name: user.name,
+        email: user.email,
+      },
+      token,
+    )
     navigateAfterAuth({ name: AppRouteNames.APP_DASHBOARD })
   } catch (error) {
     if (error?.code === 'EMAIL_ALREADY_EXISTS') {
       registerError.value = t('auth.emailAlreadyExists')
+      return
+    }
+    if (error?.code === 'NETWORK_ERROR' || error?.code === 'TIMEOUT') {
+      registerError.value = t('auth.apiUnavailable')
       return
     }
     registerError.value = t('auth.genericError')

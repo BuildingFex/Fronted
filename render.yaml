@@ -1,5 +1,5 @@
 # Optional: New → Blueprint → Connect repo to create/update the static frontend.
-# Your json-server Web Service can stay as a separate manual service.
+# Set VITE_API_BASE_URL in the build environment to your BuildingFex.Api URL.
 services:
   - type: web
     name: fronted-spa
