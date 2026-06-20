@@ -1,3 +1,137 @@
 {
-  "rewrites": [{ "source": "/(.*)", "destination": "/index.html" }]
+  "rewrites": [
+    {
+      "source": "/api/:path*",
+      "destination": "https://backend-production-5e544.up.railway.app/api/:path*"
+    },
+    {
+      "source": "/users/:path*",
+      "destination": "https://backend-production-5e544.up.railway.app/users/:path*"
+    },
+    {
+      "source": "/users",
+      "destination": "https://backend-production-5e544.up.railway.app/users"
+    },
+    {
+      "source": "/incidents/:path*",
+      "destination": "https://backend-production-5e544.up.railway.app/incidents/:path*"
+    },
+    {
+      "source": "/incidents",
+      "destination": "https://backend-production-5e544.up.railway.app/incidents"
+    },
+    {
+      "source": "/announcements/:path*",
+      "destination": "https://backend-production-5e544.up.railway.app/announcements/:path*"
+    },
+    {
+      "source": "/announcements",
+      "destination": "https://backend-production-5e544.up.railway.app/announcements"
+    },
+    {
+      "source": "/socialSpaces/:path*",
+      "destination": "https://backend-production-5e544.up.railway.app/socialSpaces/:path*"
+    },
+    {
+      "source": "/socialSpaces",
+      "destination": "https://backend-production-5e544.up.railway.app/socialSpaces"
+    },
+    {
+      "source": "/reservations/:path*",
+      "destination": "https://backend-production-5e544.up.railway.app/reservations/:path*"
+    },
+    {
+      "source": "/reservations",
+      "destination": "https://backend-production-5e544.up.railway.app/reservations"
+    },
+    {
+      "source": "/receipts/:path*",
+      "destination": "https://backend-production-5e544.up.railway.app/receipts/:path*"
+    },
+    {
+      "source": "/receipts",
+      "destination": "https://backend-production-5e544.up.railway.app/receipts"
+    },
+    {
+      "source": "/payments/:path*",
+      "destination": "https://backend-production-5e544.up.railway.app/payments/:path*"
+    },
+    {
+      "source": "/payments",
+      "destination": "https://backend-production-5e544.up.railway.app/payments"
+    },
+    {
+      "source": "/fees/:path*",
+      "destination": "https://backend-production-5e544.up.railway.app/fees/:path*"
+    },
+    {
+      "source": "/fees",
+      "destination": "https://backend-production-5e544.up.railway.app/fees"
+    },
+    {
+      "source": "/financeSettings/:path*",
+      "destination": "https://backend-production-5e544.up.railway.app/financeSettings/:path*"
+    },
+    {
+      "source": "/financeSettings",
+      "destination": "https://backend-production-5e544.up.railway.app/financeSettings"
+    },
+    {
+      "source": "/kpi/:path*",
+      "destination": "https://backend-production-5e544.up.railway.app/kpi/:path*"
+    },
+    {
+      "source": "/kpi",
+      "destination": "https://backend-production-5e544.up.railway.app/kpi"
+    },
+    {
+      "source": "/adminManagementExpenses/:path*",
+      "destination": "https://backend-production-5e544.up.railway.app/adminManagementExpenses/:path*"
+    },
+    {
+      "source": "/adminManagementExpenses",
+      "destination": "https://backend-production-5e544.up.railway.app/adminManagementExpenses"
+    },
+    {
+      "source": "/sharedUtilityServices/:path*",
+      "destination": "https://backend-production-5e544.up.railway.app/sharedUtilityServices/:path*"
+    },
+    {
+      "source": "/sharedUtilityServices",
+      "destination": "https://backend-production-5e544.up.railway.app/sharedUtilityServices"
+    },
+    {
+      "source": "/fixedPayoutRecipients/:path*",
+      "destination": "https://backend-production-5e544.up.railway.app/fixedPayoutRecipients/:path*"
+    },
+    {
+      "source": "/fixedPayoutRecipients",
+      "destination": "https://backend-production-5e544.up.railway.app/fixedPayoutRecipients"
+    },
+    {
+      "source": "/teamWorkers/:path*",
+      "destination": "https://backend-production-5e544.up.railway.app/teamWorkers/:path*"
+    },
+    {
+      "source": "/teamWorkers",
+      "destination": "https://backend-production-5e544.up.railway.app/teamWorkers"
+    },
+    {
+      "source": "/importUploads/:path*",
+      "destination": "https://backend-production-5e544.up.railway.app/importUploads/:path*"
+    },
+    {
+      "source": "/importUploads",
+      "destination": "https://backend-production-5e544.up.railway.app/importUploads"
+    },
+    {
+      "source": "/supportChats/:path*",
+      "destination": "https://backend-production-5e544.up.railway.app/supportChats/:path*"
+    },
+    {
+      "source": "/supportChats",
+      "destination": "https://backend-production-5e544.up.railway.app/supportChats"
+    },
+    { "source": "/(.*)", "destination": "/index.html" }
+  ]
 }

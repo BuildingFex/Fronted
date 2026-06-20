@@ -1,28 +1,49 @@
-/**
- * Base URL of the BuildingFex API (no trailing slash).
- *
- * Development: uses Vite proxy (empty base URL) → http://localhost:5001.
- * Do not use https://localhost:7001 in the browser (self-signed cert → NETWORK_ERROR).
- */
-function resolveApiBaseUrl() {
-  const configured = String(import.meta.env.VITE_API_BASE_URL ?? '').trim()
+/** Default deployed API (use in VITE_API_BASE_URL on hosts without API rewrites). */
+export const DEFAULT_PRODUCTION_API_URL =
+  'https://backend-production-5e544.up.railway.app'
 
-  if (import.meta.env.DEV) {
-    if (
-      !configured ||
-      configured.includes('localhost:7001') ||
-      configured.startsWith('https://localhost')
-    ) {
-      return ''
-    }
-    return configured.replace(/\/$/, '')
+/**
+ * Ensures the API base URL is absolute. Hostnames without a scheme (common in
+ * Vercel env vars) would otherwise be treated as relative paths on the
+ * frontend origin → POST /api/... returns 405 from the static host.
+ */
+function normalizeApiBaseUrl(raw) {
+  let base = String(raw ?? '').trim()
+  if (!base) return ''
+
+  if (!/^https?:\/\//i.test(base) && /[a-z0-9.-]+\.[a-z]{2,}/i.test(base)) {
+    base = `https://${base.replace(/^\/+/, '')}`
   }
 
-  let base = configured || 'http://localhost:5001'
   if (base.includes('localhost:7001')) {
     base = 'http://localhost:5001'
   }
+
+  if (import.meta.env.DEV && base.startsWith('https://localhost')) {
+    return ''
+  }
+
   return base.replace(/\/$/, '')
+}
+
+/**
+ * Base URL of the BuildingFex API (no trailing slash).
+ *
+ * Development: empty → Vite proxy (see VITE_API_PROXY_TARGET).
+ * Production: empty → same-origin; Vercel rewrites in vercel.json proxy to Railway.
+ * Production: set VITE_API_BASE_URL=https://... when the host has no API rewrites.
+ */
+function resolveApiBaseUrl() {
+  const configured = normalizeApiBaseUrl(import.meta.env.VITE_API_BASE_URL)
+
+  if (import.meta.env.DEV) {
+    if (!configured || configured.startsWith('https://localhost')) {
+      return ''
+    }
+    return configured
+  }
+
+  return configured
 }
 
 export const API_BASE_URL = resolveApiBaseUrl()
