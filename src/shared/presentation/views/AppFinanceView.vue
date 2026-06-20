@@ -2,6 +2,7 @@
 import { onMounted, ref, computed } from 'vue'
 import { useI18n } from 'vue-i18n'
 import Button from 'primevue/button'
+import InputNumber from 'primevue/inputnumber'
 import DataTable from 'primevue/datatable'
 import Column from 'primevue/column'
 import Dropdown from 'primevue/dropdown'
@@ -24,13 +25,41 @@ const nfPen = computed(() => (value) => {
 const uiState = ref({
   isGenerating: false,
   isCronRunning: false,
-  isLoaded: false
+  isLoaded: false,
+  isSaving: false,
+})
+
+const editSettings = ref({
+  baseMonthlyExpense: 0,
+  lateFeeRate: 0,
+  lateFeeRateDisplay: 0,
 })
 
 onMounted(async () => {
   await store.loadData()
+  editSettings.value = {
+    baseMonthlyExpense: store.state.settings?.baseMonthlyExpense ?? 150,
+    lateFeeRate: store.state.settings?.lateFeeRate ?? 0.05,
+    lateFeeRateDisplay: Math.round((store.state.settings?.lateFeeRate ?? 0.05) * 100),
+  }
   uiState.value.isLoaded = true
 })
+
+const handleSaveSettings = async () => {
+  if (uiState.value.isSaving) return
+  uiState.value.isSaving = true
+  try {
+    await store.updateSettings({
+      baseMonthlyExpense: editSettings.value.baseMonthlyExpense,
+      lateFeeRate: editSettings.value.lateFeeRateDisplay / 100,
+    })
+    alert(t('financeAdmin.settingsSaved'))
+  } catch (e) {
+    alert(e.message)
+  } finally {
+    uiState.value.isSaving = false
+  }
+}
 
 const handleGenerateReceipts = async () => {
   if(uiState.value.isGenerating) return;
@@ -200,6 +229,50 @@ const getStatusBadgeClass = (status) => {
           @click="handleSimulateCron"
         />
       </div>
+
+      <section class="finance-panel finance-panel--settings import-panel" aria-labelledby="finance-settings-heading">
+        <h2 id="finance-settings-heading" class="finance-panel__section-title">
+          {{ t('financeAdmin.settingsTitle') }}
+        </h2>
+        <div class="settings-form">
+          <div class="settings-field">
+            <label for="baseMonthlyExpense">{{ t('financeAdmin.baseMonthlyExpense') }}</label>
+            <InputNumber
+              id="baseMonthlyExpense"
+              v-model="editSettings.baseMonthlyExpense"
+              :minFractionDigits="2"
+              :maxFractionDigits="2"
+              :min="0"
+              mode="currency"
+              currency="PEN"
+              locale="es-PE"
+              class="settings-input"
+            />
+          </div>
+          <div class="settings-field">
+            <label for="lateFeeRate">{{ t('financeAdmin.lateFeeRate') }}</label>
+            <InputNumber
+              id="lateFeeRate"
+              v-model="editSettings.lateFeeRateDisplay"
+              :minFractionDigits="0"
+              :maxFractionDigits="2"
+              :min="0"
+              :max="100"
+              suffix="%"
+              class="settings-input"
+            />
+          </div>
+          <Button
+            type="button"
+            rounded
+            severity="primary"
+            :label="t('financeAdmin.saveSettings')"
+            :loading="uiState.isSaving"
+            class="settings-save-btn"
+            @click="handleSaveSettings"
+          />
+        </div>
+      </section>
 
       <div class="finance-main-row">
         <section
@@ -430,6 +503,10 @@ const getStatusBadgeClass = (status) => {
 }
 
 .finance-panel--calendar {
+  background: #fafafa;
+}
+
+.finance-panel--settings {
   background: #fafafa;
 }
 
@@ -823,5 +900,48 @@ const getStatusBadgeClass = (status) => {
 
 .finance-loading__text {
   text-align: center;
+}
+
+.settings-form {
+  display: flex;
+  flex-wrap: wrap;
+  align-items: flex-end;
+  gap: 1rem;
+  margin-top: 0.75rem;
+}
+
+.settings-field {
+  display: flex;
+  flex-direction: column;
+  gap: 0.35rem;
+  min-width: 10rem;
+}
+
+.settings-field label {
+  font-size: 0.75rem;
+  font-weight: 600;
+  color: var(--apple-text-secondary, #6e6e73);
+  text-transform: uppercase;
+  letter-spacing: 0.04em;
+}
+
+.settings-input :deep(.p-inputnumber-input) {
+  border-radius: 10px;
+  border: 1px solid #d2d2d7;
+  font-size: 0.875rem;
+  padding: 0.5rem 0.75rem;
+}
+
+.settings-input :deep(.p-inputnumber:not(.p-disabled):hover .p-inputnumber-input) {
+  border-color: rgba(0, 0, 0, 0.14);
+}
+
+.settings-input :deep(.p-inputnumber.p-inputnumber-focus .p-inputnumber-input) {
+  border-color: #0a84ff;
+  box-shadow: 0 0 0 3px rgba(10, 132, 255, 0.18);
+}
+
+.settings-save-btn {
+  margin-left: auto;
 }
 </style>

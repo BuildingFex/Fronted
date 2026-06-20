@@ -333,7 +333,12 @@
     "statusPaid": "Pagado",
     "statusOverdue": "En Mora",
     "allFloors": "Todos los pisos",
-    "filterFloorAria": "Filtrar historial de pagos por piso"
+    "filterFloorAria": "Filtrar historial de pagos por piso",
+    "settingsTitle": "Configuración de Cobros",
+    "baseMonthlyExpense": "Cuota Mensual (S/)",
+    "lateFeeRate": "Tasa de Mora (%)",
+    "saveSettings": "Guardar Configuración",
+    "settingsSaved": "Configuración guardada correctamente"
   },
   "teamMgmt": {
     "addWorker": "Agregar trabajador",

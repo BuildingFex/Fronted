@@ -150,15 +150,32 @@ async function onLoginContinue() {
     return
   }
   loginStep.value = 2
+  loginLoading.value = true
+  try {
+    const exists = await authApi.isEmailRegistered(raw)
+    if (!exists) {
+      loginEmailError.value = t('auth.emailNotRegistered')
+      return
+    }
+    loginStep.value = 2
+  } catch (e) {
+    loginEmailError.value = e?.message || t('auth.genericError')
+  } finally {
+    loginLoading.value = false
+  }
 }
 
 async function handleLoginSubmit() {
   if (loginLoading.value) return
-  if (loginStep.value === 1) {
-    await onLoginContinue()
-    return
+  try {
+    if (loginStep.value === 1) {
+      await onLoginContinue()
+      return
+    }
+    await onLoginSubmit()
+  } catch (e) {
+    loginEmailError.value = e?.message || t('auth.genericError')
   }
-  await onLoginSubmit()
 }
 
 async function onLoginSubmit() {
@@ -192,6 +209,21 @@ async function onLoginSubmit() {
         },
         token,
       )
+      setResidentSession({
+        id: user.id,
+        name: user.name,
+        floor: user.floor,
+        code: user.code,
+        email: user.email,
+        ownerAdminId: user.ownerAdminId ?? null,
+      }, token)
+      navigateAfterAuth({ name: AppRouteNames.APP_RESIDENT_DASHBOARD })
+    } else {
+      setAdminSession({
+        id: user.id,
+        name: user.name,
+        email: user.email,
+      }, token)
       navigateAfterAuth({ name: AppRouteNames.APP_DASHBOARD })
     }
   } catch (error) {
@@ -237,6 +269,11 @@ async function onRegisterSubmit() {
       },
       token,
     )
+    setAdminSession({
+      id: user.id,
+      name: user.name,
+      email: user.email,
+    }, token)
     navigateAfterAuth({ name: AppRouteNames.APP_DASHBOARD })
   } catch (error) {
     if (error?.code === 'EMAIL_ALREADY_EXISTS') {

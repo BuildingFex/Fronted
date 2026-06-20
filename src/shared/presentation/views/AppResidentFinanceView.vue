@@ -133,7 +133,7 @@ async function handleBricksPayment(cardFormData) {
       ...cardFormData,
       transaction_amount: pendingTotal.value,
     })
-    recordSuccessfulPayment(result)
+    await recordSuccessfulPayment(result)
   } catch {
     toast.add({ severity: 'error', summary: t('residentFinance.paymentErrorTitle'), detail: t('residentFinance.paymentErrorDetail'), life: 4000 })
   } finally {
@@ -144,14 +144,17 @@ async function handleBricksPayment(cardFormData) {
 async function confirmFallbackPayment() {
   isProcessing.value = true
   try {
-    const result = await processCardPayment({
-      token: 'DEMO-TOKEN',
-      payment_method_id: 'visa',
+    // In demo mode, we record the payment directly through the store
+    // instead of calling the MercadoPago API endpoint
+    const demoResult = {
+      id: `DEMO-${Date.now()}`,
+      status: 'approved',
+      status_detail: 'accredited',
       transaction_amount: pendingTotal.value,
-      installments: 1,
-      payer: { email: profile.value.email || 'demo@buildingfex.com' },
-    })
-    recordSuccessfulPayment(result)
+      payment_method_id: 'visa',
+      date_approved: new Date().toISOString(),
+    }
+    await recordSuccessfulPayment(demoResult)
   } catch {
     toast.add({ severity: 'error', summary: t('residentFinance.paymentErrorTitle'), detail: t('residentFinance.paymentErrorDetail'), life: 4000 })
   } finally {

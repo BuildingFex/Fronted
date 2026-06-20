@@ -34,6 +34,10 @@ export function getActiveDataOwnerId() {
   return null
 }
 
+export function getSessionToken() {
+  return state.token
+}
+
 function loadInitialSession() {
   if (typeof window === 'undefined') {
     return { role: null, profile: null, token: null }

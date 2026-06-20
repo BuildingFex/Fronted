@@ -170,4 +170,12 @@ export const financesApi = {
     const { data } = await apiClient.get('/kpi', { params: withOwnerParams() })
     return data
   },
+
+  async updateSettings(settings) {
+    const { data } = await apiClient.patch('/financeSettings', settings, { params: withOwnerParams() })
+    return {
+      baseMonthlyExpense: data.baseMonthlyExpense ?? 150,
+      lateFeeRate: data.lateFeeRate ?? 0.05,
+    }
+  },
 }

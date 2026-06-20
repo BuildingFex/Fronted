@@ -152,271 +152,307 @@ const chartOptions = ref({
 
 <template>
   <div class="app-view">
-    <h1 class="app-view__title">{{ t('dashboard.title') }}</h1>
-    <p class="app-view__subtitle">{{ t('dashboard.subtitle') }}</p>
+    <div class="page-header">
+      <h1 class="page-title">{{ t('dashboard.title') }}</h1>
+      <p class="page-subtitle">{{ t('dashboard.subtitle') }}</p>
+    </div>
 
     <div class="finance-page">
-      <section class="finance-panel import-panel" aria-labelledby="dashboard-kpi-heading">
-        <h2 id="dashboard-kpi-heading" class="finance-panel__section-title">
+      <section class="finance-panel" aria-labelledby="dashboard-kpi-heading">
+        <h2 id="dashboard-kpi-heading" class="finance-panel__section-title mb-4">
           {{ t('dashboard.financialOverview') }}
         </h2>
-        <div class="dashboard-kpi-grid">
-          <div class="dashboard-kpi">
-            <span class="dashboard-kpi__label">{{ t('dashboard.totalResidents') }}</span>
-            <strong class="dashboard-kpi__value">{{ isLoading ? '…' : kpi.totalResidents }}</strong>
+        
+        <!-- Premium KPI Grid -->
+        <div class="kpi-grid custom-scrollbar">
+          <!-- Card 1: Total Residents -->
+          <div class="kpi-card">
+            <div class="kpi-header">
+              <div class="kpi-icon icon-blue">
+                <i class="pi pi-users" aria-hidden="true"></i>
+              </div>
+              <span class="kpi-label">{{ t('dashboard.totalResidents') }}</span>
+            </div>
+            <div class="kpi-value">{{ isLoading ? '…' : kpi.totalResidents }}</div>
+            <span class="kpi-subtext">
+              <i class="pi pi-verified" aria-hidden="true"></i> Usuarios registrados
+            </span>
           </div>
-          <div class="dashboard-kpi">
-            <span class="dashboard-kpi__label">{{ t('dashboard.occupiedUnits') }}</span>
-            <strong class="dashboard-kpi__value">{{ isLoading ? '…' : kpi.occupiedUnits }}</strong>
+
+          <!-- Card 2: Occupied Units -->
+          <div class="kpi-card">
+            <div class="kpi-header">
+              <div class="kpi-icon icon-green">
+                <i class="pi pi-building" aria-hidden="true"></i>
+              </div>
+              <span class="kpi-label">{{ t('dashboard.occupiedUnits') }}</span>
+            </div>
+            <div class="kpi-value">{{ isLoading ? '…' : kpi.occupiedUnits }}</div>
+            <span class="kpi-subtext">
+              <i class="pi pi-check-circle" aria-hidden="true"></i> Departamentos activos
+            </span>
           </div>
-          <div class="dashboard-kpi">
-            <span class="dashboard-kpi__label">{{ t('dashboard.emptyUnits') }}</span>
-            <strong class="dashboard-kpi__value">{{ isLoading ? '…' : kpi.emptyUnits }}</strong>
+
+          <!-- Card 3: Empty Units -->
+          <div class="kpi-card">
+            <div class="kpi-header">
+              <div class="kpi-icon icon-orange">
+                <i class="pi pi-home" aria-hidden="true"></i>
+              </div>
+              <span class="kpi-label">{{ t('dashboard.emptyUnits') }}</span>
+            </div>
+            <div class="kpi-value">{{ isLoading ? '…' : kpi.emptyUnits }}</div>
+            <span class="kpi-subtext">
+              <i class="pi pi-info-circle" aria-hidden="true"></i> Disponibles
+            </span>
           </div>
-          <div class="dashboard-kpi dashboard-kpi--debt">
-            <span class="dashboard-kpi__label">{{ t('dashboard.criticalDelinquency') }}</span>
-            <strong class="dashboard-kpi__value dashboard-kpi__value--debt">{{
-              isLoading ? '…' : nfPen(kpi.totalDebt)
-            }}</strong>
+
+          <!-- Card 4: Critical Delinquency -->
+          <div class="kpi-card card-danger">
+            <div class="kpi-header">
+              <div class="kpi-icon icon-red">
+                <i class="pi pi-exclamation-triangle" aria-hidden="true"></i>
+              </div>
+              <span class="kpi-label">{{ t('dashboard.criticalDelinquency') }}</span>
+            </div>
+            <div class="kpi-value text-red">{{ isLoading ? '…' : nfPen(kpi.totalDebt) }}</div>
+            <span class="kpi-subtext subtext-red">
+              <i class="pi pi-arrow-up" aria-hidden="true"></i> Deuda acumulada
+            </span>
           </div>
         </div>
       </section>
 
-      <section
-        class="finance-panel finance-panel--table import-panel"
-        aria-labelledby="dashboard-incidents-heading"
-      >
-        <h2 id="dashboard-incidents-heading" class="finance-panel__section-title">
-          {{ t('dashboard.recentIncidents') }}
-        </h2>
-        <DataTable
-          :value="recentIncidents"
-          responsiveLayout="scroll"
-          :loading="isLoading"
-          class="finance-data finance-table"
-        >
-          <Column field="description" :header="t('app.incidentDescription')" />
-          <Column field="residentName" :header="t('app.incidentResidentName')" />
-          <Column :header="t('app.incidentDate')">
-            <template #body="{ data }">
-              <span class="finance-date-cell">{{ nfDate(data.createdAt) }}</span>
-            </template>
-          </Column>
-          <Column :header="t('dashboard.incidentStatus')">
-            <template #body="{ data }">
-              <Tag
-                class="dashboard-status-tag"
-                :value="incidentStatusLabel(data.status)"
-                :severity="incidentSeverity(data.status)"
-                rounded
-              />
-            </template>
-          </Column>
-        </DataTable>
-      </section>
+      <div class="grid-layout">
+        <!-- Incidents Table -->
+        <section class="finance-panel flex-1" aria-labelledby="dashboard-incidents-heading">
+          <h2 id="dashboard-incidents-heading" class="finance-panel__section-title mb-3">
+            {{ t('dashboard.recentIncidents') }}
+          </h2>
+          
+          <p v-if="!recentIncidents.length && !isLoading" class="text-center text-color-secondary my-5">
+            No hay incidentes reportados recientemente.
+          </p>
+          
+          <DataTable
+            v-else
+            :value="recentIncidents"
+            responsiveLayout="scroll"
+            :loading="isLoading"
+            class="premium-table"
+          >
+            <Column field="description" :header="t('app.incidentDescription')" />
+            <Column field="residentName" :header="t('app.incidentResidentName')">
+              <template #body="{ data }">
+                <span class="font-semibold">{{ data.residentName }}</span>
+              </template>
+            </Column>
+            <Column :header="t('app.incidentDate')">
+              <template #body="{ data }">
+                <span class="text-500">{{ nfDate(data.createdAt) }}</span>
+              </template>
+            </Column>
+            <Column :header="t('dashboard.incidentStatus')">
+              <template #body="{ data }">
+                <Tag
+                  class="px-3"
+                  :value="incidentStatusLabel(data.status)"
+                  :severity="incidentSeverity(data.status)"
+                  rounded
+                />
+              </template>
+            </Column>
+          </DataTable>
+        </section>
 
-      <section
-        class="finance-panel finance-panel--calendar import-panel chart-panel"
-        aria-labelledby="dashboard-chart-heading"
-      >
-        <h2 id="dashboard-chart-heading" class="finance-panel__section-title">
-          {{ t('dashboard.income') }} / {{ t('dashboard.expenses') }}
-        </h2>
-        <div class="dashboard-chart-wrap">
-          <Chart type="bar" :data="chartData" :options="chartOptions" class="dashboard-chart" />
-        </div>
-      </section>
+        <!-- Income/Expenses Chart -->
+        <section class="finance-panel flex-1" aria-labelledby="dashboard-chart-heading">
+          <h2 id="dashboard-chart-heading" class="finance-panel__section-title mb-3">
+            {{ t('dashboard.income') }} / {{ t('dashboard.expenses') }}
+          </h2>
+          <div class="dashboard-chart-wrap">
+            <Chart type="bar" :data="chartData" :options="chartOptions" class="dashboard-chart" />
+          </div>
+        </section>
+      </div>
     </div>
   </div>
 </template>
 
 <style scoped>
 .app-view {
-  padding: 1.75rem 1.5rem 2.5rem;
-  max-width: 72rem;
+  padding: 1.5rem;
+  max-width: 1200px;
+  margin: 0 auto;
 }
 
-.app-view__title {
-  margin: 0;
+/* Page Header */
+.page-header {
+  margin-bottom: 2rem;
+  display: flex;
+  flex-direction: column;
+  gap: 0.5rem;
+}
+.page-title {
   font-size: 1.75rem;
-  font-weight: 600;
-  letter-spacing: -0.035em;
-  line-height: 1.15;
-  color: var(--apple-text, #1d1d1f);
+  font-weight: 700;
+  margin: 0;
+  color: var(--surface-900);
+  letter-spacing: -0.02em;
 }
-
-.app-view__subtitle {
-  margin: 0.5rem 0 0;
-  max-width: 40rem;
-  font-size: 0.875rem;
-  font-weight: 400;
-  line-height: 1.45;
-  letter-spacing: -0.015em;
-  color: var(--apple-text-secondary, #6e6e73);
+.page-subtitle {
+  margin: 0;
+  font-size: 1.125rem;
+  color: var(--surface-500);
 }
 
 .finance-page {
-  margin-top: 1.5rem;
   display: flex;
   flex-direction: column;
-  gap: 1.25rem;
+  gap: 1.5rem;
 }
 
 .finance-panel {
-  padding: 1.2rem 1.25rem 1.35rem;
+  padding: 1.5rem;
   border-radius: 16px;
-  background: #fff;
-  border: 1px solid rgba(0, 0, 0, 0.06);
-  box-shadow: 0 1px 3px rgba(0, 0, 0, 0.03);
+  background: var(--surface-0, #ffffff);
+  border: 1px solid var(--surface-200, #e2e8f0);
+  box-shadow: 0 4px 15px rgba(0, 0, 0, 0.03);
 }
 
 .finance-panel__section-title {
-  margin: 0 0 0.5rem;
-  font-size: 1.0625rem;
+  margin: 0 0 1rem;
+  font-size: 1.125rem;
   font-weight: 600;
-  letter-spacing: -0.02em;
-  line-height: 1.25;
-  color: var(--apple-text, #1d1d1f);
+  color: var(--surface-900);
 }
 
-.finance-panel--calendar {
-  background: #fafafa;
+/* KPI GRID CSS */
+.kpi-grid {
+  display: flex;
+  flex-direction: row;
+  gap: 1.25rem;
+  overflow-x: auto;
+  padding-bottom: 0.5rem;
 }
 
-.finance-panel--table {
-  padding: 1.2rem 1.25rem 1.35rem;
-  overflow: hidden;
+.kpi-card {
+  flex: 1;
+  min-width: 250px;
+  background: var(--surface-0, #ffffff);
+  border: 1px solid var(--surface-200, #e2e8f0);
+  border-radius: 16px;
+  padding: 1.5rem;
+  box-shadow: 0 2px 10px rgba(0, 0, 0, 0.02);
+  display: flex;
+  flex-direction: column;
 }
 
-.import-panel .finance-table {
-  margin-top: 0.65rem;
+.kpi-header {
+  display: flex;
+  align-items: center;
+  margin-bottom: 1rem;
 }
 
-.chart-panel .dashboard-chart-wrap {
-  margin-top: 0.65rem;
-}
-
-.dashboard-kpi-grid {
-  display: grid;
-  grid-template-columns: repeat(auto-fill, minmax(10.5rem, 1fr));
-  gap: 0.75rem;
-}
-
-.dashboard-kpi {
-  padding: 0.75rem 0.85rem;
-  border-radius: 10px;
-  background: #fafafa;
-  border: 1px solid rgba(0, 0, 0, 0.06);
-}
-
-.dashboard-kpi--debt {
-  background: #fff5f5;
-  border-color: rgba(255, 59, 48, 0.18);
-}
-
-.dashboard-kpi__label {
-  display: block;
-  font-size: 0.6875rem;
-  font-weight: 600;
-  letter-spacing: 0.055em;
-  text-transform: uppercase;
-  color: #86868b;
-}
-
-.dashboard-kpi__value {
-  display: block;
-  margin-top: 0.35rem;
-  font-size: 1.375rem;
-  font-weight: 600;
-  letter-spacing: -0.03em;
-  font-variant-numeric: tabular-nums;
-  color: var(--apple-text, #1d1d1f);
-}
-
-.dashboard-kpi__value--debt {
-  color: #d70015;
-}
-
-.chart-panel {
-  width: 100%;
-}
-
-.finance-table {
-  margin-top: 0.15rem;
-}
-
-.finance-data :deep(.p-datatable) {
-  font-size: 0.875rem;
-  border: none;
+.kpi-icon {
+  width: 44px;
+  height: 44px;
   border-radius: 12px;
-  overflow: hidden;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  margin-right: 1rem;
+  font-size: 1.2rem;
 }
 
-.finance-data :deep(.p-datatable-wrapper) {
-  border-radius: 12px;
-}
+.icon-blue { background: #e0f2fe; color: #0284c7; }
+.icon-green { background: #dcfce7; color: #16a34a; }
+.icon-orange { background: #ffedd5; color: #ea580c; }
+.icon-red { background: #fee2e2; color: #dc2626; }
 
-.finance-data :deep(.p-datatable-header) {
-  background: transparent;
-  border: none;
-  padding: 0;
-}
-
-.finance-data :deep(.p-datatable-loading-overlay) {
-  background: rgba(255, 255, 255, 0.75);
-}
-
-.finance-data :deep(.p-datatable-thead > tr > th) {
-  background: rgba(0, 0, 0, 0.02);
-  color: #86868b;
-  font-weight: 600;
-  font-size: 0.6875rem;
-  text-transform: uppercase;
-  letter-spacing: 0.055em;
-  border: none;
-  border-bottom: 1px solid rgba(0, 0, 0, 0.06);
-  padding: 0.6rem 0.75rem;
-}
-
-.finance-data :deep(.p-datatable-tbody > tr) {
-  background: transparent;
-  transition: background 0.12s ease;
-}
-
-.finance-data :deep(.p-datatable-tbody > tr:hover) {
-  background: rgba(0, 0, 0, 0.02);
-}
-
-.finance-data :deep(.p-datatable-tbody > tr > td) {
-  border: none;
-  border-bottom: 1px solid rgba(0, 0, 0, 0.05);
-  padding: 0.7rem 0.75rem;
-  vertical-align: middle;
-  color: var(--apple-text, #1d1d1f);
-}
-
-.finance-data :deep(.p-datatable-tbody > tr:last-child > td) {
-  border-bottom: none;
-}
-
-.finance-date-cell {
+.kpi-label {
+  color: var(--surface-500, #64748b);
   font-weight: 500;
-  color: var(--apple-text, #1d1d1f);
+  font-size: 0.9rem;
 }
 
-.dashboard-status-tag :deep(.p-tag) {
-  border-radius: 980px;
-  font-size: 0.6875rem;
-  font-weight: 600;
-  letter-spacing: 0.03em;
-  padding: 0.3rem 0.65rem;
+.kpi-value {
+  color: var(--surface-900, #0f172a);
+  font-weight: 700;
+  font-size: 1.8rem;
+  margin-bottom: 0.5rem;
+}
+
+.kpi-subtext {
+  color: var(--surface-500, #64748b);
+  font-size: 0.8rem;
+  font-weight: 500;
+  display: flex;
+  align-items: center;
+  gap: 0.35rem;
+}
+
+.subtext-red { color: #dc2626; }
+.text-red { color: #dc2626 !important; }
+.card-danger { background: #fff5f5; border-color: #fecaca; }
+
+.custom-scrollbar::-webkit-scrollbar {
+  height: 6px;
+}
+.custom-scrollbar::-webkit-scrollbar-track {
+  background: transparent;
+}
+.custom-scrollbar::-webkit-scrollbar-thumb {
+  background-color: var(--surface-300);
+  border-radius: 10px;
+}
+
+.grid-layout {
+  display: flex;
+  flex-direction: column;
+  gap: 1.5rem;
+}
+@media (min-width: 1024px) {
+  .grid-layout {
+    flex-direction: row;
+  }
+}
+
+/* Premium DataTable Styling */
+.premium-table :deep(.p-datatable-header) {
+  background: transparent;
+  border: none;
+}
+.premium-table :deep(.p-datatable-thead > tr > th) {
+  background: transparent;
+  color: var(--surface-500);
+  font-weight: 500;
+  font-size: 0.85rem;
+  text-transform: capitalize;
+  border: none;
+  border-bottom: 1px solid var(--surface-200);
+  padding: 1rem;
+}
+.premium-table :deep(.p-datatable-tbody > tr) {
+  background: transparent;
+}
+.premium-table :deep(.p-datatable-tbody > tr:hover) {
+  background: var(--surface-50);
+}
+.premium-table :deep(.p-datatable-tbody > tr > td) {
+  border: none;
+  border-bottom: 1px solid var(--surface-100);
+  padding: 1rem;
+  vertical-align: middle;
+}
+.premium-table :deep(.p-datatable-wrapper) {
+  border-radius: 12px;
 }
 
 .dashboard-chart-wrap {
-  height: 280px;
+  height: 300px;
   position: relative;
 }
-
 .dashboard-chart {
   height: 100%;
 }

@@ -1,17 +1,20 @@
 /**
  * Mercado Pago Checkout Bricks integration service.
  *
- * In DEMO / sandbox mode the SDK is loaded but Bricks rendering is expected
- * to fail because no real Public Key is configured.  When that happens the
- * view falls back to a simulated card-payment form.
+ * This module connects to the ASP.NET Core backend endpoints:
+ *   - POST /api/v1/payments/preference  → creates a Checkout Pro preference
+ *   - POST /api/v1/payments/process     → processes card token from Bricks
+ *
+ * The backend in turn uses the official MercadoPago C# SDK to communicate
+ * with the MercadoPago API.
  *
  * To enable real Mercado Pago payments:
  *   1. Set VITE_MP_PUBLIC_KEY in your .env to your real TEST or PROD key.
- *   2. Implement a backend endpoint that creates a MercadoPago preference
- *      and returns the preferenceId (replace `createPaymentPreference`).
- *   3. Implement `processCardPayment` to call your backend with the
- *      card token that Bricks provides.
+ *   2. Ensure the backend has a valid AccessToken in appsettings.json.
  */
+
+import { apiClient } from '@/shared/infrastructure/api/apiClient.js'
+import { getActiveDataOwnerId } from '@/shared/infrastructure/api/ownerTenant.js'
 
 const MP_PUBLIC_KEY = import.meta.env.VITE_MP_PUBLIC_KEY || 'TEST-xxxxxxxx-xxxx-xxxx-xxxx-xxxxxxxxxxxx'
 
@@ -85,39 +88,49 @@ export async function renderCardPaymentBrick(container, { amount, onSubmit, onEr
 }
 
 /**
- * Simulate creating a MercadoPago payment preference (backend call).
+ * Create a MercadoPago payment preference via the backend.
  *
- * In production this should POST to your API which in turn calls the
- * MercadoPago Node SDK to create a preference and returns { preferenceId }.
+ * Calls POST /api/v1/payments/preference which uses the MercadoPago C# SDK
+ * to create a Checkout Pro preference and returns { preferenceId, initPoint }.
+ *
+ * @param {string|number} receiptId  The external ID of the receipt to pay.
+ * @returns {Promise<{preferenceId: string, initPoint: string|null}>}
  */
-export async function createPaymentPreference(/* feeId, amount */) {
-  // Simulated network delay
-  await new Promise((r) => setTimeout(r, 400))
+export async function createPaymentPreference(receiptId) {
+  const ownerId = getActiveDataOwnerId()
+  const { data } = await apiClient.post('/api/v1/payments/preference', {
+    receiptId: String(receiptId),
+    ...(ownerId ? { ownerAdminId: ownerId } : {}),
+  })
   return {
-    preferenceId: `DEMO-PREF-${Date.now()}`,
-    initPoint: null, // not used for Bricks
+    preferenceId: data.preferenceId,
+    initPoint: data.initPoint ?? null,
   }
 }
 
 /**
- * Simulate processing a card payment via the backend.
+ * Process a card payment via the backend using the card token from Bricks.
  *
- * In production this receives the card token from Bricks and sends it
- * to your backend, which calls MercadoPago's payment API.
+ * Calls POST /api/v1/payments/process which uses the MercadoPago C# SDK
+ * to create the actual payment and reconcile the receipt.
  *
  * @param {object} payload  { token, issuer_id, payment_method_id, transaction_amount, installments, payer }
- * @returns {Promise<object>} Simulated payment result.
+ * @param {string} [receiptId]  Optional receipt external ID to associate the payment.
+ * @returns {Promise<object>} Payment result with { id, status, status_detail, transaction_amount, payment_method_id, date_approved }.
  */
-export async function processCardPayment(payload) {
-  // Simulated processing delay
-  await new Promise((r) => setTimeout(r, 1500))
-
+export async function processCardPayment(payload, receiptId = null) {
+  const ownerId = getActiveDataOwnerId()
+  const { data } = await apiClient.post('/api/v1/payments/process', {
+    ...payload,
+    ...(receiptId ? { receiptId: String(receiptId) } : {}),
+    ...(ownerId ? { ownerAdminId: ownerId } : {}),
+  })
   return {
-    id: `MP-${Date.now()}`,
-    status: 'approved',
-    status_detail: 'accredited',
-    transaction_amount: payload.transaction_amount ?? payload.amount ?? 0,
-    payment_method_id: payload.payment_method_id ?? 'visa',
-    date_approved: new Date().toISOString(),
+    id: data.id,
+    status: data.status,
+    status_detail: data.status_detail,
+    transaction_amount: data.transaction_amount ?? payload.transaction_amount ?? payload.amount ?? 0,
+    payment_method_id: data.payment_method_id ?? payload.payment_method_id ?? 'visa',
+    date_approved: data.date_approved ?? new Date().toISOString(),
   }
 }
