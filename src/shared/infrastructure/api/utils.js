@@ -24,10 +24,6 @@ export function normalizeCode(code) {
   return String(code ?? '').trim()
 }
 
-export function createSessionToken(userId) {
-  return `fake-token-${userId}-${Date.now()}`
-}
-
 export function publicUser(user) {
   return {
     id: user.id,
@@ -47,7 +43,9 @@ export function publicResident(user) {
     floor: user.floor ?? '',
     code: user.code ?? '',
     email: user.email ?? '',
-    hasCredentials: Boolean(user.email && user.password),
+    hasCredentials:
+      user.hasCredentials === true ||
+      (user.hasCredentials !== false && Boolean(user.email && user.password)),
   }
 }
 

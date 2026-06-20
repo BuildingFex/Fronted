@@ -12,8 +12,14 @@ export function getSessionRole() {
   return state.role
 }
 
+/** JWT from the BuildingFex API (used by apiClient Authorization header). */
+export function getAccessToken() {
+  const token = state.token
+  return token != null && String(token).length ? String(token) : null
+}
+
 /**
- * json-server "tenant": admin id or (for resident login) the building admin id.
+ * Active data owner for multi-tenant API queries (admin account id).
  * Always derived from session state so it cannot drift from persisted profile.
  */
 export function getActiveDataOwnerId() {

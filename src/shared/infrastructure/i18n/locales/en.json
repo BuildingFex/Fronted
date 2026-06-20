@@ -284,6 +284,7 @@
     "passwordInvalid": "The password is incorrect.",
     "emailAlreadyExists": "An account with this email already exists.",
     "genericError": "Something went wrong. Please try again.",
+    "apiUnavailable": "Could not reach the API. Make sure BuildingFex.Api is running (http://localhost:5001) and restart the frontend.",
     "registerTitle": "Admin registration",
     "registerSubtitle": "Complete all fields to create the administrator account",
     "fullNamePlaceholder": "Full name",

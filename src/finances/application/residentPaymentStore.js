@@ -4,6 +4,7 @@ import { financesApi } from '@/finances/infrastructure/financesApi.js'
 const state = reactive({
   fees: [],
   paymentHistory: [],
+  settings: null,
   isLoading: false,
   error: null
 })
@@ -14,8 +15,14 @@ export function useResidentPaymentStore() {
     state.isLoading = true
     state.error = null
     try {
-      state.fees = await financesApi.getFees(residentId)
-      state.paymentHistory = await financesApi.getPayments(residentId)
+      const [fees, history, settings] = await Promise.all([
+        financesApi.getFees(residentId),
+        financesApi.getPayments(residentId),
+        financesApi.getSettings()
+      ])
+      state.fees = fees
+      state.paymentHistory = history
+      state.settings = settings
     } catch (err) {
       console.error(err)
       state.error = err.message || 'Failed to load finances data'
@@ -38,7 +45,7 @@ export function useResidentPaymentStore() {
           delete realFee.id
           realFee.status = 'Pagado'
           
-          // Disparamos la creación sin hacer await inmediatamente para mitigar el reinicio de json-server
+          // Fire-and-forget; UI already reflects the paid status locally
           financesApi.addFee(realFee).catch(() => {})
           fee.status = 'Pagado'
         } else {

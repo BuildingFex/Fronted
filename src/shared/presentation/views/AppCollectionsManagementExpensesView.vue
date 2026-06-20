@@ -452,7 +452,19 @@ onMounted(() => {
 
 <template>
   <div class="app-view">
-    <h1 class="app-view__title">{{ t('app.collectionsManagementExpenses') }}</h1>
+    <div class="header-with-actions">
+      <div>
+        <h1 class="app-view__title">{{ t('app.collectionsManagementExpenses') }}</h1>
+      </div>
+      <Button
+        icon="pi pi-refresh"
+        rounded
+        text
+        severity="secondary"
+        :loading="state.isLoading"
+        @click="loadData(); loadCosts(); loadSharedServices(); loadFixedRecipients();"
+      />
+    </div>
 
     <p v-if="state.isLoading" class="app-view__status">{{ t('collectionsMgmt.loading') }}</p>
     <p v-else-if="state.error" class="app-view__error" role="alert">
@@ -949,6 +961,13 @@ onMounted(() => {
 .app-view {
   padding: 1.75rem 1.5rem 2.5rem;
   max-width: 72rem;
+}
+
+.header-with-actions {
+  display: flex;
+  justify-content: space-between;
+  align-items: flex-start;
+  margin-bottom: 0.5rem;
 }
 
 .app-view__title {

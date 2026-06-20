@@ -1,11 +1,61 @@
 import { apiClient } from '@/shared/infrastructure/api/apiClient.js'
 import {
   apiError,
-  createSessionToken,
   findUserByEmail,
   normalizeEmail,
   publicUser,
 } from '@/shared/infrastructure/api/utils.js'
+
+const SIGN_IN_PATH = '/api/v1/authentication/sign-in'
+const REGISTER_ADMIN_PATH = '/api/v1/authentication/register-admin'
+
+function parseAuthResponse(data) {
+  if (!data || typeof data !== 'object') {
+    throw apiError('AUTH_ERROR', 'Invalid authentication response.')
+  }
+  const user = data.user ?? data.User
+  const token = data.token ?? data.Token
+  if (!user || typeof user !== 'object' || !token) {
+    throw apiError('AUTH_ERROR', 'Invalid authentication response.')
+  }
+  return { user: publicUser(user), token: String(token) }
+}
+
+function authHeaders(token) {
+  return { Authorization: `Bearer ${token}` }
+}
+
+async function seedAdminDefaults(ownerId, token) {
+  const headers = authHeaders(token)
+  try {
+    await apiClient.post(
+      '/financeSettings',
+      {
+        ownerAdminId: ownerId,
+        baseMonthlyExpense: 150,
+        lateFeeRate: 0.05,
+      },
+      { headers },
+    )
+  } catch {
+    // ignore seed failure (e.g. duplicate); admin can still open Finanzas
+  }
+  try {
+    await apiClient.post(
+      '/kpi',
+      {
+        ownerAdminId: ownerId,
+        totalResidents: 0,
+        occupiedUnits: 0,
+        emptyUnits: 0,
+        totalDebt: 0,
+      },
+      { headers },
+    )
+  } catch {
+    // ignore
+  }
+}
 
 /**
  * IAM (Identity & Access Management) bounded-context API.
@@ -22,6 +72,16 @@ export const authApi = {
 
   async login({ email, password }) {
     try {
+      const { data } = await apiClient.post(SIGN_IN_PATH, {
+        email: normalizeEmail(email),
+        password: String(password ?? ''),
+      })
+      return parseAuthResponse(data)
+    } catch (error) {
+      if (error?.code === 'EMAIL_NOT_FOUND' || error?.code === 'INVALID_PASSWORD') {
+        throw apiError(error.code, error.payload?.message)
+      }
+      throw error
       const { data } = await apiClient.post('/api/v1/authentication/sign-in', { email, password })
       return {
         user: publicUser(data.user),
@@ -37,66 +97,36 @@ export const authApi = {
 
   async registerAdmin(payload) {
     const normalizedEmail = normalizeEmail(payload.email)
-    const exists = await findUserByEmail(normalizedEmail)
-    if (exists) {
-      throw apiError('EMAIL_ALREADY_EXISTS')
-    }
-
-    const newUser = {
-      id: `admin-${Date.now()}`,
-      name: String(payload.name ?? '').trim(),
-      email: normalizedEmail,
-      password: String(payload.password ?? ''),
-      dni: String(payload.dni ?? '').trim(),
-      address: String(payload.address ?? '').trim(),
-      company: String(payload.company ?? '').trim(),
-      ruc: String(payload.ruc ?? '').trim(),
-      role: 'admin',
-    }
-
-    const { data: created } = await apiClient.post('/users', newUser)
-    const merged =
-      created && typeof created === 'object' ? { ...newUser, ...created } : { ...newUser }
-    const ownerId = merged.id
-
     try {
-      await apiClient.post('/financeSettings', {
-        ownerAdminId: ownerId,
-        baseMonthlyExpense: 150,
-        lateFeeRate: 0.05,
+      const { data } = await apiClient.post(REGISTER_ADMIN_PATH, {
+        name: String(payload.name ?? '').trim(),
+        email: normalizedEmail,
+        password: String(payload.password ?? ''),
+        dni: String(payload.dni ?? '').trim(),
+        address: String(payload.address ?? '').trim(),
+        company: String(payload.company ?? '').trim(),
+        ruc: String(payload.ruc ?? '').trim(),
       })
-    } catch {
-      // ignore seed failure (e.g. duplicate); admin can still open Finanzas
-    }
-    try {
-      await apiClient.post('/kpi', {
-        ownerAdminId: ownerId,
-        totalResidents: 0,
-        occupiedUnits: 0,
-        emptyUnits: 0,
-        totalDebt: 0,
-      })
-    } catch {
-      // ignore
-    }
-
-    return {
-      user: publicUser(merged),
-      token: createSessionToken(ownerId),
+      const { user, token } = parseAuthResponse(data)
+      await seedAdminDefaults(user.id, token)
+      return { user, token }
+    } catch (error) {
+      if (error?.code === 'EMAIL_ALREADY_EXISTS') {
+        throw apiError(error.code, error.payload?.message)
+      }
+      throw error
     }
   },
 
   /**
-   * Full user row for settings views (password stripped). Uses GET /users/:id.
+   * Full user row for settings views. Uses GET /users/:id.
    */
   async getProfileById(userId) {
     if (!userId) return null
     try {
       const { data } = await apiClient.get(`/users/${encodeURIComponent(userId)}`)
       if (!data || typeof data !== 'object') return null
-      // eslint-disable-next-line no-unused-vars -- strip secret
-      const { password, ...rest } = data
-      return rest
+      return data
     } catch {
       return null
     }
