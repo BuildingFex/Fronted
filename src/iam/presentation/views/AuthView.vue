@@ -209,21 +209,6 @@ async function onLoginSubmit() {
         },
         token,
       )
-      setResidentSession({
-        id: user.id,
-        name: user.name,
-        floor: user.floor,
-        code: user.code,
-        email: user.email,
-        ownerAdminId: user.ownerAdminId ?? null,
-      }, token)
-      navigateAfterAuth({ name: AppRouteNames.APP_RESIDENT_DASHBOARD })
-    } else {
-      setAdminSession({
-        id: user.id,
-        name: user.name,
-        email: user.email,
-      }, token)
       navigateAfterAuth({ name: AppRouteNames.APP_DASHBOARD })
     }
   } catch (error) {

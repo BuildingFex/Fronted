@@ -82,16 +82,6 @@ export const authApi = {
         throw apiError(error.code, error.payload?.message)
       }
       throw error
-      const { data } = await apiClient.post('/api/v1/authentication/sign-in', { email, password })
-      return {
-        user: publicUser(data.user),
-        token: data.token,
-      }
-    } catch (err) {
-      if (err.payload && err.payload.code) {
-        throw apiError(err.payload.code)
-      }
-      throw err
     }
   },
 

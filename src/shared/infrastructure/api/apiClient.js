@@ -21,16 +21,6 @@ apiClient.interceptors.request.use((config) => {
   const token = getAccessToken()
   if (token) {
     config.headers.Authorization = `Bearer ${token}`
-// Add JWT Authorization header
-apiClient.interceptors.request.use(async (config) => {
-  try {
-    const { getSessionToken } = await import('@/iam/application/sessionStore.js')
-    const token = getSessionToken()
-    if (token) {
-      config.headers.Authorization = `Bearer ${token}`
-    }
-  } catch {
-    // Ignore import errors
   }
   return config
 })
