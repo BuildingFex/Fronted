@@ -6,6 +6,7 @@ import Column from 'primevue/column'
 import Tag from 'primevue/tag'
 import Chart from 'primevue/chart'
 import { financesApi } from '@/finances/infrastructure/financesApi.js'
+import { adminManagementExpensesApi } from '@/finances/infrastructure/adminManagementExpensesApi.js'
 import { incidentsApi } from '@/incidents/infrastructure/incidentsApi.js'
 
 const { t, locale } = useI18n()
@@ -19,6 +20,7 @@ const kpi = ref({
 
 const recentIncidents = ref([])
 const isLoading = ref(true)
+const chartHasData = ref(false)
 
 const nfPen = computed(
   () => (value) =>
@@ -30,6 +32,110 @@ const nfPen = computed(
     }).format(Number.isFinite(Number(value)) ? Number(value) : 0),
 )
 
+function monthLabelFromKey(monthKey) {
+  const [year, month] = String(monthKey ?? '').split('-').map(Number)
+  if (!year || !month) return String(monthKey ?? '')
+  const loc = locale.value === 'es' ? 'es-PE' : 'en-US'
+  return new Intl.DateTimeFormat(loc, { month: 'short' }).format(new Date(year, month - 1, 1))
+}
+
+function buildChartFromMonthlyApi(monthlyChart) {
+  const rows = Array.isArray(monthlyChart) ? monthlyChart : []
+  const labels = rows.map((row) => monthLabelFromKey(row.monthKey))
+  const incomeData = rows.map((row) => Number(row.income) || 0)
+  const expenseData = rows.map((row) => Number(row.expenses) || 0)
+  const hasData = incomeData.some((v) => v > 0) || expenseData.some((v) => v > 0)
+  return { labels, incomeData, expenseData, hasData }
+}
+
+function monthKeyFromDate(date) {
+  return `${date.getFullYear()}-${String(date.getMonth() + 1).padStart(2, '0')}`
+}
+
+function monthKeyFromIso(value) {
+  const raw = String(value ?? '').trim()
+  return raw.length >= 7 ? raw.slice(0, 7) : ''
+}
+
+function buildChartFromTransactions(payments, expenses, receipts) {
+  const months = []
+  const now = new Date()
+  for (let i = 5; i >= 0; i -= 1) {
+    months.push(new Date(now.getFullYear(), now.getMonth() - i, 1))
+  }
+
+  const labels = months.map((m) => monthLabelFromKey(monthKeyFromDate(m)))
+
+  const incomeData = months.map((m) => {
+    const key = monthKeyFromDate(m)
+    const fromPayments = (payments ?? [])
+      .filter((p) => monthKeyFromIso(p.paidAt) === key)
+      .reduce((sum, p) => sum + Number(p.amount ?? 0), 0)
+    if (fromPayments > 0) return fromPayments
+    return (receipts ?? [])
+      .filter((r) => r.status === 'Paid' && monthKeyFromIso(r.issueDate) === key)
+      .reduce((sum, r) => sum + Number(r.amount ?? 0) + Number(r.lateFee ?? 0) + Number(r.extraCharges ?? 0), 0)
+  })
+
+  const expenseData = months.map((m) => {
+    const key = monthKeyFromDate(m)
+    return (expenses ?? [])
+      .filter((e) => monthKeyFromIso(e.purchaseDate) === key)
+      .reduce((sum, e) => sum + Number(e.amount ?? 0), 0)
+  })
+
+  const hasData = incomeData.some((v) => v > 0) || expenseData.some((v) => v > 0)
+  return { labels, incomeData, expenseData, hasData }
+}
+
+const chartData = ref({
+  labels: [],
+  datasets: [
+    {
+      label: t('dashboard.income'),
+      backgroundColor: 'rgba(52, 199, 89, 0.45)',
+      borderColor: '#34c759',
+      borderWidth: 1,
+      borderRadius: 6,
+      data: [],
+    },
+    {
+      label: t('dashboard.expenses'),
+      backgroundColor: 'rgba(255, 59, 48, 0.4)',
+      borderColor: '#ff3b30',
+      borderWidth: 1,
+      borderRadius: 6,
+      data: [],
+    },
+  ],
+})
+
+function applyChartData({ labels, incomeData, expenseData, hasData }) {
+  chartHasData.value = hasData
+  chartData.value = {
+    labels,
+    datasets: [
+      { ...chartData.value.datasets[0], label: t('dashboard.income'), data: incomeData },
+      { ...chartData.value.datasets[1], label: t('dashboard.expenses'), data: expenseData },
+    ],
+  }
+}
+
+async function loadAdminChart(kpiData) {
+  const fromApi = buildChartFromMonthlyApi(kpiData?.monthlyChart)
+  if (fromApi.hasData) {
+    applyChartData(fromApi)
+    return
+  }
+
+  const [payments, expenses, receipts] = await Promise.all([
+    financesApi.getAllPayments(),
+    adminManagementExpensesApi.list(),
+    financesApi.getReceipts(),
+  ])
+  applyChartData(buildChartFromTransactions(payments, expenses, receipts))
+}
+
 onMounted(async () => {
   try {
     const [kpiData, incidentsData] = await Promise.all([
@@ -37,18 +143,21 @@ onMounted(async () => {
       incidentsApi.list(),
     ])
 
-    if (kpiData && (Array.isArray(kpiData) ? kpiData[0] : kpiData)) {
-      const data = Array.isArray(kpiData) ? kpiData[0] : kpiData
+    if (kpiData && typeof kpiData === 'object') {
       kpi.value = {
-        totalResidents: data.totalResidents || 0,
-        occupiedUnits: data.occupiedUnits || 0,
-        emptyUnits: data.emptyUnits || 0,
-        totalDebt: data.totalDebt || 0,
+        totalResidents: Number(kpiData.totalResidents) || 0,
+        occupiedUnits: Number(kpiData.occupiedUnits) || 0,
+        emptyUnits: Number(kpiData.emptyUnits) || 0,
+        totalDebt: Number(kpiData.totalDebt ?? kpiData.totalPendingDebt) || 0,
       }
+
+      await loadAdminChart(kpiData)
     }
 
     if (Array.isArray(incidentsData)) {
-      recentIncidents.value = incidentsData.slice(0, 5)
+      recentIncidents.value = [...incidentsData]
+        .sort((a, b) => String(b.createdAt ?? '').localeCompare(String(a.createdAt ?? '')))
+        .slice(0, 5)
     }
   } catch (error) {
     console.error('Error loading dashboard data:', error)
@@ -94,28 +203,6 @@ const nfDate = computed(
   },
 )
 
-const chartData = ref({
-  labels: ['Dic', 'Ene', 'Feb', 'Mar', 'Abr', 'May'],
-  datasets: [
-    {
-      label: t('dashboard.income'),
-      backgroundColor: 'rgba(52, 199, 89, 0.45)',
-      borderColor: '#34c759',
-      borderWidth: 1,
-      borderRadius: 6,
-      data: [18500, 19200, 17800, 20100, 19800, 21000],
-    },
-    {
-      label: t('dashboard.expenses'),
-      backgroundColor: 'rgba(255, 59, 48, 0.4)',
-      borderColor: '#ff3b30',
-      borderWidth: 1,
-      borderRadius: 6,
-      data: [12400, 13100, 11800, 14200, 12900, 13600],
-    },
-  ],
-})
-
 const chartOptions = ref({
   responsive: true,
   maintainAspectRatio: false,
@@ -143,7 +230,7 @@ const chartOptions = ref({
       ticks: {
         font: { size: 11 },
         color: '#86868b',
-        callback: (v) => `S/ ${(v / 1000).toFixed(0)}k`,
+        callback: (v) => (v >= 1000 ? `S/ ${(v / 1000).toFixed(0)}k` : `S/ ${v}`),
       },
     },
   },
@@ -271,7 +358,16 @@ const chartOptions = ref({
             {{ t('dashboard.income') }} / {{ t('dashboard.expenses') }}
           </h2>
           <div class="dashboard-chart-wrap">
-            <Chart type="bar" :data="chartData" :options="chartOptions" class="dashboard-chart" />
+            <p v-if="!isLoading && !chartHasData" class="dashboard-chart-empty">
+              {{ t('dashboard.chartEmpty') }}
+            </p>
+            <Chart
+              v-else
+              type="bar"
+              :data="chartData"
+              :options="chartOptions"
+              class="dashboard-chart"
+            />
           </div>
         </section>
       </div>
@@ -452,6 +548,17 @@ const chartOptions = ref({
 .dashboard-chart-wrap {
   height: 300px;
   position: relative;
+}
+.dashboard-chart-empty {
+  margin: 0;
+  height: 100%;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  text-align: center;
+  color: var(--surface-500, #64748b);
+  font-size: 0.9375rem;
+  padding: 1rem;
 }
 .dashboard-chart {
   height: 100%;

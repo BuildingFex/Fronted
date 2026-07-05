@@ -24,12 +24,22 @@ export const incidentsApi = {
   },
 
   async update(id, incident) {
-    const ownerId = getActiveDataOwnerId()
+    const {
+      id: _id,
+      ownerAdminId: ownerFromPayload,
+      createdAt,
+      ...fields
+    } = incident
+    const ownerId = getActiveDataOwnerId() || ownerFromPayload
     const payload = {
-      ...incident,
+      description: fields.description ?? '',
+      status: fields.status ?? 'open',
+      provider: fields.provider ?? '',
+      residentId: fields.residentId ?? null,
+      residentName: fields.residentName ?? '',
       ...(ownerId ? { ownerAdminId: ownerId } : {}),
     }
-    const { data } = await apiClient.put(`/incidents/${encodeURIComponent(id)}`, payload)
+    const { data } = await apiClient.put(`/incidents/${encodeURIComponent(String(id))}`, payload)
     return data
   },
 

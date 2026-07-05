@@ -160,6 +160,10 @@
     "pageIncidents": "Incidencias",
     "incidentsAdminListTitle": "Todas las incidencias",
     "incidentsAdminSubtitle": "Revisa, asigna proveedores y actualiza el estado de las incidencias del edificio.",
+    "incidentsSaveError": "No se pudo guardar la incidencia. Verifica los datos e inténtalo de nuevo.",
+    "incidentsLoadError": "No se pudo cargar la lista de incidencias.",
+    "networkError": "Error de conexión. Comprueba tu red e inténtalo de nuevo.",
+    "timeoutError": "La solicitud tardó demasiado. Inténtalo de nuevo.",
     "incidentResidentName": "Residente",
     "pageInformation": "Información",
     "pageProjects": "Proyectos",
@@ -498,7 +502,8 @@
     "incidentStatus": "Estado",
     "financialOverview": "Salud financiera",
     "income": "Ingresos",
-    "expenses": "Egresos"
+    "expenses": "Egresos",
+    "chartEmpty": "Sin movimientos en los últimos 6 meses. Los ingresos provienen de pagos y recibos cobrados; los egresos de gastos administrativos."
   },
   "residentFinance": {
     "totalDue": "Total a pagar",

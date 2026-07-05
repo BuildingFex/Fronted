@@ -53,6 +53,11 @@ const handleSaveSettings = async () => {
       baseMonthlyExpense: editSettings.value.baseMonthlyExpense,
       lateFeeRate: editSettings.value.lateFeeRateDisplay / 100,
     })
+    editSettings.value = {
+      baseMonthlyExpense: store.state.settings?.baseMonthlyExpense ?? 150,
+      lateFeeRate: store.state.settings?.lateFeeRate ?? 0.05,
+      lateFeeRateDisplay: Math.round((store.state.settings?.lateFeeRate ?? 0.05) * 100),
+    }
     alert(t('financeAdmin.settingsSaved'))
   } catch (e) {
     alert(e.message)
@@ -125,75 +130,115 @@ const filteredFloorSections = computed(() => {
   return floorSections.value.filter((s) => String(s.floor) === String(historyFloorFilter.value))
 })
 
-// Simple custom current month calendar logic to show colorful indicator dots
-const currentMonthData = computed(() => {
-  const dt = new Date();
-  const year = dt.getFullYear();
-  const month = dt.getMonth();
-  const daysInMonth = new Date(year, month + 1, 0).getDate();
-  
-  // Determine the day of the week for the 1st of the month (0 = Sunday)
-  const firstDay = new Date(year, month, 1).getDay();
-  // Name of the month
-  const monthName = new Intl.DateTimeFormat(undefined, { month: 'long', year: 'numeric' }).format(dt);
+function normalizeYmd(value) {
+  const raw = String(value ?? '').trim()
+  if (!raw) return ''
+  const isoMatch = raw.match(/^(\d{4}-\d{2}-\d{2})/)
+  if (isoMatch) return isoMatch[1]
+  const parsed = new Date(raw)
+  if (!Number.isFinite(parsed.getTime())) return ''
+  const y = parsed.getFullYear()
+  const m = String(parsed.getMonth() + 1).padStart(2, '0')
+  const d = String(parsed.getDate()).padStart(2, '0')
+  return `${y}-${m}-${d}`
+}
 
-  const days = [];
-  
-  // Pad the first days of the grid before the 1st of the month starts
+function todayYmdLocal() {
+  const dt = new Date()
+  const y = dt.getFullYear()
+  const m = String(dt.getMonth() + 1).padStart(2, '0')
+  const d = String(dt.getDate()).padStart(2, '0')
+  return `${y}-${m}-${d}`
+}
+
+function receiptCalendarStatus(receipt, todayYmd) {
+  const status = String(receipt?.status ?? 'Pending')
+  const due = normalizeYmd(receipt?.dueDate)
+  if (status === 'Paid') return 'paid'
+  if (status === 'Overdue') return 'overdue'
+  if (status === 'Pending' && due && todayYmd >= due) return 'overdue'
+  return 'pending'
+}
+
+function residentCalendarStatus(resident) {
+  const status = String(resident?.overallStatus ?? 'Pending')
+  if (status === 'Paid') return 'paid'
+  if (status === 'Overdue') return 'overdue'
+  return 'pending'
+}
+
+const calendarMonth = ref({
+  year: new Date().getFullYear(),
+  month: new Date().getMonth(),
+})
+
+function shiftCalendarMonth(delta) {
+  const dt = new Date(calendarMonth.value.year, calendarMonth.value.month + delta, 1)
+  calendarMonth.value = { year: dt.getFullYear(), month: dt.getMonth() }
+}
+
+function resetCalendarMonth() {
+  const dt = new Date()
+  calendarMonth.value = { year: dt.getFullYear(), month: dt.getMonth() }
+}
+
+const currentMonthData = computed(() => {
+  const { year, month } = calendarMonth.value
+  const daysInMonth = new Date(year, month + 1, 0).getDate()
+  const firstDay = new Date(year, month, 1).getDay()
+  const monthName = new Intl.DateTimeFormat(locale.value === 'es' ? 'es-PE' : 'en-US', {
+    month: 'long',
+    year: 'numeric',
+  }).format(new Date(year, month, 1))
+
+  const todayYmd = todayYmdLocal()
+  const days = []
+
   for (let i = 0; i < firstDay; i++) {
-     days.push({ date: '', status: null, empty: true });
+    days.push({ date: '', status: null, empty: true })
   }
 
   for (let i = 1; i <= daysInMonth; i++) {
-    // Generate YYYY-MM-DD locally avoiding UTC offset bugs
-    const dStr = i.toString().padStart(2, '0');
-    const mStr = (month + 1).toString().padStart(2, '0');
-    const dateStr = `${year}-${mStr}-${dStr}`;
-    
-    // determine status by looking into all receipts for this date
-    let status = null; 
-    let hasPaid = false;
-    let hasOverdue = false;
-    let hasPending = false;
+    const dStr = i.toString().padStart(2, '0')
+    const mStr = (month + 1).toString().padStart(2, '0')
+    const dateStr = `${year}-${mStr}-${dStr}`
 
-    if (store.state.receipts) {
-       for(const rc of store.state.receipts) {
-         if (rc.dueDate === dateStr) {
-           if(rc.status === 'Paid') hasPaid = true;
-           else if(rc.status === 'Overdue') hasOverdue = true;
-           else if(rc.status === 'Pending') hasPending = true;
-         }
-       }
+    let status = null
+    let hasPaid = false
+    let hasOverdue = false
+    let hasPending = false
+
+    for (const rc of store.state.receipts ?? []) {
+      if (normalizeYmd(rc.dueDate) !== dateStr) continue
+      const rcStatus = receiptCalendarStatus(rc, todayYmd)
+      if (rcStatus === 'paid') hasPaid = true
+      else if (rcStatus === 'overdue') hasOverdue = true
+      else hasPending = true
     }
 
-    // Get today for implicit status checking
-    const todayYmd = `${dt.getFullYear()}-${(dt.getMonth()+1).toString().padStart(2, '0')}-${dt.getDate().toString().padStart(2, '0')}`;
-
-    // Include residents with no receipts defaulting to 'Pending' or 'Overdue'
-    if (store.getResidentFinancialStatus.value) {
-       for (const res of store.getResidentFinancialStatus.value) {
-          if (res.receipts.length === 0 && res.nextPaymentDate === dateStr) {
-             if (dateStr <= todayYmd) {
-                 hasOverdue = true;
-             } else {
-                 hasPending = true;
-             }
-          }
-       }
+    for (const res of store.getResidentFinancialStatus.value ?? []) {
+      const nextDate = normalizeYmd(res.nextPaymentDate)
+      if (nextDate !== dateStr) continue
+      const resStatus = residentCalendarStatus(res)
+      if (resStatus === 'paid') hasPaid = true
+      else if (resStatus === 'overdue') hasOverdue = true
+      else hasPending = true
     }
 
-    if (hasOverdue) status = 'overdue';
-    else if (hasPending) status = 'pending';
-    else if (hasPaid) status = 'paid';
+    if (hasOverdue) status = 'overdue'
+    else if (hasPending) status = 'pending'
+    else if (hasPaid) status = 'paid'
 
     days.push({
       date: i,
-      status, // paid, pending, overdue, null
-      empty: false
-    });
+      status,
+      empty: false,
+      isToday: dateStr === todayYmd,
+    })
   }
-  return { monthName, days };
-});
+
+  return { monthName, days, year, month }
+})
 
 const getStatusBadgeClass = (status) => {
   if(status === 'Paid') return 'status-paid';
@@ -335,9 +380,37 @@ const getStatusBadgeClass = (status) => {
           class="finance-panel finance-panel--calendar calendar-widget import-panel"
           aria-labelledby="finance-calendar-heading"
         >
-          <h2 id="finance-calendar-heading" class="finance-panel__section-title">
-            {{ t('financeAdmin.calendarTitle') }}
+          <h2 id="finance-calendar-heading" class="finance-panel__section-title finance-calendar__header">
+            <span>{{ t('financeAdmin.calendarTitle') }}</span>
             <span class="finance-panel__title-month">{{ currentMonthData.monthName }}</span>
+            <div class="finance-calendar__nav">
+              <Button
+                type="button"
+                rounded
+                text
+                severity="secondary"
+                icon="pi pi-chevron-left"
+                :aria-label="t('app.calendarPrevMonth')"
+                @click="shiftCalendarMonth(-1)"
+              />
+              <Button
+                type="button"
+                rounded
+                text
+                severity="secondary"
+                :label="t('app.calendarTodayLabel')"
+                @click="resetCalendarMonth"
+              />
+              <Button
+                type="button"
+                rounded
+                text
+                severity="secondary"
+                icon="pi pi-chevron-right"
+                :aria-label="t('app.calendarNextMonth')"
+                @click="shiftCalendarMonth(1)"
+              />
+            </div>
           </h2>
         <div class="calendar-grid">
            <div class="weekday-header">S</div>
@@ -347,7 +420,12 @@ const getStatusBadgeClass = (status) => {
            <div class="weekday-header">T</div>
            <div class="weekday-header">F</div>
            <div class="weekday-header">S</div>
-          <div class="calendar-day" v-for="(day, idx) in currentMonthData.days" :key="idx" :class="{'empty-day': day.empty}">
+          <div
+            class="calendar-day"
+            v-for="(day, idx) in currentMonthData.days"
+            :key="idx"
+            :class="{ 'empty-day': day.empty, 'calendar-day--today': day.isToday }"
+          >
             <span class="day-number" v-if="!day.empty">{{ day.date }}</span>
             <div class="day-dot" :class="day.status" v-if="day.status && !day.empty"></div>
           </div>
@@ -540,6 +618,25 @@ const getStatusBadgeClass = (status) => {
   font-weight: 500;
 }
 
+.finance-calendar__header {
+  display: flex;
+  flex-wrap: wrap;
+  align-items: center;
+  gap: 0.35rem 0.75rem;
+}
+
+.finance-calendar__nav {
+  display: flex;
+  align-items: center;
+  gap: 0.15rem;
+  margin-left: auto;
+}
+
+.calendar-day--today {
+  border-color: rgba(0, 122, 255, 0.35);
+  box-shadow: inset 0 0 0 1px rgba(0, 122, 255, 0.15);
+}
+
 .finance-table {
   margin-top: 0.15rem;
 }
@@ -705,10 +802,11 @@ const getStatusBadgeClass = (status) => {
 }
 
 .day-dot {
-  width: 6px;
-  height: 6px;
+  width: 8px;
+  height: 8px;
   border-radius: 50%;
-  margin-top: 3px;
+  margin-top: 4px;
+  flex-shrink: 0;
 }
 
 .day-dot.paid {

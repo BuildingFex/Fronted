@@ -34,16 +34,27 @@
   await loadIncidents()
 })
 
+  function resolveErrorMessage(err, fallbackKey = 'app.incidentsSaveError') {
+    const payload = err?.payload
+    if (payload && typeof payload === 'object' && typeof payload.message === 'string') {
+      return payload.message
+    }
+    if (err?.code === 'NETWORK_ERROR') return t('app.networkError')
+    if (err?.code === 'TIMEOUT') return t('app.timeoutError')
+    return t(fallbackKey)
+  }
+
   async function loadIncidents() {
-  try {
-  loading.value = true
-  incidents.value = await incidentsApi.list()
-} catch (err) {
-  error.value = err
-} finally {
-  loading.value = false
-}
-}
+    try {
+      loading.value = true
+      error.value = null
+      incidents.value = await incidentsApi.list()
+    } catch (err) {
+      error.value = resolveErrorMessage(err, 'app.incidentsLoadError')
+    } finally {
+      loading.value = false
+    }
+  }
 
   function statusSeverity(status) {
   switch (status) {
@@ -61,27 +72,29 @@
 }
 
   async function saveIncident() {
-  try {
-  if (selectedIncident.value) {
-  await incidentsApi.update(selectedIncident.value.id, editForm.value)
-} else {
-  await incidentsApi.add(editForm.value)
-}
-  await loadIncidents()
-  isDialogOpen.value = false
-} catch (err) {
-  error.value = err
-}
-}
+    try {
+      error.value = null
+      if (selectedIncident.value) {
+        await incidentsApi.update(selectedIncident.value.id, editForm.value)
+      } else {
+        await incidentsApi.add(editForm.value)
+      }
+      await loadIncidents()
+      isDialogOpen.value = false
+    } catch (err) {
+      error.value = resolveErrorMessage(err)
+    }
+  }
 
   async function deleteIncident(id) {
-  try {
-  await incidentsApi.remove(id)
-  await loadIncidents()
-} catch (err) {
-  error.value = err
-}
-}
+    try {
+      error.value = null
+      await incidentsApi.remove(id)
+      await loadIncidents()
+    } catch (err) {
+      error.value = resolveErrorMessage(err)
+    }
+  }
 
   function newIncident() {
   selectedIncident.value = null
@@ -173,7 +186,7 @@
       </section>
 
       <p v-if="error" class="import-alert import-alert--error" role="alert">
-        {{ t('app.residentsLoadError') }}
+        {{ error }}
       </p>
     </div>
 

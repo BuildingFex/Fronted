@@ -46,7 +46,10 @@ export const financesApi = {
   },
 
   async updateReceipt(receiptId, updateData) {
-    const { data } = await apiClient.patch(`/receipts/${receiptId}`, updateData)
+    const { data } = await apiClient.patch(
+      `/receipts/${encodeURIComponent(String(receiptId))}`,
+      updateData,
+    )
     return new Receipt(data)
   },
 
@@ -139,6 +142,11 @@ export const financesApi = {
     return data;
   },
 
+  async getAllPayments() {
+    const { data } = await apiClient.get('/payments', { params: withOwnerParams() })
+    return Array.isArray(data) ? data : []
+  },
+
   async addPayment(paymentData) {
     const ownerId = getActiveDataOwnerId()
     const payload = {
@@ -168,14 +176,36 @@ export const financesApi = {
 
   async getDashboardKpis() {
     const { data } = await apiClient.get('/kpi', { params: withOwnerParams() })
-    return data
+    const row = Array.isArray(data) ? data[0] : data
+    if (!row || typeof row !== 'object') return { monthlyChart: [] }
+    return row
   },
 
   async updateSettings(settings) {
-    const { data } = await apiClient.patch('/financeSettings', settings, { params: withOwnerParams() })
+    const params = withOwnerParams()
+    const ownerId = getActiveDataOwnerId()
+    const payload = {
+      baseMonthlyExpense: Number(settings.baseMonthlyExpense),
+      lateFeeRate: Number(settings.lateFeeRate),
+    }
+
+    let data
+    try {
+      ;({ data } = await apiClient.patch('/financeSettings', payload, { params }))
+    } catch (error) {
+      if (error?.status === 404 || error?.code === 'SETTINGS_NOT_FOUND') {
+        ;({ data } = await apiClient.post('/financeSettings', {
+          ...payload,
+          ...(ownerId ? { ownerAdminId: ownerId } : {}),
+        }))
+      } else {
+        throw error
+      }
+    }
+
     return {
-      baseMonthlyExpense: data.baseMonthlyExpense ?? 150,
-      lateFeeRate: data.lateFeeRate ?? 0.05,
+      baseMonthlyExpense: Number(data.baseMonthlyExpense) || 150,
+      lateFeeRate: Number(data.lateFeeRate) || 0.05,
     }
   },
 }

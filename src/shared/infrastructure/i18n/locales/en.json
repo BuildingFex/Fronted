@@ -160,6 +160,10 @@
     "pageIncidents": "Incidents",
     "incidentsAdminListTitle": "All incidents",
     "incidentsAdminSubtitle": "Review, assign providers, and update incident status across the building.",
+    "incidentsSaveError": "Could not save the incident. Check the data and try again.",
+    "incidentsLoadError": "Could not load the incidents list.",
+    "networkError": "Connection error. Check your network and try again.",
+    "timeoutError": "The request timed out. Please try again.",
     "incidentResidentName": "Resident",
     "pageInformation": "Information",
     "pageProjects": "Projects",
@@ -497,7 +501,8 @@
     "incidentStatus": "Status",
     "financialOverview": "Financial health",
     "income": "Income",
-    "expenses": "Expenses"
+    "expenses": "Expenses",
+    "chartEmpty": "No activity in the last 6 months. Income comes from payments and collected receipts; expenses from admin management costs."
   },
   "residentFinance": {
     "totalDue": "Total due",

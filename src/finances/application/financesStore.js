@@ -28,7 +28,9 @@ export function useFinancesStore() {
   const getResidentFinancialStatus = computed(() => {
     return state.residents.map(resident => {
       // Find all receipts for this resident
-      const resReceipts = state.receipts.filter(r => r.residentId === resident.id);
+      const resReceipts = state.receipts.filter(
+        (r) => String(r.residentId) === String(resident.id),
+      );
 
       // Calculate next payment date
       let baseDate = resident.admissionDate ? new Date(resident.admissionDate) : new Date('2024-01-01');
@@ -250,7 +252,10 @@ export function useFinancesStore() {
 
   // US-19: Automated Late Fee Application (Nocturnal Mock)
   const simulateNightlyCron = async () => {
-    if (!state.settings || !state.settings.lateFeeRate) {
+    if (!state.settings?.lateFeeRate && state.settings?.lateFeeRate !== 0) {
+      state.settings = await financesApi.getSettings().catch(() => null);
+    }
+    if (state.settings?.lateFeeRate == null) {
       throw new Error('Late fee rate is not configured.');
     }
 
@@ -262,15 +267,21 @@ export function useFinancesStore() {
       const day = today.getDate().toString().padStart(2, '0');
       const todayStr = `${year}-${month}-${day}`;
 
-      const lateRate = state.settings.lateFeeRate;
+      const lateRate = Number(state.settings.lateFeeRate);
 
       for (let i = 0; i < state.receipts.length; i++) {
         const r = state.receipts[i];
-        if (r.status === 'Pending' && todayStr >= r.dueDate) {
-          const newLateFee = r.amount * lateRate;
+        const isPastDue = todayStr >= r.dueDate;
+        const needsLateFee =
+          isPastDue &&
+          r.status !== 'Paid' &&
+          (r.status === 'Pending' || Number(r.lateFee || 0) === 0);
+
+        if (needsLateFee) {
+          const newLateFee = Number(r.amount) * lateRate;
           const updatedReceipt = await financesApi.updateReceipt(r.id, {
             status: 'Overdue',
-            lateFee: newLateFee
+            lateFee: newLateFee,
           });
           state.receipts[i] = updatedReceipt;
         }

@@ -133,6 +133,19 @@ function formatFriendlyDate(dateKey) {
   return fmt.format(date)
 }
 
+function formatTimeDisplay(timeValue) {
+  const raw = String(timeValue ?? '').trim()
+  if (!raw) return ''
+  const [h, mi] = raw.split(':').map(Number)
+  if (!Number.isFinite(h) || !Number.isFinite(mi)) return raw
+  const date = new Date()
+  date.setHours(h, mi, 0, 0)
+  return new Intl.DateTimeFormat(locale.value === 'es' ? 'es-PE' : 'en-US', {
+    hour: 'numeric',
+    minute: '2-digit',
+  }).format(date)
+}
+
 const selectedDateLabel = computed(() => formatFriendlyDate(reservationForm.date))
 const busyHoursDateLabel = computed(() => formatFriendlyDate(busyHoursDate.value))
 
@@ -408,14 +421,40 @@ async function onReserveSubmit() {
                 <i class="pi pi-clock" aria-hidden="true" />
                 {{ t('app.reservationStartLabel') }}
               </span>
-              <input v-model="reservationForm.startTime" type="time" />
+              <input
+                id="reservation-start-time"
+                v-model="reservationForm.startTime"
+                type="time"
+                class="resident-modal__time-input"
+                required
+              />
+              <span
+                v-if="reservationForm.startTime"
+                class="resident-modal__time-preview"
+                aria-live="polite"
+              >
+                {{ formatTimeDisplay(reservationForm.startTime) }}
+              </span>
             </label>
             <label class="resident-modal__field">
               <span class="resident-modal__field-label">
                 <i class="pi pi-clock" aria-hidden="true" />
                 {{ t('app.reservationEndLabel') }}
               </span>
-              <input v-model="reservationForm.endTime" type="time" />
+              <input
+                id="reservation-end-time"
+                v-model="reservationForm.endTime"
+                type="time"
+                class="resident-modal__time-input"
+                required
+              />
+              <span
+                v-if="reservationForm.endTime"
+                class="resident-modal__time-preview"
+                aria-live="polite"
+              >
+                {{ formatTimeDisplay(reservationForm.endTime) }}
+              </span>
             </label>
           </div>
 
@@ -695,8 +734,39 @@ async function onReserveSubmit() {
   border-radius: 10px;
   padding: 0.55rem 0.65rem;
   font: inherit;
+  color: var(--apple-text, #1d1d1f);
   background: #ffffff;
   transition: border-color 0.15s ease, box-shadow 0.15s ease, background 0.15s ease;
+}
+
+.resident-modal__time-input {
+  width: 100%;
+  min-height: 2.75rem;
+  color-scheme: light;
+  font-variant-numeric: tabular-nums;
+}
+
+.resident-modal__time-input::-webkit-calendar-picker-indicator {
+  cursor: pointer;
+  opacity: 0.75;
+}
+
+.resident-modal__time-input::-webkit-datetime-edit,
+.resident-modal__time-input::-webkit-datetime-edit-fields-wrapper,
+.resident-modal__time-input::-webkit-datetime-edit-hour-field,
+.resident-modal__time-input::-webkit-datetime-edit-minute-field,
+.resident-modal__time-input::-webkit-datetime-edit-second-field,
+.resident-modal__time-input::-webkit-datetime-edit-ampm-field,
+.resident-modal__time-input::-webkit-datetime-edit-text {
+  color: var(--apple-text, #1d1d1f);
+  -webkit-text-fill-color: var(--apple-text, #1d1d1f);
+}
+
+.resident-modal__time-preview {
+  font-size: 0.8125rem;
+  font-weight: 600;
+  color: #0a84ff;
+  font-variant-numeric: tabular-nums;
 }
 
 .resident-modal__field input:hover {
