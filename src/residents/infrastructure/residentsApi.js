@@ -2,11 +2,10 @@ import { apiClient } from '@/shared/infrastructure/api/apiClient.js'
 import { reservationsApi } from '@/socialSpaces/infrastructure/reservationsApi.js'
 import { withOwnerParams } from '@/shared/infrastructure/api/ownerQuery.js'
 import { getActiveDataOwnerId } from '@/shared/infrastructure/api/ownerTenant.js'
-import { authApi } from '@/iam/infrastructure/authApi.js'
+import { authApi, parseAuthResponse } from '@/iam/infrastructure/authApi.js'
 import {
   apiError,
   findResidentByCode,
-  findUserByEmail,
   normalizeCode,
   normalizeEmail,
   publicResident,
@@ -72,11 +71,21 @@ export const residentsApi = {
   },
 
   async findByCode(code) {
-    const resident = await findResidentByCode(code, { globalScope: true })
-    if (!resident) {
+    const normalized = normalizeCode(code)
+    if (!normalized) {
       throw apiError('RESIDENT_NOT_FOUND')
     }
-    return publicResident(resident)
+    try {
+      const { data } = await apiClient.get('/api/v1/authentication/residents/invite', {
+        params: { code: normalized },
+      })
+      return publicResident(data)
+    } catch (error) {
+      if (error?.status === 404 || error?.code === 'RESIDENT_NOT_FOUND') {
+        throw apiError('RESIDENT_NOT_FOUND')
+      }
+      throw error
+    }
   },
 
   async remove(id) {
@@ -145,24 +154,32 @@ export const residentsApi = {
   },
 
   async setCredentials({ code, email, password }) {
+    const cleanCode = normalizeCode(code)
     const cleanEmail = normalizeEmail(email)
     const cleanPassword = String(password ?? '')
 
-    const resident = await findResidentByCode(code, { globalScope: true })
-    if (!resident) {
-      throw apiError('RESIDENT_NOT_FOUND')
+    if (!cleanCode || !cleanEmail || !cleanPassword) {
+      throw apiError('RESIDENT_FIELDS_REQUIRED')
     }
 
-    const emailOwner = await findUserByEmail(cleanEmail)
-    if (emailOwner && emailOwner.id !== resident.id) {
-      throw apiError('EMAIL_ALREADY_EXISTS')
+    try {
+      const { data } = await apiClient.post('/api/v1/authentication/residents/set-credentials', {
+        code: cleanCode,
+        email: cleanEmail,
+        password: cleanPassword,
+      })
+      return parseAuthResponse(data)
+    } catch (error) {
+      if (error?.code === 'RESIDENT_NOT_FOUND') {
+        throw apiError('RESIDENT_NOT_FOUND')
+      }
+      if (error?.code === 'EMAIL_ALREADY_EXISTS') {
+        throw apiError('EMAIL_ALREADY_EXISTS')
+      }
+      if (error?.code === 'INVALID_PASSWORD' || error?.code === 'EMAIL_NOT_FOUND') {
+        throw apiError(error.code, error.payload?.message)
+      }
+      throw error
     }
-
-    await apiClient.patch(`/users/${encodeURIComponent(resident.id)}`, {
-      email: cleanEmail,
-      password: cleanPassword,
-    })
-
-    return authApi.login({ email: cleanEmail, password: cleanPassword })
   },
 }

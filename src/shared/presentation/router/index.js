@@ -1,5 +1,11 @@
 import { createRouter, createWebHistory } from 'vue-router'
-import { getSessionRole, SessionRoles } from '@/iam/application/sessionStore.js'
+import {
+  clearSession,
+  getAccessToken,
+  getSessionRole,
+  isAccessTokenValid,
+  SessionRoles,
+} from '@/iam/application/sessionStore.js'
 import { AppPaths, AppRouteNames } from '@/shared/domain/appRoutes.js'
 import AuthView from '@/iam/presentation/views/AuthView.vue'
 import AppShellView from '@/shared/presentation/views/AppShellView.vue'
@@ -128,8 +134,18 @@ router.beforeEach((to) => {
   }
 
   const role = getSessionRole()
-  if (!role) {
-    return { name: AppRouteNames.LOGIN, query: { redirect: to.fullPath } }
+  const token = getAccessToken()
+  if (!role || !token || !isAccessTokenValid()) {
+    if (token && !isAccessTokenValid()) {
+      clearSession()
+    }
+    return {
+      name: AppRouteNames.LOGIN,
+      query: {
+        redirect: to.fullPath,
+        ...(token && !isAccessTokenValid() ? { session: 'expired' } : {}),
+      },
+    }
   }
 
   if (

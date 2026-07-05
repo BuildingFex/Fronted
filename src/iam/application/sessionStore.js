@@ -18,6 +18,29 @@ export function getAccessToken() {
   return token != null && String(token).length ? String(token) : null
 }
 
+/** Returns false when the JWT is missing, malformed, or past expiry (30s skew). */
+export function isAccessTokenValid() {
+  const token = getAccessToken()
+  if (!token) return false
+  try {
+    const segment = token.split('.')[1]
+    if (!segment) return false
+    const base64 = segment.replace(/-/g, '+').replace(/_/g, '/')
+    const payload = JSON.parse(atob(base64))
+    if (typeof payload.exp !== 'number') return true
+    return Date.now() < payload.exp * 1000 - 30_000
+  } catch {
+    return false
+  }
+}
+
+export function clearSession() {
+  state.role = null
+  state.profile = null
+  state.token = null
+  persist()
+}
+
 /**
  * Active data owner for multi-tenant API queries (admin account id).
  * Always derived from session state so it cannot drift from persisted profile.
@@ -88,11 +111,8 @@ export function useSession() {
     persist()
   }
 
-  function clearSession() {
-    state.role = null
-    state.profile = null
-    state.token = null
-    persist()
+  function clearSessionFromHook() {
+    clearSession()
   }
 
   return {
@@ -101,6 +121,6 @@ export function useSession() {
     isResident,
     setAdminSession,
     setResidentSession,
-    clearSession,
+    clearSession: clearSessionFromHook,
   }
 }

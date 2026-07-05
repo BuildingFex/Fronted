@@ -1,6 +1,6 @@
 import axios from 'axios'
 import { API_BASE_URL } from '@/shared/infrastructure/envConfig.js'
-import { getAccessToken } from '@/iam/application/sessionStore.js'
+import { clearSession, getAccessToken } from '@/iam/application/sessionStore.js'
 
 /**
  * Centralized axios instance pointing at the BuildingFex API.
@@ -45,6 +45,21 @@ apiClient.interceptors.response.use(
       payload && typeof payload === 'object' && typeof payload.code === 'string'
         ? payload.code
         : null
+
+    if (error.response.status === 401) {
+      const url = String(error.config?.url ?? '')
+      const isAuthRoute = url.includes('/authentication/')
+      if (!isAuthRoute && getAccessToken()) {
+        clearSession()
+        if (typeof window !== 'undefined') {
+          const path = window.location.pathname
+          if (!path.includes('/login') && !path.includes('/register')) {
+            const redirect = encodeURIComponent(path + window.location.search)
+            window.location.assign(`/login?session=expired&redirect=${redirect}`)
+          }
+        }
+      }
+    }
 
     const httpError = new Error(apiCode ?? `HTTP_${error.response.status}`)
     httpError.code = apiCode ?? `HTTP_${error.response.status}`

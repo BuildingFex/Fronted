@@ -1,15 +1,15 @@
 import { apiClient } from '@/shared/infrastructure/api/apiClient.js'
 import {
   apiError,
-  findUserByEmail,
   normalizeEmail,
   publicUser,
 } from '@/shared/infrastructure/api/utils.js'
 
 const SIGN_IN_PATH = '/api/v1/authentication/sign-in'
 const REGISTER_ADMIN_PATH = '/api/v1/authentication/register-admin'
+const CHECK_EMAIL_PATH = '/api/v1/authentication/check-email'
 
-function parseAuthResponse(data) {
+export function parseAuthResponse(data) {
   if (!data || typeof data !== 'object') {
     throw apiError('AUTH_ERROR', 'Invalid authentication response.')
   }
@@ -66,8 +66,14 @@ async function seedAdminDefaults(ownerId, token) {
  */
 export const authApi = {
   async isEmailRegistered(email) {
-    const user = await findUserByEmail(email)
-    return Boolean(user)
+    const normalized = normalizeEmail(email)
+    if (!normalized) return false
+    try {
+      const { data } = await apiClient.get(CHECK_EMAIL_PATH, { params: { email: normalized } })
+      return Boolean(data?.exists)
+    } catch {
+      return false
+    }
   },
 
   async login({ email, password }) {
