@@ -1,14 +1,23 @@
 <script setup>
 import { computed, onMounted, ref, watch } from 'vue'
+import { useRoute, useRouter } from 'vue-router'
 import { useI18n } from 'vue-i18n'
 import { useSession } from '@/iam/application/sessionStore.js'
 import { authApi } from '@/iam/infrastructure/authApi.js'
-import { residentsApi } from '@/residents/infrastructure/residentsApi.js'
-import { SubscriptionPlanId, maxResidentsForSubscriptionPlan } from '@/shared/domain/subscriptionPlans.js'
+import { AppRouteNames } from '@/shared/domain/appRoutes.js'
 import {
-  getSubscriptionPlanIdForOwner,
-  saveSubscriptionPlanForOwner,
+  SubscriptionPlanId,
+  isPaidSubscriptionPlan,
+  maxResidentsForSubscriptionPlan,
+} from '@/shared/domain/subscriptionPlans.js'
+import { subscriptionApi } from '@/shared/infrastructure/subscriptionApi.js'
+import {
+  applySubscriptionSnapshot,
+  refreshSubscriptionFromApi,
 } from '@/shared/infrastructure/subscriptionPlanStorage.js'
+
+const route = useRoute()
+const router = useRouter()
 
 const { t } = useI18n()
 const { state, isAdmin, isResident } = useSession()
@@ -45,45 +54,127 @@ async function loadServerProfile() {
 
 const selectedPlanId = ref(SubscriptionPlanId.FREE)
 const residentsCount = ref(0)
+const residentLimit = ref(maxResidentsForSubscriptionPlan(SubscriptionPlanId.FREE))
 const planSaveNotice = ref('')
+const planError = ref('')
+const planLoading = ref(false)
+const planCheckoutPlanId = ref(null)
 
-const activeResidentLimit = computed(() =>
-  maxResidentsForSubscriptionPlan(selectedPlanId.value),
-)
+const activeResidentLimit = computed(() => residentLimit.value)
 
-function syncPlanFromStorage() {
-  const id = sessionProfile.value?.id
-  if (!id) {
-    selectedPlanId.value = SubscriptionPlanId.FREE
-    return
-  }
-  selectedPlanId.value = getSubscriptionPlanIdForOwner(id)
+function syncFromSubscription(sub) {
+  if (!sub) return
+  selectedPlanId.value = sub.planId
+  residentsCount.value = sub.residentsCount
+  residentLimit.value = sub.residentLimit
+  applySubscriptionSnapshot(sub)
 }
 
-async function refreshResidentCount() {
-  if (!isAdmin) return
+async function loadSubscription() {
+  if (!isAdmin.value) return
+  planLoading.value = true
+  planError.value = ''
   try {
-    residentsCount.value = (await residentsApi.list()).length
+    const sub = await refreshSubscriptionFromApi()
+    if (sub) syncFromSubscription(sub)
+  } catch (error) {
+    planError.value = t('app.settingsPlanLoadError')
+  } finally {
+    planLoading.value = false
+  }
+}
+
+async function handleSubscriptionReturnFromRoute() {
+  const status = route.query.subscription
+  const plan = route.query.plan
+  if (!status || !plan || !isAdmin.value) return
+
+  if (status === 'failure') {
+    planError.value = t('app.settingsPlanPaymentFailed')
+    router.replace({ name: AppRouteNames.APP_SETTINGS })
+    return
+  }
+
+  if (status === 'pending') {
+    planSaveNotice.value = t('app.settingsPlanPaymentPending')
+    router.replace({ name: AppRouteNames.APP_SETTINGS })
+    return
+  }
+
+  if (status !== 'success') return
+
+  planCheckoutPlanId.value = String(plan)
+  try {
+    const paymentRaw = route.query.payment_id ?? route.query.collection_id
+    const paymentId = paymentRaw != null && String(paymentRaw).length ? Number(paymentRaw) : null
+    const result = await subscriptionApi.confirm({
+      planId: String(plan),
+      paymentId: Number.isFinite(paymentId) ? paymentId : null,
+    })
+    if (result.subscription) syncFromSubscription(result.subscription)
+    planSaveNotice.value = t('app.settingsPlanSaved')
   } catch {
-    residentsCount.value = 0
+    planError.value = t('app.settingsPlanConfirmError')
+  } finally {
+    planCheckoutPlanId.value = null
+    router.replace({ name: AppRouteNames.APP_SETTINGS })
   }
 }
 
 async function initSettings() {
   await loadServerProfile()
-  syncPlanFromStorage()
-  await refreshResidentCount()
+  await loadSubscription()
+  await handleSubscriptionReturnFromRoute()
 }
 
-function selectPlan(planId) {
-  const id = sessionProfile.value?.id
-  if (!id) return
-  saveSubscriptionPlanForOwner(id, planId)
-  selectedPlanId.value = planId
-  planSaveNotice.value = t('app.settingsPlanSaved')
-  window.setTimeout(() => {
-    planSaveNotice.value = ''
-  }, 2800)
+async function selectPlan(planId) {
+  if (!isAdmin.value || planLoading.value || planCheckoutPlanId.value) return
+  if (selectedPlanId.value === planId && !isPaidSubscriptionPlan(planId)) return
+
+  planError.value = ''
+  planSaveNotice.value = ''
+
+  if (planId === SubscriptionPlanId.FREE) {
+    planCheckoutPlanId.value = planId
+    try {
+      const sub = await subscriptionApi.changeToFreePlan()
+      syncFromSubscription(sub)
+      planSaveNotice.value = t('app.settingsPlanSaved')
+    } catch (error) {
+      if (error?.code === 'PLAN_DOWNGRADE_RESIDENTS_EXCEEDED') {
+        planError.value = error.payload?.message ?? t('app.settingsPlanDowngradeError')
+      } else {
+        planError.value = t('app.settingsPlanChangeError')
+      }
+    } finally {
+      planCheckoutPlanId.value = null
+    }
+    return
+  }
+
+  planCheckoutPlanId.value = planId
+  let checkout = null
+  try {
+    checkout = await subscriptionApi.checkout(planId)
+    if (checkout.demo) {
+      const result = await subscriptionApi.confirm({ planId, demo: true })
+      if (result.subscription) syncFromSubscription(result.subscription)
+      planSaveNotice.value = t('app.settingsPlanSavedDemo')
+    } else if (checkout.initPoint) {
+      window.location.assign(checkout.initPoint)
+      return
+    } else {
+      planError.value = t('app.settingsPlanCheckoutError')
+    }
+  } catch {
+    planError.value = t('app.settingsPlanCheckoutError')
+  } finally {
+    if (!checkout?.initPoint) planCheckoutPlanId.value = null
+  }
+}
+
+function isPlanBusy(planId) {
+  return planCheckoutPlanId.value === planId || (planLoading.value && planCheckoutPlanId.value === null)
 }
 
 onMounted(initSettings)
@@ -91,10 +182,16 @@ watch(
   () => sessionProfile.value?.id,
   async () => {
     await loadServerProfile()
-    syncPlanFromStorage()
-    await refreshResidentCount()
+    await loadSubscription()
   },
 )
+
+watch(planSaveNotice, (msg) => {
+  if (!msg) return
+  window.setTimeout(() => {
+    planSaveNotice.value = ''
+  }, 4000)
+})
 </script>
 
 <template>
@@ -145,6 +242,10 @@ watch(
       <p v-if="planSaveNotice" class="plans-section__notice" role="status">
         {{ planSaveNotice }}
       </p>
+      <p v-if="planError" class="plans-section__error" role="alert">
+        {{ planError }}
+      </p>
+      <p v-if="planLoading" class="plans-section__loading">{{ t('app.settingsPlanLoading') }}</p>
 
       <div class="plans-grid">
 
@@ -171,6 +272,7 @@ watch(
           <button
             type="button"
             class="plan-card__btn plan-card__btn--ghost"
+            :disabled="isPlanBusy(SubscriptionPlanId.FREE)"
             @click="selectPlan(SubscriptionPlanId.FREE)"
           >
             {{ t('app.settingsPlanSelectFree') }}
@@ -201,6 +303,7 @@ watch(
           <button
             type="button"
             class="plan-card__btn plan-card__btn--ghost"
+            :disabled="isPlanBusy(SubscriptionPlanId.ESSENTIAL)"
             @click="selectPlan(SubscriptionPlanId.ESSENTIAL)"
           >
             {{ t('app.settingsPlanSelectEssential') }}
@@ -232,6 +335,7 @@ watch(
           <button
             type="button"
             class="plan-card__btn plan-card__btn--primary"
+            :disabled="isPlanBusy(SubscriptionPlanId.STANDARD)"
             @click="selectPlan(SubscriptionPlanId.STANDARD)"
           >
             {{ t('app.settingsPlanSelectStandard') }}
@@ -262,6 +366,7 @@ watch(
           <button
             type="button"
             class="plan-card__btn plan-card__btn--ghost"
+            :disabled="isPlanBusy(SubscriptionPlanId.SCALE)"
             @click="selectPlan(SubscriptionPlanId.SCALE)"
           >
             {{ t('app.settingsPlanSelectScale') }}
@@ -392,6 +497,18 @@ watch(
   margin: 0 0 1rem;
   font-size: 0.875rem;
   color: #248a3d;
+}
+
+.plans-section__error {
+  margin: 0 0 1rem;
+  font-size: 0.875rem;
+  color: #b42318;
+}
+
+.plans-section__loading {
+  margin: 0 0 1rem;
+  font-size: 0.875rem;
+  color: var(--apple-text-secondary, #6e6e73);
 }
 
 /* ── Grid de planes ── */
@@ -548,6 +665,11 @@ watch(
   border: none;
   transition: background 0.15s ease, opacity 0.15s ease;
   margin-top: auto;
+}
+
+.plan-card__btn:disabled {
+  opacity: 0.55;
+  cursor: not-allowed;
 }
 
 .plan-card__btn--primary {

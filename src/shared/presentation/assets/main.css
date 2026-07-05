@@ -1,10 +1,11 @@
+@import './bf-actions.css';
+
 *,
 *::before,
 *::after {
   box-sizing: border-box;
 }
 
-/* Apple-style design system (marketing / product page language) */
 :root {
   --apple-font:
     -apple-system, BlinkMacSystemFont, 'SF Pro Text', 'SF Pro Display', 'Segoe UI', 'Helvetica Neue',

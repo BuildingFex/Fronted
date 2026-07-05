@@ -8,6 +8,7 @@ import Dialog from 'primevue/dialog'
 import Dropdown from 'primevue/dropdown'
 import InputNumber from 'primevue/inputnumber'
 import InputText from 'primevue/inputtext'
+import ConfirmActions from '@/shared/presentation/components/ConfirmActions.vue'
 import {
   fixedPayoutRecipientsApi,
   addDaysYMD,
@@ -597,19 +598,12 @@ onMounted(() => {
             <p v-if="submitError" class="collections-form__error" role="alert">{{ submitError }}</p>
           </div>
           <template #footer>
-            <Button
-              type="button"
-              text
-              rounded
-              :label="t('app.cancelAction')"
-              @click="closeModal"
-            />
-            <Button
-              type="button"
-              rounded
-              :label="t('collectionsMgmt.accept')"
+            <ConfirmActions
+              :cancel-label="t('app.cancelAction')"
+              :confirm-label="t('collectionsMgmt.accept')"
               :loading="saving"
-              @click="submitCost"
+              @cancel="closeModal"
+              @confirm="submitCost"
             />
           </template>
         </Dialog>
@@ -706,19 +700,12 @@ onMounted(() => {
               </p>
             </div>
             <template #footer>
-              <Button
-                type="button"
-                text
-                rounded
-                :label="t('app.cancelAction')"
-                @click="closeServiceModal"
-              />
-              <Button
-                type="button"
-                rounded
-                :label="t('sharedServices.save')"
+              <ConfirmActions
+                :cancel-label="t('app.cancelAction')"
+                :confirm-label="t('sharedServices.save')"
                 :loading="serviceSaving"
-                @click="submitSharedService"
+                @cancel="closeServiceModal"
+                @confirm="submitSharedService"
               />
             </template>
           </Dialog>
@@ -874,19 +861,12 @@ onMounted(() => {
             </p>
           </div>
           <template #footer>
-            <Button
-              type="button"
-              text
-              rounded
-              :label="t('app.cancelAction')"
-              @click="closeFixedModal"
-            />
-            <Button
-              type="button"
-              rounded
-              :label="t('fixedPay.save')"
+            <ConfirmActions
+              :cancel-label="t('app.cancelAction')"
+              :confirm-label="t('fixedPay.save')"
               :loading="fixedSaving"
-              @click="submitFixedRecipient"
+              @cancel="closeFixedModal"
+              @confirm="submitFixedRecipient"
             />
           </template>
         </Dialog>

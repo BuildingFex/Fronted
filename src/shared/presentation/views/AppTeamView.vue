@@ -8,6 +8,7 @@ import InputNumber from 'primevue/inputnumber'
 import DataTable from 'primevue/datatable'
 import Column from 'primevue/column'
 import { teamWorkersApi } from '@/team/infrastructure/teamWorkersApi.js'
+import ConfirmActions from '@/shared/presentation/components/ConfirmActions.vue'
 
 const { t, locale } = useI18n()
 
@@ -259,19 +260,14 @@ onMounted(loadWorkers)
         <p v-if="submitError" class="team-form__error" role="alert">{{ submitError }}</p>
       </div>
       <template #footer>
-        <Button
-          type="button"
-          outlined
-          :label="t('app.cancelAction')"
-          icon="pi pi-times"
-          @click="closeModal"
-        />
-        <Button
-          type="button"
-          :label="t('teamMgmt.accept')"
-          icon="pi pi-check"
+        <ConfirmActions
+          :cancel-label="t('app.cancelAction')"
+          :confirm-label="t('teamMgmt.accept')"
+          cancel-icon="pi pi-times"
+          confirm-icon="pi pi-check"
           :loading="saving"
-          @click="submitWorker"
+          @cancel="closeModal"
+          @confirm="submitWorker"
         />
       </template>
     </Dialog>

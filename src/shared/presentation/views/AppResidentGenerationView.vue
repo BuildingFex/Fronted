@@ -9,6 +9,7 @@ import { buildGuestInviteUrl } from '@/socialSpaces/infrastructure/guestInviteUr
 import { reservationInviteExpiresAtMs } from '@/shared/infrastructure/api/utils.js'
 import Button from 'primevue/button'
 import Dialog from 'primevue/dialog'
+import ConfirmActions from '@/shared/presentation/components/ConfirmActions.vue'
 import InputText from 'primevue/inputtext'
 
 const MAX_GUESTS = 5
@@ -358,20 +359,14 @@ watch(guestsModalOpen, (open) => {
         {{ t('resident.generationGuestsSaveError') }}
       </p>
       <template #footer>
-        <Button
-          type="button"
-          :label="t('resident.generationGuestsCancel')"
-          severity="secondary"
-          text
-          :disabled="savingGuests"
-          @click="closeGuestsModal"
-        />
-        <Button
-          type="button"
-          :label="t('resident.generationGuestsConfirm')"
+        <ConfirmActions
+          :cancel-label="t('resident.generationGuestsCancel')"
+          :confirm-label="t('resident.generationGuestsConfirm')"
           :loading="savingGuests"
           :disabled="savingGuests"
-          @click="confirmGuests"
+          :cancel-disabled="savingGuests"
+          @cancel="closeGuestsModal"
+          @confirm="confirmGuests"
         />
       </template>
     </Dialog>

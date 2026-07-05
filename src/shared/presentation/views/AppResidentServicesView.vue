@@ -4,6 +4,7 @@ import { useI18n } from 'vue-i18n'
 import { spacesApi } from '@/socialSpaces/infrastructure/spacesApi.js'
 import { reservationsApi } from '@/socialSpaces/infrastructure/reservationsApi.js'
 import { useSession } from '@/iam/application/sessionStore.js'
+import ConfirmActions from '@/shared/presentation/components/ConfirmActions.vue'
 
 const { t, locale } = useI18n()
 const { state } = useSession()
@@ -314,12 +315,12 @@ async function onReserveSubmit() {
 
     <div
       v-if="isReserveModalOpen"
-      class="resident-modal-backdrop"
+      class="resident-modal-backdrop bf-modal-backdrop"
       role="presentation"
       @click.self="closeReserveModal"
     >
       <section
-        class="resident-modal"
+        class="resident-modal bf-modal-panel"
         role="dialog"
         aria-modal="true"
         :aria-label="t('app.reserveModalTitle')"
@@ -460,39 +461,28 @@ async function onReserveSubmit() {
 
           <p v-if="reservationError" class="resident-modal__error">{{ reservationError }}</p>
 
-          <div class="resident-modal__actions">
-            <button
-              type="button"
-              class="resident-modal__btn resident-modal__btn--secondary"
-              :disabled="isSubmittingReservation"
-              @click="closeReserveModal"
-            >
-              {{ t('app.cancelAction') }}
-            </button>
-            <button
-              type="submit"
-              class="resident-modal__btn resident-modal__btn--primary"
-              :disabled="isSubmittingReservation"
-            >
-              {{
-                isSubmittingReservation
-                  ? t('app.reservingAction')
-                  : t('app.confirmReservationAction')
-              }}
-            </button>
-          </div>
+          <ConfirmActions
+            :cancel-label="t('app.cancelAction')"
+            :confirm-label="
+              isSubmittingReservation ? t('app.reservingAction') : t('app.confirmReservationAction')
+            "
+            confirm-type="submit"
+            :loading="isSubmittingReservation"
+            :cancel-disabled="isSubmittingReservation"
+            @cancel="closeReserveModal"
+          />
         </form>
       </section>
     </div>
 
     <div
       v-if="isBusyHoursModalOpen"
-      class="resident-modal-backdrop resident-modal-backdrop--top"
+      class="resident-modal-backdrop resident-modal-backdrop--top bf-modal-backdrop"
       role="presentation"
       @click.self="closeBusyHoursModal"
     >
       <section
-        class="resident-modal resident-modal--small"
+        class="resident-modal resident-modal--small bf-modal-panel"
         role="dialog"
         aria-modal="true"
         :aria-label="t('app.busyHoursModalTitle')"
@@ -524,15 +514,12 @@ async function onReserveSubmit() {
           </span>
         </div>
 
-        <div class="resident-modal__actions">
-          <button
-            type="button"
-            class="resident-modal__btn resident-modal__btn--primary"
-            @click="confirmDateFromBusyModal"
-          >
-            {{ t('app.busyHoursContinueAction') }}
-          </button>
-        </div>
+        <ConfirmActions
+          :show-cancel="false"
+          :confirm-label="t('app.busyHoursContinueAction')"
+          align="center"
+          @confirm="confirmDateFromBusyModal"
+        />
       </section>
     </div>
   </div>
@@ -863,49 +850,8 @@ async function onReserveSubmit() {
   font-size: 0.825rem;
 }
 
-.resident-modal__actions {
-  display: flex;
-  justify-content: flex-end;
-  gap: 0.5rem;
+.resident-modal__form .bf-actions {
   margin-top: 0.35rem;
-}
-
-.resident-modal__btn {
-  border: none;
-  border-radius: 8px;
-  padding: 0.55rem 0.95rem;
-  font-weight: 600;
-  cursor: pointer;
-  transition: background 0.15s ease, color 0.15s ease, box-shadow 0.15s ease, transform 0.05s ease;
-}
-
-.resident-modal__btn:disabled {
-  opacity: 0.6;
-  cursor: not-allowed;
-}
-
-.resident-modal__btn--secondary {
-  background: #f4f4f7;
-  color: #1d1d1f;
-}
-
-.resident-modal__btn--secondary:hover:not(:disabled) {
-  background: #ebebef;
-}
-
-.resident-modal__btn--primary {
-  background: var(--apple-blue, #0a84ff);
-  color: #ffffff;
-  box-shadow: 0 1px 2px rgba(10, 132, 255, 0.25);
-}
-
-.resident-modal__btn--primary:hover:not(:disabled) {
-  background: #0974e6;
-  box-shadow: 0 2px 6px rgba(10, 132, 255, 0.32);
-}
-
-.resident-modal__btn--primary:active:not(:disabled) {
-  transform: translateY(1px);
 }
 
 .calendar {

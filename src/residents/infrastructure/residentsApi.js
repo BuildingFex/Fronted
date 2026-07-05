@@ -10,7 +10,8 @@ import {
   normalizeEmail,
   publicResident,
 } from '@/shared/infrastructure/api/utils.js'
-import { getResidentLimitForActiveOwner } from '@/shared/infrastructure/subscriptionPlanStorage.js'
+import { getResidentLimitForActiveOwner, refreshSubscriptionFromApi } from '@/shared/infrastructure/subscriptionPlanStorage.js'
+import { parseDepartmentNumber } from '@/shared/domain/departmentNumber.js'
 
 /**
  * Residents bounded-context API.
@@ -28,10 +29,23 @@ export const residentsApi = {
     return Array.isArray(data) ? data.map(publicResident) : []
   },
 
-  async add({ name, floor, code }) {
+  async add({ name, floor, code, department }) {
     const cleanName = String(name ?? '').trim()
-    const cleanFloor = String(floor ?? '').trim()
-    const cleanCode = normalizeCode(code)
+
+    let cleanFloor
+    let cleanCode
+
+    if (department != null && String(department).trim().length) {
+      const parsed = parseDepartmentNumber(department)
+      if (!parsed) {
+        throw apiError('INVALID_DEPARTMENT_NUMBER')
+      }
+      cleanFloor = parsed.floor
+      cleanCode = parsed.department
+    } else {
+      cleanFloor = String(floor ?? '').trim()
+      cleanCode = normalizeCode(code)
+    }
 
     if (!cleanName || !cleanFloor || !cleanCode) {
       throw apiError('RESIDENT_FIELDS_REQUIRED')
@@ -67,6 +81,7 @@ export const residentsApi = {
     }
 
     const { data: created } = await apiClient.post('/users', newResident)
+    await refreshSubscriptionFromApi().catch(() => {})
     return publicResident(created)
   },
 

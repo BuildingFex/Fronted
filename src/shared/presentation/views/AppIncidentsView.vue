@@ -9,6 +9,7 @@
   import  Dialog  from 'primevue/dialog'
   import InputText  from 'primevue/inputtext'
   import  Dropdown  from 'primevue/dropdown'
+  import ConfirmActions from '@/shared/presentation/components/ConfirmActions.vue'
 
   const { t } = useI18n()
 
@@ -220,23 +221,11 @@
         </div>
       </div>
       <template #footer>
-        <Button
-          type="button"
-          rounded
-          severity="secondary"
-          text
-          class="import-dropzone__btn"
-          :label="t('app.cancelAction')"
-          @click="isDialogOpen = false"
-        />
-        <Button
-          type="button"
-          rounded
-          severity="secondary"
-          class="import-dropzone__btn"
-          :label="t('app.saveSpaceUpdateAction')"
-          autofocus
-          @click="saveIncident"
+        <ConfirmActions
+          :cancel-label="t('app.cancelAction')"
+          :confirm-label="t('app.saveSpaceUpdateAction')"
+          @cancel="isDialogOpen = false"
+          @confirm="saveIncident"
         />
       </template>
     </Dialog>

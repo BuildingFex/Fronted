@@ -2,11 +2,16 @@
 import { computed, onMounted, reactive, ref } from 'vue'
 import { useI18n } from 'vue-i18n'
 import Button from 'primevue/button'
-import { getResidentLimitForActiveOwner } from '@/shared/infrastructure/subscriptionPlanStorage.js'
+import { getResidentLimitForActiveOwner, refreshSubscriptionFromApi } from '@/shared/infrastructure/subscriptionPlanStorage.js'
+import {
+  deriveFloorFromDepartment,
+  parseDepartmentNumber,
+} from '@/shared/domain/departmentNumber.js'
 import { residentsApi } from '@/residents/infrastructure/residentsApi.js'
 import { spacesApi } from '@/socialSpaces/infrastructure/spacesApi.js'
 import { reservationsApi } from '@/socialSpaces/infrastructure/reservationsApi.js'
 import { useFinancesStore } from '@/finances/application/financesStore.js'
+import ConfirmActions from '@/shared/presentation/components/ConfirmActions.vue'
 
 const { t } = useI18n()
 const financesStore = useFinancesStore()
@@ -22,9 +27,10 @@ const isSubmitting = ref(false)
 const searchQuery = ref('')
 const residentForm = reactive({
   name: '',
-  floor: '',
-  code: '',
+  department: '',
 })
+
+const detectedFloor = computed(() => deriveFloorFromDepartment(residentForm.department))
 
 const residentDeleteError = ref('')
 
@@ -37,7 +43,12 @@ const deleteResidentSummary = ref(null)
 const deleteResidentHasErrors = ref(false)
 
 const totalResidents = computed(() => residents.value.length)
-const residentPlanLimitCap = computed(() => getResidentLimitForActiveOwner())
+const residentPlanLimitCap = ref(getResidentLimitForActiveOwner())
+
+async function refreshPlanLimit() {
+  await refreshSubscriptionFromApi()
+  residentPlanLimitCap.value = getResidentLimitForActiveOwner()
+}
 const activeResidents = computed(() =>
   residents.value.filter((r) => r.hasCredentials).length,
 )
@@ -73,13 +84,15 @@ async function loadResidents() {
   }
 }
 
-onMounted(loadResidents)
+onMounted(async () => {
+  await refreshPlanLimit()
+  await loadResidents()
+})
 
 function openAddResidentModal() {
   modalError.value = ''
   residentForm.name = ''
-  residentForm.floor = ''
-  residentForm.code = ''
+  residentForm.department = ''
   isAddResidentModalOpen.value = true
 }
 
@@ -92,18 +105,25 @@ async function onAddResidentSubmit() {
   if (isSubmitting.value) return
 
   const name = residentForm.name.trim()
-  const floor = residentForm.floor.trim()
-  const code = residentForm.code.trim()
+  const parsed = parseDepartmentNumber(residentForm.department)
 
-  if (!name || !floor || !code) {
+  if (!name) {
     modalError.value = t('app.addResidentRequired')
+    return
+  }
+  if (!parsed) {
+    modalError.value = t('app.addResidentInvalidDepartment')
     return
   }
 
   isSubmitting.value = true
   modalError.value = ''
   try {
-    const newResident = await residentsApi.add({ name, floor, code })
+    const newResident = await residentsApi.add({
+      name,
+      department: parsed.department,
+    })
+    await refreshPlanLimit()
     await financesStore.generateInitialReceipt(newResident)
     residents.value = [newResident, ...residents.value]
     isAddResidentModalOpen.value = false
@@ -114,6 +134,10 @@ async function onAddResidentSubmit() {
     }
     if (error?.code === 'RESIDENT_FIELDS_REQUIRED') {
       modalError.value = t('app.addResidentRequired')
+      return
+    }
+    if (error?.code === 'INVALID_DEPARTMENT_NUMBER') {
+      modalError.value = t('app.addResidentInvalidDepartment')
       return
     }
     if (error?.code === 'RESIDENT_PLAN_LIMIT_REACHED') {
@@ -206,10 +230,11 @@ function closeBulkResidentsModal() {
 
 function parseBulkLine(line) {
   const parts = line.split('-').map((part) => part.trim())
-  if (parts.length !== 3) return null
-  const [name, floor, code] = parts
-  if (!name || !floor || !code) return null
-  return { name, floor, code }
+  if (parts.length !== 2) return null
+  const [name, departmentRaw] = parts
+  const parsed = parseDepartmentNumber(departmentRaw)
+  if (!name || !parsed) return null
+  return { name, department: parsed.department }
 }
 
 async function onBulkResidentsSubmit() {
@@ -260,6 +285,8 @@ async function onBulkResidentsSubmit() {
         message = t('app.addResidentCodeExists')
       } else if (error?.code === 'RESIDENT_FIELDS_REQUIRED') {
         message = t('app.addResidentRequired')
+      } else if (error?.code === 'INVALID_DEPARTMENT_NUMBER') {
+        message = t('app.addResidentInvalidDepartment')
       } else if (error?.code === 'RESIDENT_PLAN_LIMIT_REACHED') {
         message = t('app.addResidentPlanLimit', {
           max: getResidentLimitForActiveOwner(),
@@ -650,7 +677,7 @@ const groupedReservations = computed(() => {
                   </span>
                 </p>
                 <p class="r-card__meta">
-                  {{ t('app.residentFloorLabel') }} {{ resident.floor }} · {{ resident.code }}
+                  {{ t('app.residentFloorApt', { floor: resident.floor, code: resident.code }) }}
                   <template v-if="resident.email"> · {{ resident.email }}</template>
                 </p>
               </div>
@@ -776,11 +803,11 @@ const groupedReservations = computed(() => {
 
     <div
       v-if="isAddResidentModalOpen"
-      class="resident-modal-backdrop"
+      class="resident-modal-backdrop bf-modal-backdrop"
       role="presentation"
       @click.self="closeAddResidentModal"
     >
-      <section class="resident-modal" role="dialog" aria-modal="true" :aria-label="t('app.addResidentModalTitle')">
+      <section class="resident-modal bf-modal-panel" role="dialog" aria-modal="true" :aria-label="t('app.addResidentModalTitle')">
         <div class="resident-modal__header">
           <h3 class="resident-modal__title">{{ t('app.addResidentModalTitle') }}</h3>
           <button
@@ -801,46 +828,48 @@ const groupedReservations = computed(() => {
           </label>
 
           <label class="resident-modal__field">
-            <span>{{ t('app.residentFloorLabel') }}</span>
-            <input v-model="residentForm.floor" type="text" />
-          </label>
-
-          <label class="resident-modal__field">
-            <span>{{ t('app.residentCodeLabel') }}</span>
-            <input v-model="residentForm.code" type="text" />
+            <span>{{ t('app.residentDepartmentLabel') }}</span>
+            <input
+              v-model="residentForm.department"
+              type="text"
+              inputmode="numeric"
+              pattern="[0-9]*"
+              maxlength="4"
+              :placeholder="t('app.residentDepartmentPlaceholder')"
+              autocomplete="off"
+            />
+            <span class="resident-modal__field-hint">{{ t('app.residentDepartmentHint') }}</span>
+            <span
+              v-if="detectedFloor"
+              class="resident-modal__field-preview"
+              aria-live="polite"
+            >
+              {{ t('app.residentFloorDetected', { floor: detectedFloor }) }}
+            </span>
           </label>
 
           <p v-if="modalError" class="resident-modal__error">{{ modalError }}</p>
 
-          <div class="resident-modal__actions">
-            <button
-              type="button"
-              class="resident-modal__btn resident-modal__btn--secondary"
-              :disabled="isSubmitting"
-              @click="closeAddResidentModal"
-            >
-              {{ t('app.cancelAction') }}
-            </button>
-            <button
-              type="submit"
-              class="resident-modal__btn resident-modal__btn--primary"
-              :disabled="isSubmitting"
-            >
-              {{ isSubmitting ? t('app.savingResidentAction') : t('app.saveResidentAction') }}
-            </button>
-          </div>
+          <ConfirmActions
+            :cancel-label="t('app.cancelAction')"
+            :confirm-label="isSubmitting ? t('app.savingResidentAction') : t('app.saveResidentAction')"
+            confirm-type="submit"
+            :loading="isSubmitting"
+            :cancel-disabled="isSubmitting"
+            @cancel="closeAddResidentModal"
+          />
         </form>
       </section>
     </div>
 
     <div
       v-if="isBulkResidentsModalOpen"
-      class="resident-modal-backdrop"
+      class="resident-modal-backdrop bf-modal-backdrop"
       role="presentation"
       @click.self="closeBulkResidentsModal"
     >
       <section
-        class="resident-modal resident-modal--wide"
+        class="resident-modal resident-modal--wide bf-modal-panel"
         role="dialog"
         aria-modal="true"
         :aria-label="t('app.bulkResidentsModalTitle')"
@@ -875,38 +904,25 @@ const groupedReservations = computed(() => {
             </li>
           </ul>
 
-          <div class="resident-modal__actions">
-            <button
-              type="button"
-              class="resident-modal__btn resident-modal__btn--secondary"
-              :disabled="isSubmittingBulk"
-              @click="closeBulkResidentsModal"
-            >
-              {{ t('app.closeAction') }}
-            </button>
-            <button
-              type="submit"
-              class="resident-modal__btn resident-modal__btn--primary"
-              :disabled="isSubmittingBulk"
-            >
-              {{
-                isSubmittingBulk
-                  ? t('app.bulkResidentsSubmitting')
-                  : t('app.bulkResidentsSubmit')
-              }}
-            </button>
-          </div>
+          <ConfirmActions
+            :cancel-label="t('app.closeAction')"
+            :confirm-label="isSubmittingBulk ? t('app.bulkResidentsSubmitting') : t('app.bulkResidentsSubmit')"
+            confirm-type="submit"
+            :loading="isSubmittingBulk"
+            :cancel-disabled="isSubmittingBulk"
+            @cancel="closeBulkResidentsModal"
+          />
         </form>
       </section>
     </div>
 
     <div
       v-if="isAddSpaceModalOpen"
-      class="resident-modal-backdrop"
+      class="resident-modal-backdrop bf-modal-backdrop"
       role="presentation"
       @click.self="closeAddSpaceModal"
     >
-      <section class="resident-modal" role="dialog" aria-modal="true" :aria-label="t('app.addSpaceModalTitle')">
+      <section class="resident-modal bf-modal-panel" role="dialog" aria-modal="true" :aria-label="t('app.addSpaceModalTitle')">
         <h3 class="resident-modal__title">{{ t('app.addSpaceModalTitle') }}</h3>
 
         <form class="resident-modal__form" @submit.prevent="onAddSpaceSubmit">
@@ -965,35 +981,27 @@ const groupedReservations = computed(() => {
 
           <p v-if="spaceModalError" class="resident-modal__error">{{ spaceModalError }}</p>
 
-          <div class="resident-modal__actions">
-            <button
-              type="button"
-              class="resident-modal__btn resident-modal__btn--secondary"
-              :disabled="isSubmittingSpace"
-              @click="closeAddSpaceModal"
-            >
-              {{ t('app.cancelAction') }}
-            </button>
-            <button
-              type="submit"
-              class="resident-modal__btn resident-modal__btn--primary"
-              :disabled="isSubmittingSpace || isProcessingAddImage"
-            >
-              {{ isSubmittingSpace ? t('app.savingSpaceAction') : t('app.saveSpaceAction') }}
-            </button>
-          </div>
+          <ConfirmActions
+            :cancel-label="t('app.cancelAction')"
+            :confirm-label="isSubmittingSpace ? t('app.savingSpaceAction') : t('app.saveSpaceAction')"
+            confirm-type="submit"
+            :loading="isSubmittingSpace"
+            :disabled="isSubmittingSpace || isProcessingAddImage"
+            :cancel-disabled="isSubmittingSpace"
+            @cancel="closeAddSpaceModal"
+          />
         </form>
       </section>
     </div>
 
     <div
       v-if="isEditSpaceModalOpen"
-      class="resident-modal-backdrop"
+      class="resident-modal-backdrop bf-modal-backdrop"
       role="presentation"
       @click.self="closeEditSpaceModal"
     >
       <section
-        class="resident-modal"
+        class="resident-modal bf-modal-panel"
         role="dialog"
         aria-modal="true"
         :aria-label="t('app.editSpaceModalTitle')"
@@ -1056,39 +1064,29 @@ const groupedReservations = computed(() => {
 
           <p v-if="editSpaceModalError" class="resident-modal__error">{{ editSpaceModalError }}</p>
 
-          <div class="resident-modal__actions">
-            <button
-              type="button"
-              class="resident-modal__btn resident-modal__btn--secondary"
-              :disabled="isSubmittingEditSpace"
-              @click="closeEditSpaceModal"
-            >
-              {{ t('app.cancelAction') }}
-            </button>
-            <button
-              type="submit"
-              class="resident-modal__btn resident-modal__btn--primary"
-              :disabled="isSubmittingEditSpace || isProcessingEditImage"
-            >
-              {{
-                isSubmittingEditSpace
-                  ? t('app.savingSpaceUpdateAction')
-                  : t('app.saveSpaceUpdateAction')
-              }}
-            </button>
-          </div>
+          <ConfirmActions
+            :cancel-label="t('app.cancelAction')"
+            :confirm-label="
+              isSubmittingEditSpace ? t('app.savingSpaceUpdateAction') : t('app.saveSpaceUpdateAction')
+            "
+            confirm-type="submit"
+            :loading="isSubmittingEditSpace"
+            :disabled="isSubmittingEditSpace || isProcessingEditImage"
+            :cancel-disabled="isSubmittingEditSpace"
+            @cancel="closeEditSpaceModal"
+          />
         </form>
       </section>
     </div>
 
     <div
       v-if="isDeleteResidentModalOpen"
-      class="resident-modal-backdrop"
+      class="resident-modal-backdrop bf-modal-backdrop"
       role="presentation"
       @click.self="closeDeleteResidentModal"
     >
       <section
-        class="resident-modal resident-modal--danger"
+        class="resident-modal resident-modal--danger bf-modal-panel"
         role="dialog"
         aria-modal="true"
         :aria-label="t('app.deleteResidentModalTitle')"
@@ -1171,50 +1169,50 @@ const groupedReservations = computed(() => {
           {{ residentDeleteError }}
         </p>
 
-        <div class="resident-modal__actions">
-          <button
-            v-if="!deleteResidentSummary"
-            type="button"
-            class="resident-modal__btn resident-modal__btn--secondary"
-            :disabled="isDeletingResidentCascade"
-            @click="closeDeleteResidentModal"
-          >
-            {{ t('app.cancelAction') }}
-          </button>
-          <button
-            v-if="!deleteResidentSummary"
-            type="button"
-            class="resident-modal__btn resident-modal__btn--danger"
-            :disabled="isDeletingResidentCascade || isLoadingDeletePreview"
-            @click="confirmDeleteResidentCascade"
-          >
-            <i class="pi pi-trash" aria-hidden="true" />
-            {{
-              isDeletingResidentCascade
-                ? t('app.deleteResidentInProgress')
-                : t('app.deleteResidentConfirmAction')
-            }}
-          </button>
-          <button
-            v-else
-            type="button"
-            class="resident-modal__btn resident-modal__btn--primary"
-            @click="closeDeleteResidentModal"
-          >
-            {{ t('app.closeAction') }}
-          </button>
-        </div>
+        <ConfirmActions
+          :show-cancel="!deleteResidentSummary"
+          :cancel-label="t('app.cancelAction')"
+          :cancel-disabled="isDeletingResidentCascade"
+          align="end"
+          @cancel="closeDeleteResidentModal"
+        >
+          <template #confirm>
+            <button
+              v-if="!deleteResidentSummary"
+              type="button"
+              class="bf-btn bf-btn--danger"
+              :disabled="isDeletingResidentCascade || isLoadingDeletePreview"
+              @click="confirmDeleteResidentCascade"
+            >
+              <span v-if="isDeletingResidentCascade" class="bf-btn__spinner" aria-hidden="true" />
+              <i v-else class="pi pi-trash" aria-hidden="true" />
+              <span>{{
+                isDeletingResidentCascade
+                  ? t('app.deleteResidentInProgress')
+                  : t('app.deleteResidentConfirmAction')
+              }}</span>
+            </button>
+            <button
+              v-else
+              type="button"
+              class="bf-btn bf-btn--confirm"
+              @click="closeDeleteResidentModal"
+            >
+              {{ t('app.closeAction') }}
+            </button>
+          </template>
+        </ConfirmActions>
       </section>
     </div>
 
     <div
       v-if="isSpaceCalendarModalOpen"
-      class="resident-modal-backdrop"
+      class="resident-modal-backdrop bf-modal-backdrop"
       role="presentation"
       @click.self="closeSpaceCalendar"
     >
       <section
-        class="resident-modal resident-modal--wide"
+        class="resident-modal resident-modal--wide bf-modal-panel"
         role="dialog"
         aria-modal="true"
         :aria-label="t('app.spaceCalendarTitle')"
@@ -1247,15 +1245,12 @@ const groupedReservations = computed(() => {
           </li>
         </ul>
 
-        <div class="resident-modal__actions">
-          <button
-            type="button"
-            class="resident-modal__btn resident-modal__btn--primary"
-            @click="closeSpaceCalendar"
-          >
-            {{ t('app.closeAction') }}
-          </button>
-        </div>
+        <ConfirmActions
+          :show-cancel="false"
+          :confirm-label="t('app.closeAction')"
+          align="center"
+          @confirm="closeSpaceCalendar"
+        />
       </section>
     </div>
   </div>
@@ -1868,6 +1863,19 @@ const groupedReservations = computed(() => {
   border-color: #0a84ff;
 }
 
+.resident-modal__field-hint {
+  font-size: 0.75rem;
+  font-weight: 400;
+  color: #86868b;
+  line-height: 1.35;
+}
+
+.resident-modal__field-preview {
+  font-size: 0.8125rem;
+  font-weight: 600;
+  color: var(--apple-blue, #1e3a8a);
+}
+
 .space-image-field {
   border: 1px dashed #d2d2d7;
   border-radius: 10px;
@@ -1948,48 +1956,8 @@ const groupedReservations = computed(() => {
   font-size: 0.78rem;
 }
 
-.resident-modal__actions {
-  display: flex;
-  justify-content: flex-end;
-  gap: 0.5rem;
+.resident-modal__form .bf-actions {
   margin-top: 0.4rem;
-}
-
-.resident-modal__btn {
-  border: none;
-  border-radius: 8px;
-  padding: 0.48rem 0.85rem;
-  font-weight: 600;
-  font-size: 0.85rem;
-  cursor: pointer;
-  transition: filter 0.12s ease;
-}
-
-.resident-modal__btn:hover {
-  filter: brightness(0.93);
-}
-
-.resident-modal__btn--secondary {
-  background: #f2f2f7;
-  color: #1d1d1f;
-}
-
-.resident-modal__btn--primary {
-  background: #0a84ff;
-  color: #ffffff;
-}
-
-.resident-modal__btn--danger {
-  background: #ff3b30;
-  color: #ffffff;
-  display: inline-flex;
-  align-items: center;
-  gap: 0.35rem;
-}
-
-.resident-modal__btn--danger:disabled {
-  opacity: 0.5;
-  cursor: not-allowed;
 }
 
 .resident-modal--danger {

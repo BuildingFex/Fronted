@@ -1,0 +1,229 @@
+/* ── Unified confirm / cancel actions (BuildingFex) ── */
+
+@keyframes bf-actions-in {
+  from {
+    opacity: 0;
+    transform: translate3d(0, 10px, 0);
+  }
+
+  to {
+    opacity: 1;
+    transform: translate3d(0, 0, 0);
+  }
+}
+
+@keyframes bf-btn-pulse {
+  0%,
+  100% {
+    box-shadow: 0 0 0 0 rgba(var(--apple-blue-rgb), 0.35);
+  }
+
+  50% {
+    box-shadow: 0 0 0 6px rgba(var(--apple-blue-rgb), 0);
+  }
+}
+
+@keyframes bf-modal-backdrop-in {
+  from {
+    opacity: 0;
+  }
+
+  to {
+    opacity: 1;
+  }
+}
+
+@keyframes bf-modal-panel-in {
+  from {
+    opacity: 0;
+    transform: translate3d(0, 18px, 0) scale(0.97);
+  }
+
+  to {
+    opacity: 1;
+    transform: translate3d(0, 0, 0) scale(1);
+  }
+}
+
+@keyframes bf-spinner {
+  to {
+    transform: rotate(360deg);
+  }
+}
+
+.bf-actions {
+  display: flex;
+  flex-wrap: wrap;
+  align-items: center;
+  justify-content: flex-end;
+  gap: 0.625rem;
+  width: 100%;
+  animation: bf-actions-in 0.38s cubic-bezier(0.22, 1, 0.36, 1) both;
+}
+
+.bf-actions--center {
+  justify-content: center;
+}
+
+.bf-actions--stagger .bf-btn:nth-child(1) {
+  animation: bf-actions-in 0.38s cubic-bezier(0.22, 1, 0.36, 1) 0.04s both;
+}
+
+.bf-actions--stagger .bf-btn:nth-child(2) {
+  animation: bf-actions-in 0.38s cubic-bezier(0.22, 1, 0.36, 1) 0.1s both;
+}
+
+.bf-btn {
+  position: relative;
+  display: inline-flex;
+  align-items: center;
+  justify-content: center;
+  gap: 0.4rem;
+  min-height: 2.5rem;
+  padding: 0.55rem 1.25rem;
+  border: 1px solid transparent;
+  border-radius: var(--apple-radius-pill);
+  font-family: inherit;
+  font-size: 0.8125rem;
+  font-weight: 600;
+  letter-spacing: -0.01em;
+  line-height: 1.2;
+  cursor: pointer;
+  white-space: nowrap;
+  transition:
+    transform 0.2s cubic-bezier(0.22, 1, 0.36, 1),
+    box-shadow 0.2s ease,
+    background-color 0.2s ease,
+    border-color 0.2s ease,
+    color 0.2s ease,
+    opacity 0.2s ease;
+}
+
+.bf-btn:focus-visible {
+  outline: var(--apple-focus-ring);
+  outline-offset: var(--apple-focus-ring-offset);
+}
+
+.bf-btn:disabled {
+  opacity: 0.55;
+  cursor: not-allowed;
+  transform: none !important;
+  box-shadow: none !important;
+}
+
+.bf-btn:not(:disabled):hover {
+  transform: translateY(-1px);
+}
+
+.bf-btn:not(:disabled):active {
+  transform: translateY(0) scale(0.97);
+  transition-duration: 0.08s;
+}
+
+.bf-btn--cancel {
+  background: var(--apple-bg);
+  color: var(--apple-text);
+  border-color: var(--apple-border-hairline);
+  box-shadow: var(--apple-shadow-sm);
+}
+
+.bf-btn--cancel:not(:disabled):hover {
+  background: var(--apple-bg-secondary);
+  border-color: rgba(0, 0, 0, 0.14);
+  box-shadow: 0 4px 14px rgba(0, 0, 0, 0.06);
+}
+
+.bf-btn--confirm {
+  background: var(--apple-blue);
+  color: #ffffff;
+  box-shadow: 0 4px 14px rgba(var(--apple-blue-rgb), 0.28);
+}
+
+.bf-btn--confirm:not(:disabled):hover {
+  background: var(--apple-blue-hover);
+  box-shadow: 0 6px 20px rgba(var(--apple-blue-rgb), 0.34);
+}
+
+.bf-btn--confirm:not(:disabled):focus-visible {
+  animation: bf-btn-pulse 1.6s ease infinite;
+}
+
+.bf-btn--danger {
+  background: #ff3b30;
+  color: #ffffff;
+  box-shadow: 0 4px 14px rgba(255, 59, 48, 0.28);
+}
+
+.bf-btn--danger:not(:disabled):hover {
+  background: #e0352b;
+  box-shadow: 0 6px 20px rgba(255, 59, 48, 0.34);
+}
+
+.bf-btn__spinner {
+  width: 0.875rem;
+  height: 0.875rem;
+  border: 2px solid rgba(255, 255, 255, 0.35);
+  border-top-color: #ffffff;
+  border-radius: 50%;
+  animation: bf-spinner 0.65s linear infinite;
+  flex-shrink: 0;
+}
+
+.bf-btn--cancel .bf-btn__spinner {
+  border-color: rgba(0, 0, 0, 0.12);
+  border-top-color: var(--apple-text);
+}
+
+/* Modal backdrop / panel motion (custom modals) */
+.bf-modal-backdrop {
+  animation: bf-modal-backdrop-in 0.28s ease both;
+}
+
+.bf-modal-panel {
+  animation: bf-modal-panel-in 0.42s cubic-bezier(0.22, 1, 0.36, 1) both;
+}
+
+/* PrimeVue Dialog — unified footer + entrance */
+.p-dialog-mask.p-component-overlay {
+  animation: bf-modal-backdrop-in 0.28s ease both;
+}
+
+.p-dialog {
+  animation: bf-modal-panel-in 0.42s cubic-bezier(0.22, 1, 0.36, 1) both;
+}
+
+.p-dialog-footer {
+  display: flex;
+  justify-content: flex-end;
+  gap: 0;
+  padding-top: 0.25rem;
+}
+
+.p-dialog-footer .bf-actions {
+  margin: 0;
+}
+
+.bf-modal-panel > .bf-actions:last-child,
+.bf-modal-panel .bf-actions:last-child {
+  margin-top: 0.4rem;
+}
+
+@media (prefers-reduced-motion: reduce) {
+  .bf-actions,
+  .bf-actions--stagger .bf-btn,
+  .bf-modal-backdrop,
+  .bf-modal-panel,
+  .p-dialog-mask.p-component-overlay,
+  .p-dialog {
+    animation: none !important;
+  }
+
+  .bf-btn:not(:disabled):hover,
+  .bf-btn:not(:disabled):active {
+    transform: none;
+  }
+
+  .bf-btn--confirm:not(:disabled):focus-visible {
+    animation: none;
+  }
+}

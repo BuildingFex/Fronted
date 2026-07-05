@@ -1,6 +1,7 @@
 <script setup>
 import { ref } from 'vue'
 import { useI18n } from 'vue-i18n'
+import ConfirmActions from '@/shared/presentation/components/ConfirmActions.vue'
 
 const { t } = useI18n()
 
@@ -58,8 +59,8 @@ async function handleSubmit() {
 
   <Teleport to="body">
     <Transition name="ann-modal">
-      <div v-if="showModal" class="ann-modal-overlay" @click.self="closeModal">
-        <div class="ann-modal" role="dialog" :aria-label="t('information.newAnnouncement')">
+      <div v-if="showModal" class="ann-modal-overlay bf-modal-backdrop" @click.self="closeModal">
+        <div class="ann-modal bf-modal-panel" role="dialog" :aria-label="t('information.newAnnouncement')">
           <header class="ann-modal__header">
             <h2 class="ann-modal__title">{{ t('information.newAnnouncement') }}</h2>
             <button
@@ -125,23 +126,15 @@ async function handleSubmit() {
 
             <p v-if="error" class="ann-modal__error">{{ error }}</p>
 
-            <div class="ann-modal__actions">
-              <button
-                type="button"
-                class="ann-btn ann-btn--secondary"
-                @click="closeModal"
-              >
-                {{ t('information.cancel') }}
-              </button>
-              <button
-                id="btn-submit-announcement"
-                type="submit"
-                class="ann-btn ann-btn--primary"
-                :disabled="submitting"
-              >
-                {{ submitting ? t('information.sending') : t('information.send') }}
-              </button>
-            </div>
+            <ConfirmActions
+              :cancel-label="t('information.cancel')"
+              :confirm-label="submitting ? t('information.sending') : t('information.send')"
+              confirm-type="submit"
+              :loading="submitting"
+              :disabled="submitting"
+              :cancel-disabled="submitting"
+              @cancel="closeModal"
+            />
           </form>
         </div>
       </div>
@@ -284,38 +277,9 @@ async function handleSubmit() {
   font-weight: 500;
 }
 
-/* ── actions ── */
-.ann-modal__actions {
-  display: flex;
-  justify-content: flex-end;
-  gap: 0.6rem;
+.ann-modal__body .bf-actions {
   padding-top: 0.25rem;
 }
-
-.ann-btn {
-  padding: 0.5rem 1rem;
-  border: none;
-  border-radius: 980px;
-  font-size: 0.8125rem;
-  font-weight: 600;
-  font-family: inherit;
-  cursor: pointer;
-  transition: background 0.15s ease, color 0.15s ease;
-}
-.ann-btn--primary {
-  background: #0071e3;
-  color: #fff;
-}
-.ann-btn--primary:hover { background: #0077ed; }
-.ann-btn--primary:disabled {
-  opacity: 0.55;
-  cursor: not-allowed;
-}
-.ann-btn--secondary {
-  background: #f2f2f7;
-  color: #1d1d1f;
-}
-.ann-btn--secondary:hover { background: #e8e8ed; }
 
 /* ── transitions ── */
 .ann-modal-enter-active,

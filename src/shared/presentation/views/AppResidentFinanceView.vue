@@ -16,6 +16,7 @@ import TabPanels from 'primevue/tabpanels'
 import TabPanel from 'primevue/tabpanel'
 import Card from 'primevue/card'
 import Message from 'primevue/message'
+import ConfirmActions from '@/shared/presentation/components/ConfirmActions.vue'
 import { useToast } from 'primevue/usetoast'
 import {
   renderCardPaymentBrick,
@@ -396,13 +397,16 @@ const activeTab = ref('0')
       </div>
 
       <template #footer>
-        <Button :label="t('app.cancelAction')" icon="pi pi-times" severity="secondary" outlined @click="isPayDialogOpen = false" :disabled="isProcessing" />
-        <Button
-          v-if="useFallbackForm"
-          :label="isProcessing ? t('residentFinance.processing') : t('residentFinance.confirmPay')"
-          icon="pi pi-check"
+        <ConfirmActions
+          :cancel-label="t('app.cancelAction')"
+          :confirm-label="isProcessing ? t('residentFinance.processing') : t('residentFinance.confirmPay')"
+          cancel-icon="pi pi-times"
+          confirm-icon="pi pi-check"
+          :show-confirm="useFallbackForm"
           :loading="isProcessing"
-          @click="confirmFallbackPayment"
+          :cancel-disabled="isProcessing"
+          @cancel="isPayDialogOpen = false"
+          @confirm="confirmFallbackPayment"
         />
       </template>
     </Dialog>

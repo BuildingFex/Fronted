@@ -8,6 +8,7 @@ import AccordionPanel from 'primevue/accordionpanel'
 import AccordionHeader from 'primevue/accordionheader'
 import AccordionContent from 'primevue/accordioncontent'
 import Dialog from 'primevue/dialog'
+import ConfirmActions from '@/shared/presentation/components/ConfirmActions.vue'
 import Textarea from 'primevue/textarea'
 
 import { useSupportStore } from '../../../support/application/supportStore.js'
@@ -240,25 +241,15 @@ function previewLast(chat) {
         />
       </div>
       <template #footer>
-        <Button
-          type="button"
-          rounded
-          :label="t('supportResident.cancel')"
-          icon="pi pi-times"
-          severity="secondary"
-          class="finance-toolbar-row__btn"
-          @click="store.closeChatDialog()"
-          text
-        />
-        <Button
-          type="button"
-          rounded
-          :label="t('supportResident.send')"
-          icon="pi pi-send"
-          class="finance-toolbar-row__btn"
-          @click="sendChatMessage"
+        <ConfirmActions
+          :cancel-label="t('supportResident.cancel')"
+          :confirm-label="t('supportResident.send')"
+          cancel-icon="pi pi-times"
+          confirm-icon="pi pi-send"
           :loading="sending"
           :disabled="!chatMessage.trim()"
+          @cancel="store.closeChatDialog()"
+          @confirm="sendChatMessage"
         />
       </template>
     </Dialog>

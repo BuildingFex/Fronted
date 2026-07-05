@@ -10,6 +10,7 @@ import Tag from 'primevue/tag'
 import Button from 'primevue/button'
 import Textarea from 'primevue/textarea'
 import Dialog from 'primevue/dialog'
+import ConfirmActions from '@/shared/presentation/components/ConfirmActions.vue'
 
 const { t, locale } = useI18n()
 const { state } = useSession()
@@ -208,18 +209,11 @@ async function reportIncident() {
         </div>
       </div>
       <template #footer>
-        <Button
-          type="button"
-          text
-          rounded
-          :label="t('app.cancelAction')"
-          @click="closeReportModal"
-        />
-        <Button
-          type="button"
-          rounded
-          :label="t('app.residentIncidentsSubmit')"
-          @click="reportIncident"
+        <ConfirmActions
+          :cancel-label="t('app.cancelAction')"
+          :confirm-label="t('app.residentIncidentsSubmit')"
+          @cancel="closeReportModal"
+          @confirm="reportIncident"
         />
       </template>
     </Dialog>
