@@ -198,11 +198,21 @@ async function load() {
 
 onMounted(() => {
   void load()
+  void syncInviteQrs()
   inviteClock = window.setInterval(() => {
     nowMs.value = Date.now()
     void syncInviteQrs()
   }, 5000)
 })
+
+watch(
+  () => profile.value.id,
+  (newId, oldId) => {
+    if (newId && newId !== oldId) {
+      void load()
+    }
+  }
+)
 
 watch(
   () =>

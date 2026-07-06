@@ -74,6 +74,15 @@ onMounted(async () => {
   }
 })
 
+watch(
+  () => residentId.value,
+  async (newId, oldId) => {
+    if (newId && newId !== oldId) {
+      await store.loadMyChats(newId)
+    }
+  }
+)
+
 const handleStartChat = async () => {
   if (!residentId.value) return
   await store.initiateAsyncChat(

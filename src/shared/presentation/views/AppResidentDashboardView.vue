@@ -1,5 +1,5 @@
 <script setup>
-import { computed, onMounted, ref, watch } from 'vue'
+import { computed, onMounted, ref, watch, nextTick } from 'vue'
 import { useI18n } from 'vue-i18n'
 import { useSession } from '@/iam/application/sessionStore.js'
 import { reservationsApi } from '@/socialSpaces/infrastructure/reservationsApi.js'
@@ -216,7 +216,9 @@ function drawChart() {
 
 // Draw chart whenever finance data changes or on mount
 watch(() => financeSummary.value, () => {
-  setTimeout(drawChart, 100)
+  nextTick(() => {
+    drawChart()
+  })
 }, { deep: true })
 
 async function loadInitialData() {
@@ -240,7 +242,7 @@ async function loadInitialData() {
     incidents.value = allIncidents.filter(i => i.residentId === profile.value.id)
     
     // Load finance data
-    loadFinanceData(profile.value.id)
+    await loadFinanceData(profile.value.id)
   } catch (err) {
     console.error('Error loading dashboard data', err)
   } finally {
@@ -249,6 +251,15 @@ async function loadInitialData() {
     isLoadingIncidents.value = false
   }
 }
+
+watch(
+  () => profile.value.id,
+  (newId, oldId) => {
+    if (newId && newId !== oldId) {
+      loadInitialData()
+    }
+  }
+)
 
 onMounted(() => {
   loadInitialData()
