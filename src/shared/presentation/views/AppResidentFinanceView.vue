@@ -22,7 +22,7 @@ import {
 } from '@/finances/infrastructure/mercadoPagoService.js'
 import { useResidentPaymentStore } from '@/finances/application/residentPaymentStore.js'
 
-const { t } = useI18n()
+const { t, locale } = useI18n()
 const { state } = useSession()
 const route = useRoute()
 const router = useRouter()
@@ -63,8 +63,8 @@ async function handlePaymentReturnFromRoute() {
   if (status === 'pending') {
     toast.add({
       severity: 'warn',
-      summary: t('residentFinance.paymentPendingTitle', 'Pago pendiente'),
-      detail: t('residentFinance.paymentPendingDetail', 'Tu pago está en revisión. Te avisaremos cuando se confirme.'),
+      summary: t('residentFinance.paymentPendingTitle'),
+      detail: t('residentFinance.paymentPendingDetail'),
       life: 5000,
     })
     router.replace({ path: route.path })
@@ -95,8 +95,8 @@ async function handlePaymentReturnFromRoute() {
     await loadData(profile.value.id)
     toast.add({
       severity: 'warn',
-      summary: t('residentFinance.paymentPendingTitle', 'Pago en proceso'),
-      detail: t('residentFinance.paymentPendingDetail', 'Tu pago fue recibido. Actualizaremos tu estado en breve.'),
+      summary: t('residentFinance.paymentPendingTitle'),
+      detail: t('residentFinance.paymentPendingDetail'),
       life: 5000,
     })
   } finally {
@@ -191,8 +191,9 @@ const activeTab = ref('0')
 function formatDateTime(iso) {
   if (!iso) return '—'
   const d = new Date(iso)
-  return d.toLocaleDateString('es-PE', { day: '2-digit', month: 'short', year: 'numeric' })
-    + ' ' + d.toLocaleTimeString('es-PE', { hour: '2-digit', minute: '2-digit' })
+  const loc = locale.value === 'es' ? 'es-PE' : 'en-US'
+  return d.toLocaleDateString(loc, { day: '2-digit', month: 'short', year: 'numeric' })
+    + ' ' + d.toLocaleTimeString(loc, { hour: '2-digit', minute: '2-digit' })
 }
 </script>
 
@@ -219,11 +220,11 @@ function formatDateTime(iso) {
           <div class="kpi-icon icon-purple">
             <i class="pi pi-wallet" aria-hidden="true"></i>
           </div>
-          <span class="kpi-label">{{ t('residentFinance.kpiTotalPaid', 'Historial Pagado') }}</span>
+          <span class="kpi-label">{{ t('residentFinance.kpiTotalPaid') }}</span>
         </div>
         <div class="kpi-value">S/ {{ totalPaid.toLocaleString('es-PE', { minimumFractionDigits: 2 }) }}</div>
         <span class="kpi-subtext subtext-green">
-          <i class="pi pi-arrow-up" aria-hidden="true"></i> {{ paymentHistory.length }} pagos realizados
+          <i class="pi pi-arrow-up" aria-hidden="true"></i> {{ t('residentFinance.kpiTotalPaidCount', { n: paymentHistory.length }) }}
         </span>
       </div>
 
@@ -233,14 +234,14 @@ function formatDateTime(iso) {
           <div class="kpi-icon" :class="hasOverdue ? 'icon-red' : 'icon-orange'">
             <i class="pi pi-clock" aria-hidden="true"></i>
           </div>
-          <span class="kpi-label">{{ t('residentFinance.kpiPending', 'Monto Pendiente') }}</span>
+          <span class="kpi-label">{{ t('residentFinance.kpiPending') }}</span>
         </div>
         <div class="kpi-value" :class="{ 'text-red': hasOverdue }">S/ {{ pendingTotal.toLocaleString('es-PE', { minimumFractionDigits: 2 }) }}</div>
         <span v-if="hasOverdue" class="kpi-subtext subtext-red">
-          <i class="pi pi-exclamation-triangle" aria-hidden="true"></i> Tienes cuotas vencidas
+          <i class="pi pi-exclamation-triangle" aria-hidden="true"></i> {{ t('residentFinance.kpiOverdueWarning') }}
         </span>
         <span v-else class="kpi-subtext">
-          <i class="pi pi-check" aria-hidden="true"></i> Al día con tus pagos
+          <i class="pi pi-check" aria-hidden="true"></i> {{ t('residentFinance.kpiUpToDate') }}
         </span>
       </div>
 
@@ -250,11 +251,11 @@ function formatDateTime(iso) {
           <div class="kpi-icon icon-blue">
             <i class="pi pi-calendar" aria-hidden="true"></i>
           </div>
-          <span class="kpi-label">{{ t('residentFinance.kpiNextFee', 'Próxima Cuota') }}</span>
+          <span class="kpi-label">{{ t('residentFinance.kpiNextFee') }}</span>
         </div>
         <div class="kpi-value">{{ nextDueFee?.month || '—' }}</div>
         <span class="kpi-subtext">
-          Vence: {{ nextDueFee?.dueDate || 'Sin deuda' }}
+          {{ nextDueFee?.dueDate ? t('residentFinance.kpiNextFeeDue', { date: nextDueFee.dueDate }) : t('residentFinance.kpiNextFeeNoDebt') }}
         </span>
       </div>
 
@@ -271,7 +272,7 @@ function formatDateTime(iso) {
           @click="startMaintenanceCheckout"
         />
         <span class="kpi-subtext text-center mt-2">
-          Pago seguro con Mercado Pago Checkout Pro
+          {{ t('residentFinance.securePayment') }}
         </span>
       </div>
     </div>

@@ -555,7 +555,18 @@
     "paymentSuccessTitle": "¡Pago exitoso!",
     "paymentSuccessDetail": "Tu pago se registró correctamente vía Mercado Pago.",
     "paymentErrorTitle": "Error en el pago",
-    "paymentErrorDetail": "No se pudo procesar el pago. Intenta nuevamente."
+    "paymentErrorDetail": "No se pudo procesar el pago. Intenta nuevamente.",
+    "kpiTotalPaid": "Historial pagado",
+    "kpiTotalPaidCount": "{n} pagos realizados",
+    "kpiPending": "Monto pendiente",
+    "kpiOverdueWarning": "Tienes cuotas vencidas",
+    "kpiUpToDate": "Al día con tus pagos",
+    "kpiNextFee": "Próxima cuota",
+    "kpiNextFeeDue": "Vence: {date}",
+    "kpiNextFeeNoDebt": "Sin deuda",
+    "securePayment": "Pago seguro con Mercado Pago Checkout Pro",
+    "paymentPendingTitle": "Pago pendiente",
+    "paymentPendingDetail": "Tu pago está en revisión. Te avisaremos cuando se confirme."
   },
   "information": {
     "pageTitle": "Información",

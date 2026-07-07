@@ -554,7 +554,18 @@
     "paymentSuccessTitle": "Payment successful!",
     "paymentSuccessDetail": "Your payment has been registered via Mercado Pago.",
     "paymentErrorTitle": "Payment error",
-    "paymentErrorDetail": "Could not process the payment. Please try again."
+    "paymentErrorDetail": "Could not process the payment. Please try again.",
+    "kpiTotalPaid": "Total paid",
+    "kpiTotalPaidCount": "{n} payments completed",
+    "kpiPending": "Pending amount",
+    "kpiOverdueWarning": "You have overdue fees",
+    "kpiUpToDate": "All payments up to date",
+    "kpiNextFee": "Next fee",
+    "kpiNextFeeDue": "Due: {date}",
+    "kpiNextFeeNoDebt": "No balance due",
+    "securePayment": "Secure payment with Mercado Pago Checkout Pro",
+    "paymentPendingTitle": "Payment pending",
+    "paymentPendingDetail": "Your payment is under review. We will notify you when it is confirmed."
   },
   "information": {
     "pageTitle": "Information",
