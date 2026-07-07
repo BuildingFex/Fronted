@@ -195,6 +195,30 @@ function formatDateTime(iso) {
   return d.toLocaleDateString(loc, { day: '2-digit', month: 'short', year: 'numeric' })
     + ' ' + d.toLocaleTimeString(loc, { hour: '2-digit', minute: '2-digit' })
 }
+
+const monthNamesEs = ['Enero', 'Febrero', 'Marzo', 'Abril', 'Mayo', 'Junio', 'Julio', 'Agosto', 'Septiembre', 'Octubre', 'Noviembre', 'Diciembre']
+const monthNamesEn = ['January', 'February', 'March', 'April', 'May', 'June', 'July', 'August', 'September', 'October', 'November', 'December']
+
+function translateMonth(value) {
+  if (!value) return '—'
+  const str = String(value).trim()
+
+  const dateMatch = str.match(/^(\d{4})-(\d{2})/)
+  if (dateMatch) {
+    const d = new Date(Number(dateMatch[1]), Number(dateMatch[2]) - 1, 1)
+    const loc = locale.value === 'es' ? 'es-PE' : 'en-US'
+    return d.toLocaleDateString(loc, { month: 'long', year: 'numeric' })
+  }
+
+  const esIdx = monthNamesEs.findIndex(m => str.includes(m))
+  if (esIdx >= 0) {
+    const year = str.replace(monthNamesEs[esIdx], '').trim()
+    const name = locale.value === 'es' ? monthNamesEs[esIdx] : monthNamesEn[esIdx]
+    return year ? `${name} ${year}` : name
+  }
+
+  return str
+}
 </script>
 
 <template>
@@ -253,7 +277,7 @@ function formatDateTime(iso) {
           </div>
           <span class="kpi-label">{{ t('residentFinance.kpiNextFee') }}</span>
         </div>
-        <div class="kpi-value">{{ nextDueFee?.month || '—' }}</div>
+        <div class="kpi-value">{{ translateMonth(nextDueFee?.month) }}</div>
         <span class="kpi-subtext">
           {{ nextDueFee?.dueDate ? t('residentFinance.kpiNextFeeDue', { date: nextDueFee.dueDate }) : t('residentFinance.kpiNextFeeNoDebt') }}
         </span>
