@@ -18,14 +18,18 @@ import Card from 'primevue/card'
 import Message from 'primevue/message'
 import ConfirmActions from '@/shared/presentation/components/ConfirmActions.vue'
 import { useToast } from 'primevue/usetoast'
+import { useRoute, useRouter } from 'vue-router'
 import {
   renderCardPaymentBrick,
   processCardPayment,
+  isPaymentApproved,
 } from '@/finances/infrastructure/mercadoPagoService.js'
 import { useResidentPaymentStore } from '@/finances/application/residentPaymentStore.js'
 
 const { t } = useI18n()
 const { state } = useSession()
+const route = useRoute()
+const router = useRouter()
 const { state: paymentState, recordPayment, loadData } = useResidentPaymentStore()
 
 const profile = computed(() => state.profile ?? {})
@@ -40,7 +44,39 @@ onMounted(() => {
   if (profile.value.id) {
     loadData(profile.value.id)
   }
+  handlePaymentReturnFromRoute()
 })
+
+async function handlePaymentReturnFromRoute() {
+  const status = route.query.payment
+  if (!status) return
+
+  if (status === 'success') {
+    toast.add({
+      severity: 'success',
+      summary: t('residentFinance.paymentSuccessTitle'),
+      detail: t('residentFinance.paymentSuccessDetail'),
+      life: 5000,
+    })
+    if (profile.value.id) await loadData(profile.value.id)
+  } else if (status === 'failure') {
+    toast.add({
+      severity: 'error',
+      summary: t('residentFinance.paymentErrorTitle'),
+      detail: t('residentFinance.paymentErrorDetail'),
+      life: 5000,
+    })
+  } else if (status === 'pending') {
+    toast.add({
+      severity: 'warn',
+      summary: t('residentFinance.paymentPendingTitle', 'Pago pendiente'),
+      detail: t('residentFinance.paymentPendingDetail', 'Tu pago está en revisión. Te avisaremos cuando se confirme.'),
+      life: 5000,
+    })
+  }
+
+  router.replace({ path: route.path })
+}
 
 function getDaysUntilDue(dueDate) {
   const due = new Date(dueDate + 'T00:00:00')
@@ -130,13 +166,36 @@ watch(isPayDialogOpen, async (open) => {
 async function handleBricksPayment(cardFormData) {
   isProcessing.value = true
   try {
-    const result = await processCardPayment({
-      ...cardFormData,
-      transaction_amount: pendingTotal.value,
-    })
+    const pendingFees = fees.value.filter((f) => f.status === 'Pendiente')
+    const singleReceiptId = pendingFees.length === 1 && pendingFees[0].type === 'receipt'
+      ? String(pendingFees[0].originalId ?? pendingFees[0].id)
+      : null
+
+    const result = await processCardPayment(
+      {
+        ...cardFormData,
+        transaction_amount: pendingTotal.value,
+      },
+      {
+        payerEmail: profile.value.email || undefined,
+        receiptId: singleReceiptId,
+      },
+    )
+
+    if (!isPaymentApproved(result)) {
+      throw new Error(result.status_detail || result.status || 'payment_rejected')
+    }
+
     await recordSuccessfulPayment(result)
-  } catch {
-    toast.add({ severity: 'error', summary: t('residentFinance.paymentErrorTitle'), detail: t('residentFinance.paymentErrorDetail'), life: 4000 })
+  } catch (err) {
+    const detail = err?.payload?.message || err?.message || t('residentFinance.paymentErrorDetail')
+    toast.add({
+      severity: 'error',
+      summary: t('residentFinance.paymentErrorTitle'),
+      detail,
+      life: 5000,
+    })
+    throw err
   } finally {
     isProcessing.value = false
   }
@@ -164,9 +223,27 @@ async function confirmFallbackPayment() {
 }
 
 async function recordSuccessfulPayment(result) {
+  const pendingFees = fees.value.filter((f) => f.status === 'Pendiente')
+  const backendReconciled = pendingFees.length === 1
+    && pendingFees[0].type === 'receipt'
+    && isPaymentApproved(result)
+
+  if (backendReconciled) {
+    isPayDialogOpen.value = false
+    if (profile.value.id) await loadData(profile.value.id)
+    toast.add({
+      severity: 'success',
+      summary: t('residentFinance.paymentSuccessTitle'),
+      detail: t('residentFinance.paymentSuccessDetail'),
+      life: 4000,
+    })
+    return
+  }
+
   const record = await recordPayment(result, profile.value.id)
   if (record) {
     isPayDialogOpen.value = false
+    if (profile.value.id) await loadData(profile.value.id)
     toast.add({
       severity: 'success',
       summary: t('residentFinance.paymentSuccessTitle'),
