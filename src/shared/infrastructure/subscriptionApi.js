@@ -25,7 +25,11 @@ export const subscriptionApi = {
   },
 
   async checkout(planId) {
-    const { data } = await apiClient.post('/api/v1/subscription/checkout', { planId })
+    const frontendBaseUrl = typeof window !== 'undefined' ? window.location.origin : undefined
+    const { data } = await apiClient.post('/api/v1/subscription/checkout', {
+      planId,
+      ...(frontendBaseUrl ? { frontendBaseUrl } : {}),
+    })
     return {
       preferenceId: data?.preferenceId ?? data?.PreferenceId ?? null,
       initPoint: data?.initPoint ?? data?.InitPoint ?? null,

@@ -166,8 +166,8 @@ async function selectPlan(planId) {
     } else {
       planError.value = t('app.settingsPlanCheckoutError')
     }
-  } catch {
-    planError.value = t('app.settingsPlanCheckoutError')
+  } catch (error) {
+    planError.value = error?.payload?.message || error?.message || t('app.settingsPlanCheckoutError')
   } finally {
     if (!checkout?.initPoint) planCheckoutPlanId.value = null
   }
