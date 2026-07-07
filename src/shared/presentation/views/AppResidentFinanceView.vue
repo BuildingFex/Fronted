@@ -212,7 +212,8 @@ function translateMonth(value) {
 
   const esIdx = monthNamesEs.findIndex(m => str.includes(m))
   if (esIdx >= 0) {
-    const year = str.replace(monthNamesEs[esIdx], '').trim()
+    const yearMatch = str.match(/(\d{4})/)
+    const year = yearMatch ? yearMatch[1] : ''
     const name = locale.value === 'es' ? monthNamesEs[esIdx] : monthNamesEn[esIdx]
     return year ? `${name} ${year}` : name
   }
@@ -319,7 +320,11 @@ function translateMonth(value) {
             <TabPanel value="0">
               <DataTable :value="fees" responsiveLayout="scroll" :loading="paymentState.isLoading" class="premium-table">
                 <Column field="concept" :header="t('residentFinance.colConcept', 'Concepto')" />
-                <Column field="month" :header="t('residentFinance.colMonth')" />
+                <Column :header="t('residentFinance.colMonth')">
+                  <template #body="{ data }">
+                    {{ translateMonth(data.month) }}
+                  </template>
+                </Column>
                 <Column :header="t('residentFinance.colAmount')">
                   <template #body="{ data }">
                     <span class="font-semibold text-900">S/ {{ data.amount.toFixed(2) }}</span>
