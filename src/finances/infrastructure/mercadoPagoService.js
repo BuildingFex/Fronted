@@ -1,102 +1,60 @@
 /**
- * Mercado Pago Checkout Bricks integration service.
+ * Mercado Pago Checkout Pro integration service.
  *
  * Backend endpoints:
  *   GET  /api/v1/payments/config    → public key + status
- *   POST /api/v1/payments/preference → Checkout Pro preference
- *   POST /api/v1/payments/process    → card token from Bricks
+ *   POST /api/v1/payments/checkout  → Checkout Pro for resident maintenance fees
+ *   POST /api/v1/payments/confirm     → confirm return from Checkout Pro
+ *   POST /api/v1/payments/preference → single receipt preference (legacy)
+ *   POST /api/v1/payments/process      → card token (legacy Bricks)
  */
 
 import { apiClient } from '@/shared/infrastructure/api/apiClient.js'
 import { getActiveDataOwnerId } from '@/shared/infrastructure/api/ownerTenant.js'
 
-const ENV_PUBLIC_KEY = import.meta.env.VITE_MP_PUBLIC_KEY || ''
-const MP_TEST_BUYER_EMAIL = 'test_user_7044179726386555213@testuser.com'
-
-let mpInstance = null
-let resolvedPublicKey = ENV_PUBLIC_KEY
-
-async function resolvePublicKey() {
-  if (resolvedPublicKey && !resolvedPublicKey.includes('xxxx')) {
-    return resolvedPublicKey
-  }
-
-  try {
-    const { data } = await apiClient.get('/api/v1/payments/config')
-    if (data?.publicKey) {
-      resolvedPublicKey = data.publicKey
-      return resolvedPublicKey
-    }
-  } catch {
-    // Fall back to env key or placeholder below.
-  }
-
-  return resolvedPublicKey || 'TEST-xxxxxxxx-xxxx-xxxx-xxxx-xxxxxxxxxxxx'
-}
-
 /**
- * Load and initialise the MercadoPago SDK singleton.
+ * Start Checkout Pro for all pending maintenance fees (resident).
  */
-export async function initMercadoPago() {
-  if (mpInstance) return mpInstance
+export async function checkoutMaintenanceFees({ residentId, payerEmail } = {}) {
+  const ownerId = getActiveDataOwnerId()
+  const frontendBaseUrl = typeof window !== 'undefined' ? window.location.origin : undefined
 
-  const publicKey = await resolvePublicKey()
-  if (!publicKey || publicKey.includes('xxxx')) {
-    console.warn('[MercadoPago] Public key not configured.')
-    return null
+  const { data } = await apiClient.post('/api/v1/payments/checkout', {
+    residentId: String(residentId),
+    ...(ownerId ? { ownerAdminId: ownerId } : {}),
+    ...(payerEmail ? { payerEmail } : {}),
+    ...(frontendBaseUrl ? { frontendBaseUrl } : {}),
+  })
+
+  return {
+    preferenceId: data.preferenceId,
+    initPoint: data.initPoint ?? null,
+    demo: Boolean(data.demo),
   }
-
-  try {
-    const { loadMercadoPago } = await import('@mercadopago/sdk-js')
-    await loadMercadoPago()
-
-    if (window.MercadoPago) {
-      mpInstance = new window.MercadoPago(publicKey, { locale: 'es-PE' })
-      return mpInstance
-    }
-  } catch (err) {
-    console.warn('[MercadoPago] SDK could not be loaded.', err)
-  }
-  return null
 }
 
 /**
- * Render the Card Payment Brick inside the given container element.
+ * Confirm maintenance payment after Checkout Pro return.
  */
-export async function renderCardPaymentBrick(container, { amount, onSubmit, onError }) {
-  const mp = await initMercadoPago()
-  if (!mp) return null
+export async function confirmMaintenancePayment({ residentId, paymentId = null, demo = false } = {}) {
+  const ownerId = getActiveDataOwnerId()
 
-  try {
-    const bricksBuilder = mp.bricks()
-    const controller = await bricksBuilder.create('cardPayment', container, {
-      initialization: { amount },
-      callbacks: {
-        onReady: () => {},
-        onSubmit: (cardFormData) => {
-          if (!onSubmit) return Promise.resolve()
-          return onSubmit(cardFormData)
-        },
-        onError: (error) => {
-          console.error('[MercadoPago Brick]', error)
-          if (onError) onError(error)
-        },
-      },
-      customization: {
-        visual: { style: { theme: 'default' } },
-        paymentMethods: { maxInstallments: 1 },
-      },
-    })
+  const { data } = await apiClient.post('/api/v1/payments/confirm', {
+    residentId: String(residentId),
+    ...(ownerId ? { ownerAdminId: ownerId } : {}),
+    paymentId,
+    demo,
+  })
 
-    return controller
-  } catch (err) {
-    console.warn('[MercadoPago] Bricks could not be rendered.', err)
-    return null
+  return {
+    reconciled: Boolean(data.reconciled),
+    itemsPaid: Number(data.itemsPaid ?? 0),
+    paidAt: data.paidAt ?? null,
   }
 }
 
 /**
- * Create a MercadoPago payment preference via the backend (Checkout Pro).
+ * Create a MercadoPago payment preference for a single receipt (legacy).
  */
 export async function createPaymentPreference(receiptId) {
   const ownerId = getActiveDataOwnerId()
@@ -107,44 +65,6 @@ export async function createPaymentPreference(receiptId) {
   return {
     preferenceId: data.preferenceId,
     initPoint: data.initPoint ?? null,
-  }
-}
-
-function buildPayerPayload(cardFormData, payerEmail) {
-  const brickPayer = cardFormData?.payer
-  const email = payerEmail || brickPayer?.email || MP_TEST_BUYER_EMAIL
-
-  return {
-    email,
-    ...(brickPayer?.identification ? { identification: brickPayer.identification } : {}),
-  }
-}
-
-/**
- * Process a card payment via the backend using the card token from Bricks.
- */
-export async function processCardPayment(payload, options = {}) {
-  const ownerId = getActiveDataOwnerId()
-  const { receiptId = null, payerEmail = null } = options
-
-  const { data } = await apiClient.post('/api/v1/payments/process', {
-    token: payload.token,
-    issuer_id: payload.issuer_id,
-    payment_method_id: payload.payment_method_id,
-    transaction_amount: payload.transaction_amount ?? payload.amount,
-    installments: payload.installments ?? 1,
-    payer: buildPayerPayload(payload, payerEmail),
-    ...(receiptId ? { receiptId: String(receiptId) } : {}),
-    ...(ownerId ? { ownerAdminId: ownerId } : {}),
-  })
-
-  return {
-    id: data.id,
-    status: data.status,
-    status_detail: data.status_detail,
-    transaction_amount: data.transaction_amount ?? payload.transaction_amount ?? payload.amount ?? 0,
-    payment_method_id: data.payment_method_id ?? payload.payment_method_id ?? 'visa',
-    date_approved: data.date_approved ?? new Date().toISOString(),
   }
 }
 

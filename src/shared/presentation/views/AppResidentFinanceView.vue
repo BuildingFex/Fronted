@@ -1,13 +1,11 @@
 <script setup>
-import { ref, computed, onMounted, nextTick, watch } from 'vue'
+import { ref, computed, onMounted } from 'vue'
 import { useI18n } from 'vue-i18n'
 import { useSession } from '@/iam/application/sessionStore.js'
 import DataTable from 'primevue/datatable'
 import Column from 'primevue/column'
 import Tag from 'primevue/tag'
 import Button from 'primevue/button'
-import Dialog from 'primevue/dialog'
-import InputText from 'primevue/inputtext'
 import Toast from 'primevue/toast'
 import Tabs from 'primevue/tabs'
 import TabList from 'primevue/tablist'
@@ -16,13 +14,11 @@ import TabPanels from 'primevue/tabpanels'
 import TabPanel from 'primevue/tabpanel'
 import Card from 'primevue/card'
 import Message from 'primevue/message'
-import ConfirmActions from '@/shared/presentation/components/ConfirmActions.vue'
 import { useToast } from 'primevue/usetoast'
 import { useRoute, useRouter } from 'vue-router'
 import {
-  renderCardPaymentBrick,
-  processCardPayment,
-  isPaymentApproved,
+  checkoutMaintenanceFees,
+  confirmMaintenancePayment,
 } from '@/finances/infrastructure/mercadoPagoService.js'
 import { useResidentPaymentStore } from '@/finances/application/residentPaymentStore.js'
 
@@ -30,7 +26,7 @@ const { t } = useI18n()
 const { state } = useSession()
 const route = useRoute()
 const router = useRouter()
-const { state: paymentState, recordPayment, loadData } = useResidentPaymentStore()
+const { state: paymentState, loadData } = useResidentPaymentStore()
 
 const profile = computed(() => state.profile ?? {})
 const toast = useToast()
@@ -40,42 +36,115 @@ const todayIso = new Date().toISOString().slice(0, 10)
 const fees = computed(() => paymentState.fees || [])
 const paymentHistory = computed(() => paymentState.paymentHistory || [])
 
-onMounted(() => {
+const isProcessing = ref(false)
+
+onMounted(async () => {
   if (profile.value.id) {
-    loadData(profile.value.id)
+    await loadData(profile.value.id)
   }
-  handlePaymentReturnFromRoute()
+  await handlePaymentReturnFromRoute()
 })
 
 async function handlePaymentReturnFromRoute() {
   const status = route.query.payment
-  if (!status) return
+  if (!status || !profile.value.id) return
 
-  if (status === 'success') {
-    toast.add({
-      severity: 'success',
-      summary: t('residentFinance.paymentSuccessTitle'),
-      detail: t('residentFinance.paymentSuccessDetail'),
-      life: 5000,
-    })
-    if (profile.value.id) await loadData(profile.value.id)
-  } else if (status === 'failure') {
+  if (status === 'failure') {
     toast.add({
       severity: 'error',
       summary: t('residentFinance.paymentErrorTitle'),
       detail: t('residentFinance.paymentErrorDetail'),
       life: 5000,
     })
-  } else if (status === 'pending') {
+    router.replace({ path: route.path })
+    return
+  }
+
+  if (status === 'pending') {
     toast.add({
       severity: 'warn',
       summary: t('residentFinance.paymentPendingTitle', 'Pago pendiente'),
       detail: t('residentFinance.paymentPendingDetail', 'Tu pago está en revisión. Te avisaremos cuando se confirme.'),
       life: 5000,
     })
+    router.replace({ path: route.path })
+    return
   }
 
-  router.replace({ path: route.path })
+  if (status !== 'success') return
+
+  try {
+    const paymentRaw = route.query.payment_id ?? route.query.collection_id
+    const paymentId = paymentRaw != null && String(paymentRaw).length ? Number(paymentRaw) : null
+
+    if (Number.isFinite(paymentId)) {
+      await confirmMaintenancePayment({
+        residentId: profile.value.id,
+        paymentId,
+      })
+    }
+
+    await loadData(profile.value.id)
+    toast.add({
+      severity: 'success',
+      summary: t('residentFinance.paymentSuccessTitle'),
+      detail: t('residentFinance.paymentSuccessDetail'),
+      life: 5000,
+    })
+  } catch {
+    await loadData(profile.value.id)
+    toast.add({
+      severity: 'warn',
+      summary: t('residentFinance.paymentPendingTitle', 'Pago en proceso'),
+      detail: t('residentFinance.paymentPendingDetail', 'Tu pago fue recibido. Actualizaremos tu estado en breve.'),
+      life: 5000,
+    })
+  } finally {
+    router.replace({ path: route.path })
+  }
+}
+
+async function startMaintenanceCheckout() {
+  if (isProcessing.value || pendingTotal.value === 0 || !profile.value.id) return
+
+  isProcessing.value = true
+  try {
+    const checkout = await checkoutMaintenanceFees({
+      residentId: profile.value.id,
+      payerEmail: profile.value.email || undefined,
+    })
+
+    if (checkout.demo) {
+      await confirmMaintenancePayment({
+        residentId: profile.value.id,
+        demo: true,
+      })
+      await loadData(profile.value.id)
+      toast.add({
+        severity: 'success',
+        summary: t('residentFinance.paymentSuccessTitle'),
+        detail: t('residentFinance.paymentSuccessDetail'),
+        life: 4000,
+      })
+      return
+    }
+
+    if (checkout.initPoint) {
+      window.location.assign(checkout.initPoint)
+      return
+    }
+
+    throw new Error(t('residentFinance.paymentErrorDetail'))
+  } catch (err) {
+    toast.add({
+      severity: 'error',
+      summary: t('residentFinance.paymentErrorTitle'),
+      detail: err?.payload?.message || err?.message || t('residentFinance.paymentErrorDetail'),
+      life: 5000,
+    })
+  } finally {
+    isProcessing.value = false
+  }
 }
 
 function getDaysUntilDue(dueDate) {
@@ -117,156 +186,7 @@ const totalPaid = computed(() =>
   paymentHistory.value.reduce((sum, p) => sum + p.amount, 0),
 )
 
-const isPayDialogOpen = ref(false)
-const isProcessing = ref(false)
-const bricksLoaded = ref(false)
-const brickController = ref(null)
-const mpBrickContainer = ref(null)
-
-const useFallbackForm = ref(false)
-const payForm = ref({ cardNumber: '', expiry: '', cvv: '', holder: '' })
-
-function openPayDialog() {
-  payForm.value = { cardNumber: '', expiry: '', cvv: '', holder: '' }
-  useFallbackForm.value = false
-  bricksLoaded.value = false
-  isPayDialogOpen.value = true
-}
-
-watch(isPayDialogOpen, async (open) => {
-  if (!open) {
-    if (brickController.value) {
-      try { brickController.value.unmount() } catch { /* ignore */ }
-      brickController.value = null
-    }
-    return
-  }
-
-  await nextTick()
-  await new Promise((r) => setTimeout(r, 300))
-
-  const container = mpBrickContainer.value
-  if (!container) { useFallbackForm.value = true; return }
-
-  const amount = pendingTotal.value
-  const ctrl = await renderCardPaymentBrick(container, {
-    amount,
-    onSubmit: async (cardFormData) => { await handleBricksPayment(cardFormData) },
-    onError: () => { useFallbackForm.value = true },
-  })
-
-  if (ctrl) {
-    brickController.value = ctrl
-    bricksLoaded.value = true
-  } else {
-    useFallbackForm.value = true
-  }
-})
-
-async function handleBricksPayment(cardFormData) {
-  isProcessing.value = true
-  try {
-    const pendingFees = fees.value.filter((f) => f.status === 'Pendiente')
-    const singleReceiptId = pendingFees.length === 1 && pendingFees[0].type === 'receipt'
-      ? String(pendingFees[0].originalId ?? pendingFees[0].id)
-      : null
-
-    const result = await processCardPayment(
-      {
-        ...cardFormData,
-        transaction_amount: pendingTotal.value,
-      },
-      {
-        payerEmail: profile.value.email || undefined,
-        receiptId: singleReceiptId,
-      },
-    )
-
-    if (!isPaymentApproved(result)) {
-      throw new Error(result.status_detail || result.status || 'payment_rejected')
-    }
-
-    await recordSuccessfulPayment(result)
-  } catch (err) {
-    const detail = err?.payload?.message || err?.message || t('residentFinance.paymentErrorDetail')
-    toast.add({
-      severity: 'error',
-      summary: t('residentFinance.paymentErrorTitle'),
-      detail,
-      life: 5000,
-    })
-    throw err
-  } finally {
-    isProcessing.value = false
-  }
-}
-
-async function confirmFallbackPayment() {
-  isProcessing.value = true
-  try {
-    // In demo mode, we record the payment directly through the store
-    // instead of calling the MercadoPago API endpoint
-    const demoResult = {
-      id: `DEMO-${Date.now()}`,
-      status: 'approved',
-      status_detail: 'accredited',
-      transaction_amount: pendingTotal.value,
-      payment_method_id: 'visa',
-      date_approved: new Date().toISOString(),
-    }
-    await recordSuccessfulPayment(demoResult)
-  } catch {
-    toast.add({ severity: 'error', summary: t('residentFinance.paymentErrorTitle'), detail: t('residentFinance.paymentErrorDetail'), life: 4000 })
-  } finally {
-    isProcessing.value = false
-  }
-}
-
-async function recordSuccessfulPayment(result) {
-  const pendingFees = fees.value.filter((f) => f.status === 'Pendiente')
-  const backendReconciled = pendingFees.length === 1
-    && pendingFees[0].type === 'receipt'
-    && isPaymentApproved(result)
-
-  if (backendReconciled) {
-    isPayDialogOpen.value = false
-    if (profile.value.id) await loadData(profile.value.id)
-    toast.add({
-      severity: 'success',
-      summary: t('residentFinance.paymentSuccessTitle'),
-      detail: t('residentFinance.paymentSuccessDetail'),
-      life: 4000,
-    })
-    return
-  }
-
-  const record = await recordPayment(result, profile.value.id)
-  if (record) {
-    isPayDialogOpen.value = false
-    if (profile.value.id) await loadData(profile.value.id)
-    toast.add({
-      severity: 'success',
-      summary: t('residentFinance.paymentSuccessTitle'),
-      detail: t('residentFinance.paymentSuccessDetail'),
-      life: 4000,
-    })
-  } else {
-    toast.add({
-      severity: 'error',
-      summary: t('residentFinance.paymentErrorTitle'),
-      detail: t('residentFinance.paymentErrorDetail'),
-      life: 4000,
-    })
-  }
-}
-
-function formatExpiryDate(event) {
-  let val = event.target.value.replace(/\D/g, '')
-  if (val.length > 2) {
-    val = val.substring(0, 2) + '/' + val.substring(2, 4)
-  }
-  payForm.value.expiry = val
-}
+const activeTab = ref('0')
 
 function formatDateTime(iso) {
   if (!iso) return '—'
@@ -274,8 +194,6 @@ function formatDateTime(iso) {
   return d.toLocaleDateString('es-PE', { day: '2-digit', month: 'short', year: 'numeric' })
     + ' ' + d.toLocaleTimeString('es-PE', { hour: '2-digit', minute: '2-digit' })
 }
-
-const activeTab = ref('0')
 </script>
 
 <template>
@@ -343,16 +261,17 @@ const activeTab = ref('0')
       <!-- Card 4: Action / Pay Now -->
       <div class="kpi-card kpi-action-card">
         <Button
-          :label="t('residentFinance.payNow')"
+          :label="isProcessing ? t('residentFinance.processing') : t('residentFinance.payNow')"
           icon="pi pi-credit-card"
           :severity="hasOverdue ? 'danger' : 'primary'"
           size="large"
           class="pay-btn"
-          :disabled="pendingTotal === 0 || paymentState.isLoading"
-          @click="openPayDialog"
+          :disabled="pendingTotal === 0 || paymentState.isLoading || isProcessing"
+          :loading="isProcessing"
+          @click="startMaintenanceCheckout"
         />
         <span class="kpi-subtext text-center mt-2">
-          Pago seguro procesado por Mercado Pago
+          Pago seguro con Mercado Pago Checkout Pro
         </span>
       </div>
     </div>
@@ -423,70 +342,6 @@ const activeTab = ref('0')
         </Tabs>
       </template>
     </Card>
-
-    <Dialog
-      v-model:visible="isPayDialogOpen"
-      modal
-      :header="t('residentFinance.payDialogTitle')"
-      :style="{ width: 'min(32rem, 94vw)' }"
-      :draggable="false"
-    >
-      <div class="p-3 border-round bg-gray-100 border-1 border-gray-300 flex justify-content-between align-items-center mb-3">
-        <div class="flex flex-column">
-          <span class="text-sm text-color-secondary">{{ t('residentFinance.totalDue', 'Total Acumulado a Pagar') }}</span>
-          <span class="text-xs text-orange-500 font-semibold" v-if="fees.filter(f => f.status === 'Pendiente').length > 1">
-            {{ fees.filter(f => f.status === 'Pendiente').length }} cuotas pendientes
-          </span>
-        </div>
-        <strong class="text-2xl text-primary">S/ {{ pendingTotal.toFixed(2) }}</strong>
-      </div>
-
-      <div ref="mpBrickContainer" v-show="!useFallbackForm" style="min-height: 100px;"></div>
-
-      <div v-if="!bricksLoaded && !useFallbackForm" class="flex flex-column align-items-center gap-3 py-4 text-color-secondary">
-        <i class="pi pi-spin pi-spinner text-2xl text-primary" aria-hidden="true"></i>
-        <span>{{ t('residentFinance.loadingMP') }}</span>
-      </div>
-
-      <div v-if="useFallbackForm" class="flex flex-column gap-3">
-        <Message severity="info" :closable="false" class="mb-2">
-          <i class="pi pi-wallet mr-2" aria-hidden="true"></i> Mercado Pago · {{ t('residentFinance.demoMode') }}
-        </Message>
-
-        <div class="flex flex-column gap-1">
-          <label for="rf-card-number" class="text-sm font-semibold text-color-secondary">{{ t('residentFinance.cardNumber') }}</label>
-          <InputText id="rf-card-number" v-model="payForm.cardNumber" placeholder="0000 0000 0000 0000" maxlength="19" class="w-full" />
-        </div>
-        <div class="flex gap-3">
-          <div class="flex flex-column gap-1 flex-1">
-            <label for="rf-expiry" class="text-sm font-semibold text-color-secondary">{{ t('residentFinance.expiry') }}</label>
-            <InputText id="rf-expiry" v-model="payForm.expiry" @input="formatExpiryDate" placeholder="MM/YY" maxlength="5" class="w-full" />
-          </div>
-          <div class="flex flex-column gap-1 flex-1">
-            <label for="rf-cvv" class="text-sm font-semibold text-color-secondary">{{ t('residentFinance.cvv') }}</label>
-            <InputText id="rf-cvv" v-model="payForm.cvv" placeholder="•••" maxlength="4" class="w-full" />
-          </div>
-        </div>
-        <div class="flex flex-column gap-1">
-          <label for="rf-holder" class="text-sm font-semibold text-color-secondary">{{ t('residentFinance.cardHolder') }}</label>
-          <InputText id="rf-holder" v-model="payForm.holder" :placeholder="t('residentFinance.cardHolderPlaceholder')" class="w-full" />
-        </div>
-      </div>
-
-      <template #footer>
-        <ConfirmActions
-          :cancel-label="t('app.cancelAction')"
-          :confirm-label="isProcessing ? t('residentFinance.processing') : t('residentFinance.confirmPay')"
-          cancel-icon="pi pi-times"
-          confirm-icon="pi pi-check"
-          :show-confirm="useFallbackForm"
-          :loading="isProcessing"
-          :cancel-disabled="isProcessing"
-          @cancel="isPayDialogOpen = false"
-          @confirm="confirmFallbackPayment"
-        />
-      </template>
-    </Dialog>
   </div>
 </template>
 
